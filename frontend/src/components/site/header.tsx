@@ -56,7 +56,9 @@ export function Header({ schoolName, portalUrl }: Props) {
           </ul>
         </nav>
         <div className="flex items-center gap-2">
-          <ThemeToggle className={cn("hidden lg:inline-flex", scrolled ? "bg-ink/5" : "bg-white/10")} />
+          <div className="hidden lg:block">
+            <ThemeToggle className={scrolled ? "bg-ink/5" : "bg-white/10"} />
+          </div>
           {portalUrl && (
             <ButtonLink href={portalUrl} variant={scrolled ? "primary" : "glass"} className="px-4">
               <span className="sm:hidden">Sign in</span>
