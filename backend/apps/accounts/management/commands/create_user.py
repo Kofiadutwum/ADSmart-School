@@ -1,0 +1,80 @@
+from getpass import getpass
+
+from django.contrib.auth.models import Group
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
+from django.core.management.base import BaseCommand, CommandError
+from django.db import transaction
+
+from apps.accounts import roles
+from apps.accounts.identifiers import normalise_identifier
+from apps.accounts.models import User
+from apps.core.phones import normalise_gh_phone
+from apps.school.models import School
+
+DEFAULT_ROLE = {
+    User.Kind.PARENT: roles.PARENT,
+    User.Kind.STUDENT: roles.STUDENT,
+    User.Kind.PLATFORM: roles.PLATFORM_ADMIN,
+}
+
+
+class Command(BaseCommand):
+    help = (
+        "Create a user account: a school's first Administrator, or platform staff. Parents "
+        "are left awaiting activation by SMS code unless a password is given."
+    )
+
+    def add_arguments(self, parser):
+        parser.add_argument("--kind", required=True, choices=[kind.value for kind in User.Kind])
+        parser.add_argument(
+            "--school", default="", help="The school's slug (not for platform staff)"
+        )
+        parser.add_argument(
+            "--username", required=True, help="Username, parent phone or Student ID"
+        )
+        parser.add_argument("--name", default="", help="Name shown on screens")
+        parser.add_argument("--role", action="append", default=[], choices=roles.ALL_ROLES)
+        parser.add_argument("--password", default=None, help="Omit to be asked for it")
+        parser.add_argument("--phone", default="", help="Staff mobile for SMS codes")
+
+    @transaction.atomic
+    def handle(self, *args, kind, school, username, name, role, password, phone, **options):
+        owner = None
+        if kind == User.Kind.PLATFORM:
+            if school:
+                raise CommandError("Platform staff belong to no school: leave out --school.")
+        else:
+            if not school:
+                raise CommandError("Give the school's slug with --school.")
+            owner = School.objects.filter(slug=school).first()
+            if owner is None:
+                raise CommandError(f"No school has the slug {school}.")
+        try:
+            identifier = normalise_identifier(kind, username)
+            phone = normalise_gh_phone(phone) if phone else ""
+        except ValueError as exc:
+            raise CommandError(str(exc)) from exc
+        if kind == User.Kind.PARENT:
+            phone = identifier
+        if User.objects.filter(school=owner, login=identifier).exists():
+            raise CommandError(f"A user called {identifier} already exists there.")
+
+        user = User(login=identifier, school=owner, kind=kind, display_name=name, phone=phone)
+        user.must_change_password = kind == User.Kind.STUDENT
+        if password is None and kind != User.Kind.PARENT:
+            password = getpass("Password: ")
+            if getpass("Password again: ") != password:
+                raise CommandError("The passwords did not match.")
+        if password is not None:
+            try:
+                validate_password(password, user)
+            except ValidationError as exc:
+                raise CommandError(" ".join(exc.messages)) from exc
+        user.set_password(password)
+        user.save()
+
+        names = set(role) | ({DEFAULT_ROLE[kind]} if kind in DEFAULT_ROLE else set())
+        user.groups.set(Group.objects.filter(name__in=names))
+        where = owner.name if owner else "the platform"
+        self.stdout.write(self.style.SUCCESS(f"Created {kind} {identifier} at {where}."))

@@ -30,3 +30,13 @@ def make_school(slug="adsmart", **fields):
     from apps.school.models import School
 
     return School.objects.create(slug=slug, **{**SCHOOL_DEFAULTS, **fields})
+
+
+PASSWORD = "correct horse battery"
+
+
+def sign_in(api, identifier, password=PASSWORD, kind="staff", **extra):
+    payload = {"kind": kind, "identifier": identifier, "password": password}
+    payload.update({key: value for key, value in extra.items() if not key.startswith("HTTP_")})
+    headers = {key: value for key, value in extra.items() if key.startswith("HTTP_")}
+    return api.post("/api/auth/login", payload, format="json", **headers)
