@@ -19,6 +19,9 @@ CLASSIFIED = {
     "api/public/platform": "live schools' public details only (tests/website/test_platform.py)",
     "api/public/platform/privacy-notice": NO_SCHOOL_DATA,
     "api/public/platform/leads": PLATFORM_ONLY,
+    "api/auth/login": "accounts of the address used only (tests/accounts/test_sign_in.py)",
+    "api/auth/logout": NO_SCHOOL_DATA,
+    "api/auth/me": "the signed-in user only (tests/accounts/test_sessions.py)",
 }
 
 

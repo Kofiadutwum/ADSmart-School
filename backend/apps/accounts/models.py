@@ -73,3 +73,60 @@ class User(AbstractBaseUser, PermissionsMixin):
     def save(self, *args, **kwargs):
         self.username = user_key(self.school_id, self.login)
         super().save(*args, **kwargs)
+
+
+class UserSession(models.Model):
+    """One signed-in browser (Phase 1 spec §5.6). Django's own session row holds the data."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sessions")
+    session_key = models.CharField(max_length=40, unique=True)
+    user_agent = models.CharField(max_length=300, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_seen = models.DateTimeField()
+    idle_seconds = models.PositiveIntegerField()
+    expires_at = models.DateTimeField()
+
+    def __str__(self):
+        return f"{self.user} since {self.created_at:%Y-%m-%d %H:%M}"
+
+
+class TotpDevice(models.Model):
+    """The authenticator app used as a second factor (Phase 1 spec §5.3)."""
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="totp_device")
+    # shortcut: stored as-is (as django-otp does); encrypt at rest if the database is ever shared
+    secret = models.CharField(max_length=64)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    last_used_step = models.BigIntegerField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Authenticator for {self.user}"
+
+
+class BackupCode(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="backup_codes")
+    code_hash = models.CharField(max_length=64)
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Backup code for {self.user}"
+
+
+class SmsCode(models.Model):
+    """A 6-digit code sent by SMS: hashed, 10 minutes, 5 attempts, single use (§5.2)."""
+
+    class Purpose(models.TextChoices):
+        SIGN_IN = "sign_in", "Second factor"
+        ACTIVATION = "activation", "Activation or password reset"
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sms_codes")
+    purpose = models.CharField(max_length=20, choices=Purpose.choices)
+    code_hash = models.CharField(max_length=64)
+    expires_at = models.DateTimeField()
+    attempts = models.PositiveSmallIntegerField(default=0)
+    used_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.get_purpose_display()} code for {self.user}"

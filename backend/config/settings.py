@@ -119,6 +119,9 @@ MEDIA_ROOT = Path(env("DJANGO_MEDIA_ROOT", default=str(BASE_DIR / "media")))
 
 # API paths have no trailing slash; Next.js forwards them unchanged.
 APPEND_SLASH = False
+# The browser's Origin is checked against the forwarded host (USE_X_FORWARDED_HOST), so every
+# school's own address passes CSRF checks without listing them here.
+CSRF_FAILURE_VIEW = "apps.core.views.csrf_failure"
 
 # Django 6.1 mailers (EMAIL_BACKEND is deprecated). Tests swap every mailer for locmem.
 MAILERS = {

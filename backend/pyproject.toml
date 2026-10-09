@@ -3,6 +3,8 @@ DJANGO_SETTINGS_MODULE = "config.settings_test"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-q"
+# Cache keys must be safe for any cache backend: never put raw user input in them.
+filterwarnings = ["error::django.core.cache.backends.base.CacheKeyWarning"]
 
 [tool.ruff]
 line-length = 100
