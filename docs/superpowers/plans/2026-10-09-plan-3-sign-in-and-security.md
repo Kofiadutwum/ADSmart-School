@@ -1,190 +1,58 @@
-# Plan 3: Sign-in and Security Implementation Plan
-
-> **Status: to be revised before execution.** Written before the multi-school amendment (`docs/superpowers/specs/2026-10-09-multi-school-platform-design.md`). Accounts, lockouts, sessions and SMS must become per-school and platform staff added (amendment §3.3, §4, §8). Task 0 (development PostgreSQL) moved to Plan 2.
+# Plan 3: Sign-in and Security (Multi-school) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Every school user can sign in safely: staff, parents and students. Staff who need it use a second factor, parents activate by SMS code, sessions time out by role, and every security event lands in an append-only audit log.
+**Goal:** Every school user signs in safely at their own school's address: staff, parents and pupils. The owner's team signs in at the admin address. Staff who need it use a second factor, parents activate by SMS code, sessions time out by role and stay bound to their school, and every security event lands in an append-only audit log tagged with its school.
 
 **Architecture:** There are three new Django apps:
-- `accounts`: custom User, roles, sign-in, second factor, sessions.
-- `audit`: an append-only log, enforced by a PostgreSQL trigger in development.
+- `accounts`: users, roles, sign-in, second factor, sessions.
+- `audit`: an append-only log with a PostgreSQL trigger.
 - `notifications`: an SMS gateway with guards and a delivery log.
 
-Development and tests move to PostgreSQL. It runs from the npm package `embedded-postgres`, so nothing is installed system-wide. The frontend gains `(auth)` pages (sign-in, activation) and a minimal `(portal)` shell with an Account page. All of it uses the same-origin session cookie and the `X-CSRFToken` header.
+How accounts work across schools:
+- **School users:** each user belongs to one school, except platform staff (`kind = platform`), who have none. A user's platform-wide key is `<school id>:<login>` or `platform:<login>`.
+- **Where sign-in happens:** Django works out where a sign-in belongs from the forwarded host, using Plan 2's `resolve_host`. School hosts accept staff, parent and student accounts of that school; the admin host accepts platform staff.
+- **Sessions:** a session is honoured only at the host it belongs to, and never once its school is suspended.
 
-**Tech Stack:** Django 6.1.2, DRF 3.18.3, argon2-cffi 25.1.0, pyotp 2.10.0, qrcode 8.2, psycopg[binary] 3.3.6, embedded-postgres 18.4.0-beta.17; Next.js 16.4, React 19.3, Vitest 5, Playwright 1.64.
+On the frontend:
+- `/sites/[host]` gains `(public)`, `(auth)` and `(portal)` route groups.
+- `/platform-admin` gets sign-in and an Account page.
 
-**Spec:** `docs/superpowers/specs/2026-10-09-ad-smart-school-website-phase1-design.md` (§3.7, §3.8, §4, §5, §10, §11, §12, §13)
+**Tech Stack:** Django 6.1.2, DRF 3.18.3, argon2-cffi 25.1.0, pyotp 2.10.0, qrcode 8.2, PostgreSQL 18 (embedded); Next.js 16.4, React 19.3, Vitest 5, Playwright 1.64.
+
+**Spec:** `docs/superpowers/specs/2026-10-09-multi-school-platform-design.md` (§3.3, §4, §8, §9) amending `docs/superpowers/specs/2026-10-09-ad-smart-school-website-phase1-design.md` (§3.7, §3.8, §4, §5, §10, §11, §12)
 
 ## Global Constraints
 
-- **Generic sign-in failure:** every wrong username or password gives exactly `Incorrect username or password.`. Inactive accounts get `Account unavailable. Contact the school.`, and only after the right password (§5.1).
+- **Generic sign-in failure:** every wrong username or password gives exactly `Incorrect username or password.`. Inactive accounts get `Account unavailable. Contact the school.`, and only after the right password (Phase 1 §5.1).
 - **Parent code requests:** always reply `If this number is registered, a code has been sent.` (§5.2). Codes are 6 digits, stored hashed, valid 10 minutes, allow 5 attempts and work once.
-- **Second factor:** required for Administrator, Head Teacher, Accountant and Proprietor. TOTP is primary, SMS is the fallback, and there are 10 one-time backup codes (§5.3).
+- **Second factor:**
+  - Required for Administrator, Head Teacher, Accountant, Proprietor and **all platform staff** (§5.3, amendment §4).
+  - TOTP is primary, SMS is the fallback, and there are 10 one-time backup codes.
 - **Passwords:** Argon2 in production, Django validators, minimum 8 characters, no complexity rules (§5.4).
-- **SMS codes:** at most 3 per hour per number and 10 per hour per IP address (§5.5).
+- **SMS codes:** at most 3 per hour per number and 10 per hour per IP address (§5.5). Every message names the school: `AD Smart School: your code is …` (amendment §8).
 - **Session timeouts:**
-  - Staff with second factor: 30 min idle, 12 h maximum.
+  - Second-factor roles: 30 min idle, 12 h maximum.
   - Other staff and students: 2 h idle, 12 h maximum.
-  - Parents: 2 h idle, or 30 days if "Keep me signed in" is ticked; 30 days maximum.
-  - Changing a password or second factor signs out all other sessions (§5.6).
-- **Audited events:** sign-ins, failures, lockouts, password resets, second-factor setup and reset, activation, user creation (§5.7, §11.3).
+  - Parents: 2 h idle, or 30 days with "Keep me signed in"; 30 days maximum.
+  - Changing a password or second factor signs out every other session (§5.6).
+- **Accounts per school:** logins are unique within a school. The sign-in page of one school never signs in a user of another, and a session from one school's host counts as signed out at another's (amendment §3.3).
+- **Audited events:** sign-ins, failures, lockouts, password resets, second-factor setup and reset, activation, user creation (§5.7, §11.3). Each entry carries its school (blank for platform events).
 - **API errors:** always `{code, message, fields}` (§10).
-- **Hosting:** no system-wide installs, so PostgreSQL comes from `embedded-postgres` in `tools/postgres`.
-- **NUM_PROXIES:** stays 1. Client IPs come from `apps.audit.services.client_ip`, which follows the same rule.
-- **Copy:** UK English and plain language. Phone numbers are shown locally (`024 123 4567`).
+- **Unchanged from Plan 2:** NUM_PROXIES stays 1; client IPs come from `apps.audit.services.client_ip`.
+- **Copy:** UK English and plain language.
 
 ## Review Focus
 
-1. **Session cookies through the Next.js proxy:** `Set-Cookie` and the `Origin` check must survive the `/api` rewrite (Host becomes 127.0.0.1:8000). CSRF_TRUSTED_ORIGINS must list the site origin, or every sign-in is refused. The Task 10 browser test pins this.
-2. **Enumeration through side channels:** request-code and set-password must answer identically for unknown numbers. That includes password-validation errors, so the passwords are validated before the account is looked up. Task 7 tests pin this.
-3. **TOTP replay:** a code accepted once must be refused for the rest of its window. Task 6 pins this.
-4. **Lockout window with the database cache:** `cache.incr` resets the expiry on DatabaseCache, so counters store their own deadline. Task 4 pins this with a clock override.
-5. **Revoked sessions:** a session signed out from another device must stop working on its next request, not at its next timeout. Task 5 pins this.
+1. **Cross-school sign-in.** The same login at two schools, the wrong school's host, a platform login at a school host, and a school login at the admin host must all fail with the generic message. Task 4 pins this.
+2. **Sessions carried to another host.** A session opened at school A must count as signed out at school B's host, and at A's once A is suspended. Task 5 pins this.
+3. **Enumeration through side channels.** Request-code and set-password must answer identically for unknown numbers, including password-validation errors. Task 7 pins this.
+4. **TOTP replay.** A code accepted once is refused for the rest of its window. Task 6 pins this.
+5. **Lockout window with the database cache.** Counters store their own deadline, because `DatabaseCache.incr` resets the expiry. Task 4 pins this with a clock override.
 
 ---
 
-### Task 0: Development PostgreSQL
-
-**Files:**
-- Create: `tools/postgres/package.json`, `tools/postgres/start.mjs`
-- Modify: `backend/requirements.txt`, `backend/.env.example`, `scripts/check.sh`, `.gitignore`, `README.md`
-- Local only (not committed): `backend/.env` gets `DATABASE_URL`
-- Test: `backend/tests/test_database.py`
-
-**Interfaces:**
-- Produces: PostgreSQL on `127.0.0.1:5433`, database `adss`, role `adss` / `adss-dev-only` with CREATEDB. `DATABASE_URL=postgres://adss:adss-dev-only@127.0.0.1:5433/adss`. Browser tests keep SQLite.
-
-- [ ] **Step 1: Write the failing test**
-
-`backend/tests/test_database.py`:
-```python
-from django.db import connection
-
-
-def test_tests_run_on_postgresql():
-    # Spec §13: from Plan 2 on, development and tests use PostgreSQL.
-    assert connection.vendor == "postgresql"
-```
-
-- [ ] **Step 2: Run it to see it fail**
-
-Run: `cd backend && .venv/Scripts/python -m pytest tests/test_database.py`
-Expected: FAIL, `assert 'sqlite' == 'postgresql'`
-
-- [ ] **Step 3: Add the PostgreSQL launcher**
-
-`tools/postgres/package.json`:
-```json
-{
-  "name": "adss-dev-postgres",
-  "private": true,
-  "type": "module",
-  "description": "Development PostgreSQL without a system install (spec §13).",
-  "scripts": {
-    "start": "node start.mjs"
-  },
-  "dependencies": {
-    "embedded-postgres": "18.4.0-beta.17"
-  }
-}
-```
-
-`tools/postgres/start.mjs`:
-```js
-// Development PostgreSQL on 127.0.0.1:5433, data in tools/postgres/.pgdata (spec §13).
-// Runs in the foreground; Ctrl+C stops it. Creates the adss role and database on first run.
-import EmbeddedPostgres from "embedded-postgres";
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const here = path.dirname(fileURLToPath(import.meta.url));
-const databaseDir = path.join(here, ".pgdata");
-const port = 5433;
-
-const pg = new EmbeddedPostgres({
-  databaseDir,
-  user: "postgres",
-  password: "postgres-dev-only",
-  port,
-  persistent: true,
-  onLog: () => {},
-});
-
-if (!fs.existsSync(path.join(databaseDir, "PG_VERSION"))) await pg.initialise();
-await pg.start();
-
-const client = pg.getPgClient();
-await client.connect();
-const role = await client.query("SELECT 1 FROM pg_roles WHERE rolname = 'adss'");
-if (role.rowCount === 0) await client.query("CREATE ROLE adss LOGIN CREATEDB PASSWORD 'adss-dev-only'");
-const database = await client.query("SELECT 1 FROM pg_database WHERE datname = 'adss'");
-if (database.rowCount === 0) await client.query("CREATE DATABASE adss OWNER adss");
-await client.end();
-
-console.log(`PostgreSQL ready on 127.0.0.1:${port} (database adss). Press Ctrl+C to stop.`);
-
-async function stop() {
-  await pg.stop();
-  process.exit(0);
-}
-process.on("SIGINT", stop);
-process.on("SIGTERM", stop);
-```
-
-Run: `cd tools/postgres && npm install`, then start it in the background: `node start.mjs > server.log 2>&1 &`. Wait until `server.log` contains `PostgreSQL ready`.
-
-- [ ] **Step 4: Add the driver and point Django at PostgreSQL**
-
-In `backend/requirements.txt`, add the line `psycopg[binary]==3.3.6`, then run `.venv/Scripts/python -m pip install -r requirements-dev.txt`.
-
-In `backend/.env.example`, replace the two DATABASE_URL comment lines with:
-```
-# Development PostgreSQL from tools/postgres (cd tools/postgres && npm install && npm start).
-# Production: the real server's URL. Unset falls back to SQLite (used only by the browser tests).
-DATABASE_URL=postgres://adss:adss-dev-only@127.0.0.1:5433/adss
-```
-Add the same `DATABASE_URL=` line to the local `backend/.env`. It is not committed.
-
-- [ ] **Step 5: Run the tests on PostgreSQL**
-
-Run: `cd backend && .venv/Scripts/python -m pytest`
-Expected: all tests pass, including `test_tests_run_on_postgresql`.
-
-- [ ] **Step 6: Make the check script start PostgreSQL when needed**
-
-In `scripts/check.sh`, insert before `echo "== Backend: lint"`:
-```bash
-echo "== Database"
-PG_LOG="$ROOT/tools/postgres/server.log"
-if ! "$PY" -c "import socket; socket.create_connection(('127.0.0.1', 5433), 1)" 2>/dev/null; then
-  [ -d "$ROOT/tools/postgres/node_modules" ] || (cd "$ROOT/tools/postgres" && npm install --silent)
-  (cd "$ROOT/tools/postgres" && nohup node start.mjs > "$PG_LOG" 2>&1 &)
-  for _ in $(seq 60); do grep -q "PostgreSQL ready" "$PG_LOG" 2>/dev/null && break; sleep 1; done
-fi
-```
-
-In `.gitignore`, add under `# Python`:
-```
-tools/postgres/node_modules/
-tools/postgres/.pgdata/
-tools/postgres/server.log
-```
-
-In `README.md`'s development setup, add before the Django steps: "Start the development database once per session: `cd tools/postgres && npm install && npm start` (leave it running)."
-
-- [ ] **Step 7: Commit**
-
-```bash
-git add tools/postgres/package.json tools/postgres/package-lock.json tools/postgres/start.mjs backend/requirements.txt backend/.env.example backend/tests/test_database.py scripts/check.sh .gitignore README.md
-git commit -m "Run development and tests on PostgreSQL from embedded-postgres"
-```
-
----
-
-### Task 1: Accounts: user model, roles and the create_user command
+### Task 1: Accounts: per-school users, roles and the create_user command
 
 **Files:**
 - Create: `backend/apps/accounts/__init__.py`, `apps.py`, `models.py`, `roles.py`, `identifiers.py`, `admin.py`, `management/__init__.py`, `management/commands/__init__.py`, `management/commands/create_user.py`, `migrations/__init__.py`, `migrations/0001_initial.py` (generated), `migrations/0002_role_groups.py`
@@ -192,12 +60,17 @@ git commit -m "Run development and tests on PostgreSQL from embedded-postgres"
 - Test: `backend/tests/accounts/__init__.py`, `backend/tests/accounts/conftest.py`, `backend/tests/accounts/test_users.py`
 
 **Interfaces:**
+- Consumes: `School` and the `school` / `other_school` fixtures (Plan 2).
 - Produces:
-  - `apps.accounts.models.User` with `Kind.STAFF|PARENT|STUDENT`. Fields: `username` (unique), `kind`, `display_name`, `phone`, `email`, `is_active`, `is_staff`, `must_change_password`, `activated_at`, `date_joined`. `User.objects.create_user(username, *, kind, password=None, **fields)`. A password of `None` makes it unusable, meaning the account is awaiting activation.
-  - `apps.accounts.roles`: the 13 role constants, `ALL_ROLES`, `SECOND_FACTOR_ROLES`, `roles_of(user) -> list[str]`, `has_role(user, *names) -> bool`, `needs_second_factor(user) -> bool`.
-  - `apps.accounts.identifiers.normalise_identifier(kind, raw) -> str`, which raises `ValueError`.
-  - `manage.py create_user --kind --username [--name] [--role ...] [--password] [--phone]`.
-  - Test fixture `make_user(username="k.mensah", *, kind="staff", role=None, password=PASSWORD, **fields)`, plus `tests.helpers.PASSWORD` and `tests.helpers.sign_in(api, identifier, password=PASSWORD, kind="staff", **extra)`.
+  - **`User`:**
+    - `Kind.STAFF|PARENT|STUDENT|PLATFORM`.
+    - Fields: `school` (null only for platform staff), `login`, `username` (the platform-wide key, set on save), `kind`, `display_name`, `phone`, `email`, `is_active`, `is_staff`, `must_change_password`, `activated_at`, `date_joined`.
+    - `User.objects.create_user(login, *, kind, school=None, password=None, **fields)`. A password of `None` makes it unusable, i.e. the account awaits activation.
+    - `user_key(school_id, login) -> str`.
+  - **`roles`:** the 13 school roles plus `PLATFORM_ADMIN = "Platform Admin"`, `ALL_ROLES` (14), `SECOND_FACTOR_ROLES`, `roles_of(user)`, `has_role(user, *names)`, `needs_second_factor(user)` (true for platform staff).
+  - **`identifiers.normalise_identifier(kind, raw) -> str`**, which raises `ValueError`. Platform logins follow the staff rule.
+  - **`manage.py create_user`:** `--kind --username [--school SLUG] [--name] [--role ...] [--password] [--phone]`.
+  - **Test fixtures:** `make_user(login="k.mensah", *, kind="staff", school=<the school fixture>, role=None, password=PASSWORD, **fields)`; `tests.helpers.PASSWORD`; `tests.helpers.sign_in(api, identifier, password=PASSWORD, kind="staff", **extra)`. Extras starting with `HTTP_` are sent as headers, for example `HTTP_HOST`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -214,11 +87,16 @@ from django.contrib.auth.models import Group
 from apps.accounts.models import User
 from tests.helpers import PASSWORD
 
+_DEFAULT = object()
+
 
 @pytest.fixture
-def make_user(db):
-    def make(username="k.mensah", *, kind="staff", role=None, password=PASSWORD, **fields):
-        user = User.objects.create_user(username, kind=kind, password=password, **fields)
+def make_user(school):
+    default_school = school
+
+    def make(login="k.mensah", *, kind="staff", school=_DEFAULT, role=None, password=PASSWORD, **fields):
+        owner = default_school if school is _DEFAULT else school
+        user = User.objects.create_user(login, kind=kind, school=owner, password=password, **fields)
         if role:
             user.groups.add(Group.objects.get(name=role))
         return user
@@ -229,12 +107,15 @@ def make_user(db):
 In `backend/tests/helpers.py`, append:
 ```python
 
+
 PASSWORD = "correct horse battery"
 
 
 def sign_in(api, identifier, password=PASSWORD, kind="staff", **extra):
-    payload = {"kind": kind, "identifier": identifier, "password": password, **extra}
-    return api.post("/api/auth/login", payload, format="json")
+    payload = {"kind": kind, "identifier": identifier, "password": password}
+    payload.update({key: value for key, value in extra.items() if not key.startswith("HTTP_")})
+    headers = {key: value for key, value in extra.items() if key.startswith("HTTP_")}
+    return api.post("/api/auth/login", payload, format="json", **headers)
 ```
 
 `backend/tests/accounts/test_users.py`:
@@ -243,29 +124,44 @@ import pytest
 from django.conf import settings
 from django.contrib.auth.models import Group
 from django.core.management import CommandError, call_command
+from django.db import IntegrityError, transaction
 
 from apps.accounts import roles
 from apps.accounts.identifiers import normalise_identifier
 from apps.accounts.models import User
 
 pytestmark = pytest.mark.django_db
+STRONG = "correct horse battery"
 
 
 def test_every_role_exists_as_a_group():
-    assert len(roles.ALL_ROLES) == 13
+    assert len(roles.ALL_ROLES) == 14 and roles.PLATFORM_ADMIN in roles.ALL_ROLES
     assert set(roles.ALL_ROLES) <= set(Group.objects.values_list("name", flat=True))
 
 
-def test_second_factor_roles():
+def test_who_needs_a_second_factor(make_user):
     assert roles.SECOND_FACTOR_ROLES == {"Administrator", "Head Teacher", "Accountant", "Proprietor"}
+    teacher = make_user()
+    assert not roles.needs_second_factor(teacher)
+    teacher.groups.add(Group.objects.get(name=roles.HEAD_TEACHER))
+    assert roles.needs_second_factor(teacher)
+    assert roles.roles_of(teacher) == ["Head Teacher"]
+    assert roles.needs_second_factor(make_user("ops", kind="platform", school=None))
 
 
-def test_needs_second_factor_follows_roles(make_user):
-    user = make_user()
-    assert not roles.needs_second_factor(user)
-    user.groups.add(Group.objects.get(name=roles.HEAD_TEACHER))
-    assert roles.needs_second_factor(user)
-    assert roles.roles_of(user) == ["Head Teacher"]
+def test_logins_are_unique_within_a_school_only(make_user, school, other_school):
+    first = make_user("k.mensah")
+    second = make_user("k.mensah", school=other_school)
+    assert first.username == f"{school.pk}:k.mensah"
+    assert second.username == f"{other_school.pk}:k.mensah"
+    with pytest.raises(IntegrityError), transaction.atomic():
+        make_user("k.mensah")
+
+
+def test_platform_staff_have_no_school_and_school_users_need_one(make_user):
+    assert make_user("ops", kind="platform", school=None).username == "platform:ops"
+    with pytest.raises(IntegrityError), transaction.atomic():
+        make_user("lost", school=None)
 
 
 def test_production_hashes_passwords_with_argon2():
@@ -279,6 +175,7 @@ def test_production_hashes_passwords_with_argon2():
     ("kind", "raw", "expected"),
     [
         ("staff", "  K.Mensah ", "k.mensah"),
+        ("platform", "Ops.Team", "ops.team"),
         ("parent", "024 123 4567", "+233241234567"),
         ("parent", "+233 24 123 4567", "+233241234567"),
         ("student", "26-0147-3", "2601473"),
@@ -295,6 +192,7 @@ def test_normalise_identifier(kind, raw, expected):
         ("staff", "1234"),
         ("staff", "+233241234567"),
         ("staff", "ab"),
+        ("platform", "9ops"),
         ("parent", "12345"),
         ("student", "26-0147"),
         ("student", "abc1234"),
@@ -306,40 +204,59 @@ def test_normalise_identifier_rejects(kind, raw):
         normalise_identifier(kind, raw)
 
 
-def test_create_user_command_makes_an_administrator():
+def test_create_user_command_makes_a_school_administrator(school):
     call_command(
         "create_user",
         kind="staff",
+        school="adsmart",
         username="Admin",
         name="School Admin",
         role=["Administrator"],
-        password="correct horse battery",
+        password=STRONG,
     )
-    user = User.objects.get(username="admin")
-    assert user.kind == "staff" and user.display_name == "School Admin"
-    assert user.check_password("correct horse battery")
+    user = User.objects.get(login="admin")
+    assert user.school == school and user.kind == "staff" and user.display_name == "School Admin"
+    assert user.check_password(STRONG)
     assert roles.roles_of(user) == ["Administrator"]
 
 
-def test_create_user_command_leaves_a_parent_awaiting_activation():
-    call_command("create_user", kind="parent", username="024 123 4567", name="Ama Mensah")
-    user = User.objects.get(username="+233241234567")
+def test_create_user_command_makes_platform_staff(db):
+    call_command("create_user", kind="platform", username="ops", password=STRONG)
+    user = User.objects.get(username="platform:ops")
+    assert user.school is None and roles.roles_of(user) == ["Platform Admin"]
+
+
+def test_create_user_command_needs_a_known_school_for_school_users(school):
+    with pytest.raises(CommandError, match="--school"):
+        call_command("create_user", kind="staff", username="admin", password=STRONG)
+    with pytest.raises(CommandError, match="No school"):
+        call_command("create_user", kind="staff", school="nowhere", username="admin", password=STRONG)
+    with pytest.raises(CommandError, match="no school"):
+        call_command("create_user", kind="platform", school="adsmart", username="ops", password=STRONG)
+
+
+def test_create_user_command_leaves_a_parent_awaiting_activation(school):
+    call_command("create_user", kind="parent", school="adsmart", username="024 123 4567", name="Ama Mensah")
+    user = User.objects.get(login="+233241234567")
     assert user.phone == "+233241234567" and roles.roles_of(user) == ["Parent"]
     assert user.is_active and user.activated_at is None and not user.has_usable_password()
 
 
-def test_create_user_command_makes_students_change_their_first_password():
-    call_command("create_user", kind="student", username="26-0147-3", password="first password 1")
-    user = User.objects.get(username="2601473")
+def test_create_user_command_makes_students_change_their_first_password(school):
+    call_command(
+        "create_user", kind="student", school="adsmart", username="26-0147-3", password="first password 1"
+    )
+    user = User.objects.get(login="2601473")
     assert user.must_change_password and roles.roles_of(user) == ["Student"]
 
 
-def test_create_user_command_refuses_duplicates_and_weak_passwords():
-    call_command("create_user", kind="staff", username="admin", password="correct horse battery")
+def test_create_user_command_refuses_duplicates_and_weak_passwords(school, other_school):
+    call_command("create_user", kind="staff", school="adsmart", username="admin", password=STRONG)
     with pytest.raises(CommandError, match="already exists"):
-        call_command("create_user", kind="staff", username="ADMIN", password="correct horse battery")
+        call_command("create_user", kind="staff", school="adsmart", username="ADMIN", password=STRONG)
+    call_command("create_user", kind="staff", school="brightfuture", username="admin", password=STRONG)
     with pytest.raises(CommandError, match="too common"):
-        call_command("create_user", kind="staff", username="teacher", password="password")
+        call_command("create_user", kind="staff", school="adsmart", username="teacher", password="password")
 ```
 
 - [ ] **Step 2: Run them to see them fail**
@@ -359,6 +276,16 @@ Expected: ERROR during collection, `ModuleNotFoundError: No module named 'apps.a
 
 ```
 
+`backend/apps/accounts/management/__init__.py`:
+```python
+
+```
+
+`backend/apps/accounts/management/commands/__init__.py`:
+```python
+
+```
+
 `backend/apps/accounts/apps.py`:
 ```python
 from django.apps import AppConfig
@@ -372,7 +299,7 @@ class AccountsConfig(AppConfig):
 
 `backend/apps/accounts/roles.py`:
 ```python
-"""The 13 role groups (spec §4.1) and who needs a second factor (§5.3)."""
+"""Role groups (Phase 1 spec §4.1, amendment §4) and who needs a second factor (§5.3)."""
 
 ADMINISTRATOR = "Administrator"
 PROPRIETOR = "Proprietor"
@@ -387,8 +314,9 @@ CANTEEN = "Canteen Officer"
 TRANSPORT = "Transport Officer"
 PARENT = "Parent"
 STUDENT = "Student"
+PLATFORM_ADMIN = "Platform Admin"  # the owner's team (amendment §4)
 
-ALL_ROLES = (
+SCHOOL_ROLES = (
     ADMINISTRATOR,
     PROPRIETOR,
     HEAD_TEACHER,
@@ -403,6 +331,7 @@ ALL_ROLES = (
     PARENT,
     STUDENT,
 )
+ALL_ROLES = (*SCHOOL_ROLES, PLATFORM_ADMIN)
 SECOND_FACTOR_ROLES = frozenset({ADMINISTRATOR, HEAD_TEACHER, ACCOUNTANT, PROPRIETOR})
 
 
@@ -415,26 +344,26 @@ def has_role(user, *names: str) -> bool:
 
 
 def needs_second_factor(user) -> bool:
-    return has_role(user, *SECOND_FACTOR_ROLES)
+    return user.kind == "platform" or has_role(user, *SECOND_FACTOR_ROLES)
 ```
 
 `backend/apps/accounts/identifiers.py`:
 ```python
-"""Sign-in identifiers by account kind (spec §5.1): staff username, parent phone, student ID."""
+"""Sign-in identifiers by account kind (Phase 1 spec §5.1): usernames, parent phones, Student IDs."""
 
 import re
 
 from apps.core.phones import normalise_gh_phone
 
-STAFF_USERNAME = re.compile(r"^[a-z][a-z0-9._-]{2,149}$")
+USERNAME = re.compile(r"^[a-z][a-z0-9._-]{2,149}$")
 STUDENT_ID = re.compile(r"^\d{7}$")
 
 
 def normalise_identifier(kind: str, raw: str) -> str:
     value = (raw or "").strip()
-    if kind == "staff":
+    if kind in ("staff", "platform"):
         value = value.lower()
-        if not STAFF_USERNAME.match(value):
+        if not USERNAME.match(value):
             raise ValueError(
                 "Usernames start with a letter and use letters, numbers, dots, dashes or "
                 "underscores."
@@ -455,33 +384,45 @@ def normalise_identifier(kind: str, raw: str) -> str:
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
 from django.db import models
+from django.db.models import Q
 from django.utils import timezone
+
+
+def user_key(school_id, login: str) -> str:
+    """The platform-wide unique key: logins are only unique within a school (amendment §3.3)."""
+    return f"{school_id}:{login}" if school_id else f"platform:{login}"
 
 
 class UserManager(BaseUserManager):
     use_in_migrations = True
 
-    def create_user(self, username, *, kind, password=None, **fields):
-        user = self.model(username=username, kind=kind, **fields)
+    def create_user(self, login, *, kind, school=None, password=None, **fields):
+        user = self.model(login=login, kind=kind, school=school, **fields)
         user.set_password(password)  # None gives an unusable password: awaiting activation
         user.save(using=self._db)
         return user
 
     def create_superuser(self, username, password=None, **fields):
+        """Django's createsuperuser: a platform staff member with Django admin access."""
         fields.update(is_staff=True, is_superuser=True)
-        return self.create_user(username, kind=User.Kind.STAFF, password=password, **fields)
+        return self.create_user(username, kind=User.Kind.PLATFORM, password=password, **fields)
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-    """One account per person. Roles are Django groups (apps.accounts.roles)."""
+    """One account per person per school; platform staff belong to no school. Roles are groups."""
 
     class Kind(models.TextChoices):
         STAFF = "staff", "Staff"
         PARENT = "parent", "Parent"
         STUDENT = "student", "Student"
+        PLATFORM = "platform", "Platform staff"
 
-    # Staff username, parent phone (E.164) or student ID digits: see identifiers.py.
-    username = models.CharField(max_length=150, unique=True)
+    username = models.CharField(max_length=180, unique=True, editable=False)
+    school = models.ForeignKey(
+        "school.School", null=True, blank=True, on_delete=models.PROTECT, related_name="users"
+    )
+    # Staff or platform username, parent phone (E.164) or Student ID digits: see identifiers.py.
+    login = models.CharField(max_length=150)
     kind = models.CharField(max_length=10, choices=Kind.choices)
     display_name = models.CharField(max_length=150, blank=True)
     phone = models.CharField(max_length=16, blank=True)
@@ -500,8 +441,21 @@ class User(AbstractBaseUser, PermissionsMixin):
     EMAIL_FIELD = "email"
     REQUIRED_FIELDS: list[str] = []
 
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=(Q(kind="platform") & Q(school__isnull=True))
+                | (~Q(kind="platform") & Q(school__isnull=False)),
+                name="accounts_user_school_matches_kind",
+            )
+        ]
+
     def __str__(self):
-        return self.display_name or self.username
+        return self.display_name or self.login
+
+    def save(self, *args, **kwargs):
+        self.username = user_key(self.school_id, self.login)
+        super().save(*args, **kwargs)
 ```
 
 `backend/apps/accounts/admin.py`:
@@ -513,20 +467,10 @@ from apps.accounts.models import User
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
-    list_display = ["username", "display_name", "kind", "is_active", "activated_at"]
-    list_filter = ["kind", "is_active", "groups"]
-    search_fields = ["username", "display_name", "phone"]
+    list_display = ["login", "school", "display_name", "kind", "is_active", "activated_at"]
+    list_filter = ["school", "kind", "is_active", "groups"]
+    search_fields = ["login", "display_name", "phone"]
     exclude = ["password"]
-```
-
-`backend/apps/accounts/management/__init__.py`:
-```python
-
-```
-
-`backend/apps/accounts/management/commands/__init__.py`:
-```python
-
 ```
 
 `backend/apps/accounts/management/commands/create_user.py`:
@@ -543,20 +487,26 @@ from apps.accounts import roles
 from apps.accounts.identifiers import normalise_identifier
 from apps.accounts.models import User
 from apps.core.phones import normalise_gh_phone
+from apps.school.models import School
 
-DEFAULT_ROLE = {User.Kind.PARENT: roles.PARENT, User.Kind.STUDENT: roles.STUDENT}
+DEFAULT_ROLE = {
+    User.Kind.PARENT: roles.PARENT,
+    User.Kind.STUDENT: roles.STUDENT,
+    User.Kind.PLATFORM: roles.PLATFORM_ADMIN,
+}
 
 
 class Command(BaseCommand):
     help = (
-        "Create a user account, e.g. the first Administrator. Parents are left awaiting "
-        "activation by SMS code unless a password is given."
+        "Create a user account: a school's first Administrator, or platform staff. Parents "
+        "are left awaiting activation by SMS code unless a password is given."
     )
 
     def add_arguments(self, parser):
         parser.add_argument("--kind", required=True, choices=[kind.value for kind in User.Kind])
+        parser.add_argument("--school", default="", help="The school's slug (not for platform staff)")
         parser.add_argument(
-            "--username", required=True, help="Staff username, parent phone or Student ID"
+            "--username", required=True, help="Username, parent phone or Student ID"
         )
         parser.add_argument("--name", default="", help="Name shown on screens")
         parser.add_argument("--role", action="append", default=[], choices=roles.ALL_ROLES)
@@ -564,7 +514,17 @@ class Command(BaseCommand):
         parser.add_argument("--phone", default="", help="Staff mobile for SMS codes")
 
     @transaction.atomic
-    def handle(self, *args, kind, username, name, role, password, phone, **options):
+    def handle(self, *args, kind, school, username, name, role, password, phone, **options):
+        owner = None
+        if kind == User.Kind.PLATFORM:
+            if school:
+                raise CommandError("Platform staff belong to no school: leave out --school.")
+        else:
+            if not school:
+                raise CommandError("Give the school's slug with --school.")
+            owner = School.objects.filter(slug=school).first()
+            if owner is None:
+                raise CommandError(f"No school has the slug {school}.")
         try:
             identifier = normalise_identifier(kind, username)
             phone = normalise_gh_phone(phone) if phone else ""
@@ -572,10 +532,10 @@ class Command(BaseCommand):
             raise CommandError(str(exc)) from exc
         if kind == User.Kind.PARENT:
             phone = identifier
-        if User.objects.filter(username=identifier).exists():
-            raise CommandError(f"A user called {identifier} already exists.")
+        if User.objects.filter(school=owner, login=identifier).exists():
+            raise CommandError(f"A user called {identifier} already exists there.")
 
-        user = User(username=identifier, kind=kind, display_name=name, phone=phone)
+        user = User(login=identifier, school=owner, kind=kind, display_name=name, phone=phone)
         user.must_change_password = kind == User.Kind.STUDENT
         if password is None and kind != User.Kind.PARENT:
             password = getpass("Password: ")
@@ -591,7 +551,8 @@ class Command(BaseCommand):
 
         names = set(role) | ({DEFAULT_ROLE[kind]} if kind in DEFAULT_ROLE else set())
         user.groups.set(Group.objects.filter(name__in=names))
-        self.stdout.write(self.style.SUCCESS(f"Created {kind} {identifier}."))
+        where = owner.name if owner else "the platform"
+        self.stdout.write(self.style.SUCCESS(f"Created {kind} {identifier} at {where}."))
 ```
 
 `backend/apps/accounts/migrations/0002_role_groups.py`:
@@ -613,6 +574,7 @@ ROLES = (
     "Transport Officer",
     "Parent",
     "Student",
+    "Platform Admin",
 )
 
 
@@ -641,9 +603,9 @@ PASSWORD_HASHERS = [
 ]
 ```
 
-In `backend/requirements.txt`, add `argon2-cffi==25.1.0` and run `pip install -r requirements-dev.txt`.
+In `backend/requirements.txt`, add `argon2-cffi==25.1.0`, then run `.venv/Scripts/python -m pip install -r requirements-dev.txt`.
 
-Generate the first migration: `.venv/Scripts/python manage.py makemigrations accounts --name initial` (it must be named `0001_initial`). The data migration `0002_role_groups.py` above depends on it. Write `0002` after generating `0001`, or makemigrations will number around it.
+Generate the first migration with `.venv/Scripts/python manage.py makemigrations accounts --name initial`, then write `0002_role_groups.py`.
 
 - [ ] **Step 4: Run the tests**
 
@@ -652,22 +614,23 @@ Expected: all pass.
 
 - [ ] **Step 5: Rebuild the development database and run everything**
 
-The user model changed, so the old development database cannot be migrated. The PostgreSQL database `adss` is new and has nothing to lose. Run:
-`.venv/Scripts/python manage.py migrate && .venv/Scripts/python manage.py createcachetable && .venv/Scripts/python manage.py seed_website`
+Django's admin tables in the development database point at the old built-in user, so it cannot be migrated forwards. It holds only seed data. With `tools/postgres` running:
+`.venv/Scripts/python -c "import psycopg; c=psycopg.connect('postgres://postgres:postgres-dev-only@127.0.0.1:5433/postgres', autocommit=True); c.execute('DROP DATABASE IF EXISTS adss'); c.execute('CREATE DATABASE adss OWNER adss')"`
+`.venv/Scripts/python manage.py migrate -v0 && .venv/Scripts/python manage.py createcachetable && .venv/Scripts/python manage.py seed_website`
 
-Then run `.venv/Scripts/python -m pytest -q && .venv/Scripts/python -m ruff check . && .venv/Scripts/python -m ruff format --check .`
+Then run `.venv/Scripts/python -m pytest -q && .venv/Scripts/python -m ruff format . && .venv/Scripts/python -m ruff check .`
 Expected: all pass, and ruff is clean.
 
 - [ ] **Step 6: Commit**
 
 ```bash
 git add backend/apps/accounts backend/config/settings.py backend/requirements.txt backend/tests/accounts backend/tests/helpers.py
-git commit -m "Add accounts: user model, the 13 role groups and the create_user command"
+git commit -m "Add per-school user accounts, role groups and the create_user command"
 ```
 
 ---
 
-### Task 2: Audit: append-only log
+### Task 2: Audit: append-only log, tagged with its school
 
 **Files:**
 - Create: `backend/apps/audit/__init__.py`, `apps.py`, `models.py`, `services.py`, `migrations/__init__.py`, `migrations/0001_initial.py` (generated), `migrations/0002_append_only_trigger.py`
@@ -675,12 +638,12 @@ git commit -m "Add accounts: user model, the 13 role groups and the create_user 
 - Test: `backend/tests/audit/__init__.py`, `backend/tests/audit/test_audit.py`
 
 **Interfaces:**
-- Consumes: `apps.accounts.models.User`.
+- Consumes: `User` (Task 1), `School` (Plan 2).
 - Produces:
-  - `apps.audit.models.AuditLog`, with `AuditLog.Action` constants.
-  - `apps.audit.models.AppendOnlyError`.
-  - `apps.audit.services.record(action, *, actor=None, entity=None, entity_type="", entity_id="", old=None, new=None, reason="", request=None) -> AuditLog`.
-  - `apps.audit.services.client_ip(request) -> str | None`.
+  - `AuditLog` with `Action` constants and `school` (null for platform events).
+  - `AppendOnlyError`.
+  - `record(action, *, actor=None, entity=None, entity_type="", entity_id="", old=None, new=None, reason="", request=None, school=None) -> AuditLog`. Without `school`, it takes the actor's or the entity's school; a `School` entity is its own school.
+  - `client_ip(request) -> str | None`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -705,11 +668,11 @@ pytestmark = pytest.mark.django_db
 
 
 @pytest.fixture
-def actor():
-    return User.objects.create_user("ama.admin", kind="staff", display_name="Ama Admin")
+def actor(school):
+    return User.objects.create_user("ama.admin", kind="staff", school=school, display_name="Ama Admin")
 
 
-def test_record_stores_actor_entity_values_and_address(actor):
+def test_record_stores_actor_entity_values_school_and_address(actor, school):
     request = RequestFactory().post("/", REMOTE_ADDR="10.0.0.1", HTTP_X_FORWARDED_FOR="41.66.1.2")
     request.user = actor
     entry = record(AuditLog.Action.USER_CREATED, entity=actor, new={"kind": "staff"}, request=request)
@@ -717,6 +680,14 @@ def test_record_stores_actor_entity_values_and_address(actor):
     assert entry.actor_id == actor.pk and entry.actor_name == "Ama Admin"
     assert entry.entity_type == "accounts.user" and entry.entity_id == str(actor.pk)
     assert entry.new_value == {"kind": "staff"} and entry.ip_address == "41.66.1.2"
+    assert entry.school == school
+
+
+def test_the_school_comes_from_the_actor_the_entity_or_is_given(actor, school, other_school):
+    assert record(AuditLog.Action.SIGN_IN, actor=actor).school == school
+    assert record(AuditLog.Action.UPDATED, entity=other_school).school == other_school
+    assert record(AuditLog.Action.SIGN_IN_FAILED, school=other_school).school == other_school
+    assert record(AuditLog.Action.SIGN_IN_FAILED).school is None
 
 
 def test_anonymous_requests_have_no_actor_and_junk_addresses_are_dropped():
@@ -762,11 +733,11 @@ def test_entries_outlive_the_actor(actor):
     assert entry.actor_name == "Ama Admin"
 
 
-def test_create_user_command_is_audited():
-    call_command("create_user", kind="parent", username="024 123 4567")
+def test_create_user_command_is_audited(school):
+    call_command("create_user", kind="parent", school="adsmart", username="024 123 4567")
     user = User.objects.get()
     entry = AuditLog.objects.get(action=AuditLog.Action.USER_CREATED)
-    assert entry.entity_id == str(user.pk)
+    assert entry.entity_id == str(user.pk) and entry.school == school
     assert entry.new_value == {"kind": "parent", "roles": ["Parent"]}
 ```
 
@@ -800,7 +771,7 @@ class AuditConfig(AppConfig):
 
 `backend/apps/audit/models.py`:
 ```python
-"""Append-only audit trail (spec §3.8, §11.3). Write entries with services.record()."""
+"""Append-only audit trail (Phase 1 spec §3.8, §11.3). Write entries with services.record()."""
 
 from django.conf import settings
 from django.db import models
@@ -841,7 +812,16 @@ class AuditLog(models.Model):
         WEBSITE_LIVE = "WEBSITE_LIVE", "Website went live"
         VIEWED_RESTRICTED = "VIEWED_RESTRICTED", "Viewed a restricted record"
 
-    # No database constraint: entries must survive the deletion of demo users (Plan 3).
+    # No database constraints: entries must outlive any user or school they mention.
+    school = models.ForeignKey(
+        "school.School",
+        null=True,
+        blank=True,
+        on_delete=models.DO_NOTHING,
+        db_constraint=False,
+        related_name="+",
+        help_text="Empty for platform events (amendment §4).",
+    )
     actor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
@@ -880,13 +860,14 @@ class AuditLog(models.Model):
 
 `backend/apps/audit/services.py`:
 ```python
-"""The only way to write audit entries (spec §3.8)."""
+"""The only way to write audit entries (Phase 1 spec §3.8)."""
 
 import ipaddress
 
 from rest_framework.throttling import BaseThrottle
 
 from apps.audit.models import AuditLog
+from apps.school.models import School
 
 
 def client_ip(request) -> str | None:
@@ -896,6 +877,16 @@ def client_ip(request) -> str | None:
         return str(ipaddress.ip_address(value))
     except ValueError:
         return None
+
+
+def _school_of(*objects) -> School | None:
+    for obj in objects:
+        if isinstance(obj, School):
+            return obj
+        school = getattr(obj, "school", None)
+        if isinstance(school, School):
+            return school
+    return None
 
 
 def record(
@@ -909,6 +900,7 @@ def record(
     new=None,
     reason: str = "",
     request=None,
+    school: School | None = None,
 ) -> AuditLog:
     if actor is None and request is not None:
         user = getattr(request, "user", None)
@@ -916,6 +908,7 @@ def record(
     if entity is not None:
         entity_type, entity_id = entity._meta.label_lower, entity.pk
     return AuditLog.objects.create(
+        school=school or _school_of(actor, entity),
         actor=actor,
         actor_name=str(actor) if actor else "",
         action=action,
@@ -949,7 +942,7 @@ DROP FUNCTION IF EXISTS audit_auditlog_append_only();
 
 
 def forwards(apps, schema_editor):
-    # PostgreSQL only; production also denies UPDATE/DELETE to the app's role (Plan 5).
+    # PostgreSQL only; production also denies UPDATE/DELETE to the app's role (Plan 6).
     if schema_editor.connection.vendor == "postgresql":
         schema_editor.execute(CREATE)
 
@@ -967,7 +960,9 @@ class Migration(migrations.Migration):
 
 In `backend/config/settings.py`, add `"apps.audit",` to INSTALLED_APPS after `"apps.accounts",`. Then run `.venv/Scripts/python manage.py makemigrations audit --name initial` before writing `0002`.
 
-In `backend/apps/accounts/management/commands/create_user.py`, add the imports `from apps.audit.models import AuditLog` and `from apps.audit.services import record`. After `user.groups.set(...)`, add:
+In `backend/apps/accounts/management/commands/create_user.py`:
+- Add the imports `from apps.audit.models import AuditLog` and `from apps.audit.services import record`.
+- After `user.groups.set(...)`, add:
 ```python
         record(
             AuditLog.Action.USER_CREATED,
@@ -982,13 +977,13 @@ In `backend/apps/accounts/management/commands/create_user.py`, add the imports `
 Run: `cd backend && .venv/Scripts/python -m pytest tests/audit tests/accounts -q`
 Expected: all pass.
 
-- [ ] **Step 5: Migrate the development database and commit**
+- [ ] **Step 5: Migrate, check and commit**
 
-Run: `.venv/Scripts/python manage.py migrate && .venv/Scripts/python -m ruff check . && .venv/Scripts/python -m ruff format --check .`
+Run: `.venv/Scripts/python manage.py migrate -v0 && .venv/Scripts/python -m ruff format . && .venv/Scripts/python -m ruff check .`
 
 ```bash
 git add backend/apps/audit backend/apps/accounts backend/config/settings.py backend/tests/audit
-git commit -m "Add the append-only audit log with a PostgreSQL guard"
+git commit -m "Add the append-only audit log, tagged with each entry's school"
 ```
 
 ---
@@ -1002,12 +997,12 @@ git commit -m "Add the append-only audit log with a PostgreSQL guard"
 
 **Interfaces:**
 - Produces:
-  - `apps.notifications.sms.send_sms(to, body, *, purpose, redacted_body=None) -> SmsMessage`.
-  - `apps.notifications.sms.Purpose.SIGN_IN_CODE == "sign_in_code"`.
-  - `SmsMessage.Status.SENT|FAILED|REFUSED`.
-  - `apps.notifications.backends.ConsoleBackend`, which logs and, when `SMS_FILE_PATH` is set, appends `{"to", "body", "at"}` JSON lines.
-  - `apps.notifications.backends.MemoryBackend.outbox` (list of `{"to", "body"}`, cleared before every test).
-  - Settings `SMS_BACKEND` and `SMS_FILE_PATH`.
+  - `send_sms(to, body, *, purpose, redacted_body=None, school=None) -> SmsMessage`.
+  - `Purpose.SIGN_IN_CODE == "sign_in_code"`.
+  - `SmsMessage` with `school` and `Status.SENT|FAILED|REFUSED`.
+  - `ConsoleBackend` (logs, and appends `{"to", "body", "at"}` JSON lines to `SMS_FILE_PATH` when set).
+  - `MemoryBackend.outbox`, emptied before every test.
+  - Settings `SMS_BACKEND`, `SMS_FILE_PATH`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1035,16 +1030,18 @@ class BrokenBackend:
         raise RuntimeError("gateway down")
 
 
-def test_send_logs_the_redacted_body_and_delivers_the_real_one():
+def test_send_logs_the_redacted_body_and_its_school(school):
     message = sms.send_sms(
         TO,
-        "Your code is 123456",
+        "AD Smart School: your code is 123456",
         purpose=sms.Purpose.SIGN_IN_CODE,
-        redacted_body="Your code is ******",
+        redacted_body="AD Smart School: your code is ******",
+        school=school,
     )
     assert message.status == SmsMessage.Status.SENT
-    assert SmsMessage.objects.get().body == "Your code is ******"
-    assert MemoryBackend.outbox == [{"to": TO, "body": "Your code is 123456"}]
+    saved = SmsMessage.objects.get()
+    assert saved.body == "AD Smart School: your code is ******" and saved.school == school
+    assert MemoryBackend.outbox == [{"to": TO, "body": "AD Smart School: your code is 123456"}]
 
 
 def test_sign_in_codes_are_limited_to_three_an_hour_per_number():
@@ -1103,13 +1100,16 @@ from django.db import models
 
 
 class SmsMessage(models.Model):
-    """Every SMS the system tried to send (spec §3.7)."""
+    """Every SMS the system tried to send (Phase 1 spec §3.7), with the school it was for."""
 
     class Status(models.TextChoices):
         SENT = "SENT", "Sent"
         FAILED = "FAILED", "Failed"
         REFUSED = "REFUSED", "Refused"
 
+    school = models.ForeignKey(
+        "school.School", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     to = models.CharField(max_length=16, db_index=True)
     purpose = models.CharField(max_length=40)
     body = models.TextField(help_text="Sign-in codes are stored redacted.")
@@ -1127,7 +1127,7 @@ class SmsMessage(models.Model):
 
 `backend/apps/notifications/backends.py`:
 ```python
-"""SMS backends. A provider backend is added before launch (spec §3.7)."""
+"""SMS backends. A provider backend is added before launch (Phase 1 spec §3.7)."""
 
 import json
 import logging
@@ -1162,7 +1162,7 @@ class MemoryBackend:
 
 `backend/apps/notifications/sms.py`:
 ```python
-"""Sending SMS (spec §3.7): guards first, then the configured backend, always a log row."""
+"""Sending SMS (Phase 1 spec §3.7): guards first, then the configured backend, always a log row."""
 
 from datetime import timedelta
 
@@ -1177,12 +1177,14 @@ class Purpose:
     SIGN_IN_CODE = "sign_in_code"
 
 
-# Per-number limits by purpose (spec §5.5): (messages, window).
+# Per-number limits by purpose (§5.5): (messages, window).
 LIMITS = {Purpose.SIGN_IN_CODE: (3, timedelta(hours=1))}
 
 
-def send_sms(to: str, body: str, *, purpose: str, redacted_body: str | None = None) -> SmsMessage:
-    message = SmsMessage(to=to, purpose=purpose, body=redacted_body or body)
+def send_sms(
+    to: str, body: str, *, purpose: str, redacted_body: str | None = None, school=None
+) -> SmsMessage:
+    message = SmsMessage(school=school, to=to, purpose=purpose, body=redacted_body or body)
     limit = LIMITS.get(purpose)
     if limit and _sent_recently(to, purpose, limit[1]) >= limit[0]:
         message.status, message.error = SmsMessage.Status.REFUSED, "rate_limited"
@@ -1212,15 +1214,15 @@ from apps.notifications.models import SmsMessage
 
 @admin.register(SmsMessage)
 class SmsMessageAdmin(admin.ModelAdmin):
-    list_display = ["created_at", "to", "purpose", "status", "error"]
-    list_filter = ["status", "purpose"]
+    list_display = ["created_at", "school", "to", "purpose", "status", "error"]
+    list_filter = ["school", "status", "purpose"]
 ```
 
 In `backend/config/settings.py`:
 - Add `"apps.notifications",` to INSTALLED_APPS after `"apps.audit",`.
 - After `DEFAULT_FROM_EMAIL`, add:
 ```python
-# SMS (spec §3.7). Development logs codes to the console (and SMS_FILE_PATH, if set).
+# SMS (Phase 1 spec §3.7). Development logs codes to the console (and SMS_FILE_PATH, if set).
 SMS_BACKEND = env("SMS_BACKEND", default="apps.notifications.backends.ConsoleBackend")
 SMS_FILE_PATH = env("SMS_FILE_PATH", default="")
 ```
@@ -1233,7 +1235,7 @@ In `backend/.env.example`, append:
 SMS_BACKEND=apps.notifications.backends.ConsoleBackend
 ```
 
-In `backend/tests/conftest.py`, inside `_isolated_media_and_cache`, before `yield`, add:
+In `backend/tests/conftest.py`, inside `_isolated_media_and_cache`, add before `yield`:
 ```python
     from apps.notifications.backends import MemoryBackend
 
@@ -1247,9 +1249,9 @@ Run `.venv/Scripts/python manage.py makemigrations notifications --name initial`
 Run: `cd backend && .venv/Scripts/python -m pytest tests/notifications -q`
 Expected: 4 passed.
 
-- [ ] **Step 5: Migrate and commit**
+- [ ] **Step 5: Migrate, check and commit**
 
-Run: `.venv/Scripts/python manage.py migrate && .venv/Scripts/python -m pytest -q && .venv/Scripts/python -m ruff check . && .venv/Scripts/python -m ruff format --check .`
+Run: `.venv/Scripts/python manage.py migrate -v0 && .venv/Scripts/python -m pytest -q && .venv/Scripts/python -m ruff format . && .venv/Scripts/python -m ruff check .`
 
 ```bash
 git add backend/apps/notifications backend/config backend/.env.example backend/tests/conftest.py backend/tests/notifications
@@ -1258,22 +1260,23 @@ git commit -m "Add the SMS gateway with per-number limits and a delivery log"
 
 ---
 
-### Task 4: Sign-in API: password step, lockouts, sign-out and "me"
+### Task 4: Sign-in API: password step, lockouts, sign-out and "me", per address
 
 **Files:**
-- Modify: `backend/apps/accounts/models.py` (adds UserSession, TotpDevice, BackupCode, SmsCode), `backend/apps/core/views.py`, `backend/config/urls.py`, `backend/config/settings.py`, `backend/.env.example`
+- Rewrite: `backend/apps/accounts/models.py` (adds UserSession, TotpDevice, BackupCode, SmsCode)
 - Create: `backend/apps/accounts/signin.py`, `backend/apps/accounts/views.py`, `backend/apps/accounts/urls.py`, `backend/apps/accounts/migrations/0003_security.py` (generated)
+- Modify: `backend/apps/core/views.py`, `backend/config/urls.py`, `backend/config/settings.py`
 - Test: `backend/tests/accounts/test_sign_in.py`
 
 **Interfaces:**
-- Consumes: `normalise_identifier`, `roles.needs_second_factor`, `audit.services.record`, `client_ip`, `ApiError`.
+- Consumes: `resolve_host`, `ADMIN`, `SCHOOL`, `UNAVAILABLE` (Plan 2); `normalise_identifier`, `roles` (Task 1); `record`, `client_ip` (Task 2).
 - Produces:
-  - `POST /api/auth/login` with `{kind, identifier, password, remember}`. Returns `{"status": "signed_in", "user": Me}` or `{"status": "second_factor", "totp_ready": bool, "sms_available": bool}`.
-  - `POST /api/auth/logout` returns 204.
-  - `GET /api/auth/me` returns `Me` (`{id, kind, username, display_name, roles, must_change_password, has_authenticator}`), or 403 `not_authenticated`. It always sets the `csrftoken` cookie.
-  - `signin.py` exports: `check_password_sign_in(request, kind, identifier, password) -> User`, `start_second_factor(request, user, *, remember) -> dict`, `pending_user(request) -> User`, `complete_login(request, user, *, remember) -> None`, `me_payload(user) -> dict`, `has_authenticator(user) -> bool`, `PENDING_KEY`, `_now()` (overridable clock).
-  - `views.py` exports: `OpenView` (AllowAny plus csrf_protect), `validated(serializer_class, request) -> dict`, `PASSWORD_MAX = 256`.
-  - Models: `UserSession`, `TotpDevice`, `BackupCode`, `SmsCode` (`Purpose.SIGN_IN|ACTIVATION`).
+  - **`POST /api/auth/login`** takes `{kind, identifier, password, remember}` and returns `{"status": "signed_in", "user": Me}` or `{"status": "second_factor", "totp_ready", "sms_available"}`. It answers 404 at addresses with no sign-in (the platform site, unknown hosts) and 503 `suspended` for a suspended school.
+  - **`POST /api/auth/logout`** returns 204.
+  - **`GET /api/auth/me`** returns `Me = {id, kind, username, display_name, roles, must_change_password, has_authenticator, school: {name, slug} | null}`, or 403 `not_authenticated`. It always sets the `csrftoken` cookie.
+  - **`signin.py`:** `sign_in_site(request) -> Site`, `check_password_sign_in(request, kind, identifier, password) -> User`, `start_second_factor(request, user, *, remember) -> dict`, `pending_user(request) -> User`, `complete_login(request, user, *, remember)`, `me_payload(user) -> dict`, `has_authenticator(user) -> bool`, `PENDING_KEY`, `_now()` (overridable clock).
+  - **`views.py`:** `OpenView` (AllowAny plus csrf_protect), `validated(serializer_class, request) -> dict`, `PASSWORD_MAX = 256`.
+  - **Models:** `UserSession`, `TotpDevice`, `BackupCode`, `SmsCode` (`Purpose.SIGN_IN|ACTIVATION`).
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1286,17 +1289,20 @@ from rest_framework.test import APIClient
 from apps.accounts import roles, signin
 from apps.accounts.models import TotpDevice
 from apps.audit.models import AuditLog
+from apps.school.models import School
 from tests.helpers import PASSWORD, sign_in
 
 pytestmark = pytest.mark.django_db
 GENERIC = {"code": "invalid_credentials", "message": "Incorrect username or password.", "fields": {}}
+OTHER = {"HTTP_HOST": "brightfuture.localhost"}
+ADMIN = {"HTTP_HOST": "admin.localhost"}
 
 
 def actions():
     return list(AuditLog.objects.order_by("id").values_list("action", flat=True))
 
 
-def test_staff_sign_in_and_me(api, make_user):
+def test_staff_sign_in_and_me(api, make_user, school):
     make_user(role=roles.TEACHER, display_name="Kofi Mensah")
     response = sign_in(api, "K.Mensah")
     assert response.status_code == 200 and response.json()["status"] == "signed_in"
@@ -1304,12 +1310,46 @@ def test_staff_sign_in_and_me(api, make_user):
     assert me["username"] == "k.mensah" and me["display_name"] == "Kofi Mensah"
     assert me["roles"] == ["Teacher"] and me["kind"] == "staff"
     assert me["must_change_password"] is False and me["has_authenticator"] is False
+    assert me["school"] == {"name": "AD Smart School", "slug": "adsmart"}
     assert actions() == ["SIGN_IN"]
+    assert AuditLog.objects.get().school == school
 
 
 def test_parents_sign_in_with_their_phone_number(api, make_user):
     make_user("+233241234567", kind="parent")
     assert sign_in(api, "024 123 4567", kind="parent").json()["status"] == "signed_in"
+
+
+def test_the_same_login_at_another_school_is_another_account(api, make_user, other_school):
+    make_user()
+    make_user(school=other_school, password="another long passphrase")
+    assert sign_in(api, "k.mensah", **OTHER).json() == GENERIC
+    assert sign_in(api, "k.mensah", "another long passphrase", **OTHER).json()["status"] == "signed_in"
+
+
+def test_platform_staff_sign_in_only_at_the_admin_address(api, make_user):
+    make_user("ops", kind="platform", school=None)
+    assert sign_in(api, "ops", kind="platform").json() == GENERIC
+    assert sign_in(api, "ops", kind="platform", **ADMIN).json()["status"] == "second_factor"
+
+
+def test_school_accounts_cannot_sign_in_at_the_admin_address(api, make_user):
+    make_user()
+    assert sign_in(api, "k.mensah", **ADMIN).json() == GENERIC
+
+
+def test_there_is_no_sign_in_on_the_platform_site_or_unknown_addresses(api, make_user):
+    make_user()
+    assert sign_in(api, "k.mensah", HTTP_HOST="localhost").status_code == 404
+    assert sign_in(api, "k.mensah", HTTP_HOST="nobody.localhost").status_code == 404
+
+
+def test_a_suspended_school_refuses_sign_in(api, make_user, school):
+    make_user()
+    school.status = School.Status.SUSPENDED
+    school.save()
+    response = sign_in(api, "k.mensah")
+    assert response.status_code == 503 and response.json()["code"] == "suspended"
 
 
 def test_wrong_password_and_unknown_user_get_the_same_answer(api, make_user):
@@ -1341,13 +1381,15 @@ def test_inactive_accounts_are_told_only_after_the_right_password(api, make_user
     assert response.json()["message"] == "Account unavailable. Contact the school."
 
 
-def test_five_failures_lock_the_account(api, make_user):
+def test_five_failures_lock_the_account_at_that_school_only(api, make_user, other_school):
     make_user()
+    make_user(school=other_school)
     for _ in range(5):
         sign_in(api, "k.mensah", "wrong password!")
     locked = sign_in(api, "k.mensah")
     assert locked.status_code == 429 and locked.json()["code"] == "locked_out"
     assert actions().count("LOCKED_OUT") == 1
+    assert sign_in(api, "k.mensah", **OTHER).json()["status"] == "signed_in"
 
 
 def test_the_lockout_ends_after_fifteen_minutes(api, make_user, monkeypatch):
@@ -1402,29 +1444,26 @@ def test_sign_out(api, make_user):
     assert actions() == ["SIGN_IN", "SIGN_OUT"]
 
 
-def test_sign_in_needs_a_csrf_token_and_a_trusted_origin(make_user):
+def test_sign_in_needs_a_csrf_token_and_the_sites_own_origin(make_user):
     make_user()
-    browser = APIClient(enforce_csrf_checks=True)
+    browser = APIClient(enforce_csrf_checks=True, HTTP_HOST="adsmart.localhost")
     refused = sign_in(browser, "k.mensah")
     assert refused.status_code == 403 and refused.json()["code"] == "csrf_failed"
 
     browser.get("/api/auth/me")  # hands out the CSRF cookie even when signed out
     token = browser.cookies["csrftoken"].value
     payload = {"kind": "staff", "identifier": "k.mensah", "password": PASSWORD}
-    foreign = browser.post(
-        "/api/auth/login",
-        payload,
-        format="json",
-        HTTP_X_CSRFTOKEN=token,
-        HTTP_ORIGIN="https://evil.example",
-    )
-    assert foreign.json()["code"] == "csrf_failed"
+    for origin, outcome in [("https://evil.example", "csrf_failed"), ("http://brightfuture.localhost", "csrf_failed")]:
+        foreign = browser.post(
+            "/api/auth/login", payload, format="json", HTTP_X_CSRFTOKEN=token, HTTP_ORIGIN=origin
+        )
+        assert foreign.json()["code"] == outcome
     ok = browser.post(
         "/api/auth/login",
         payload,
         format="json",
         HTTP_X_CSRFTOKEN=token,
-        HTTP_ORIGIN="http://localhost:3000",
+        HTTP_ORIGIN="http://adsmart.localhost",
     )
     assert ok.json()["status"] == "signed_in"
 ```
@@ -1441,33 +1480,45 @@ Expected: ERROR, `ImportError: cannot import name 'signin' from 'apps.accounts'`
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
 from django.db import models
+from django.db.models import Q
 from django.utils import timezone
+
+
+def user_key(school_id, login: str) -> str:
+    """The platform-wide unique key: logins are only unique within a school (amendment §3.3)."""
+    return f"{school_id}:{login}" if school_id else f"platform:{login}"
 
 
 class UserManager(BaseUserManager):
     use_in_migrations = True
 
-    def create_user(self, username, *, kind, password=None, **fields):
-        user = self.model(username=username, kind=kind, **fields)
+    def create_user(self, login, *, kind, school=None, password=None, **fields):
+        user = self.model(login=login, kind=kind, school=school, **fields)
         user.set_password(password)  # None gives an unusable password: awaiting activation
         user.save(using=self._db)
         return user
 
     def create_superuser(self, username, password=None, **fields):
+        """Django's createsuperuser: a platform staff member with Django admin access."""
         fields.update(is_staff=True, is_superuser=True)
-        return self.create_user(username, kind=User.Kind.STAFF, password=password, **fields)
+        return self.create_user(username, kind=User.Kind.PLATFORM, password=password, **fields)
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-    """One account per person. Roles are Django groups (apps.accounts.roles)."""
+    """One account per person per school; platform staff belong to no school. Roles are groups."""
 
     class Kind(models.TextChoices):
         STAFF = "staff", "Staff"
         PARENT = "parent", "Parent"
         STUDENT = "student", "Student"
+        PLATFORM = "platform", "Platform staff"
 
-    # Staff username, parent phone (E.164) or student ID digits: see identifiers.py.
-    username = models.CharField(max_length=150, unique=True)
+    username = models.CharField(max_length=180, unique=True, editable=False)
+    school = models.ForeignKey(
+        "school.School", null=True, blank=True, on_delete=models.PROTECT, related_name="users"
+    )
+    # Staff or platform username, parent phone (E.164) or Student ID digits: see identifiers.py.
+    login = models.CharField(max_length=150)
     kind = models.CharField(max_length=10, choices=Kind.choices)
     display_name = models.CharField(max_length=150, blank=True)
     phone = models.CharField(max_length=16, blank=True)
@@ -1486,12 +1537,25 @@ class User(AbstractBaseUser, PermissionsMixin):
     EMAIL_FIELD = "email"
     REQUIRED_FIELDS: list[str] = []
 
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=(Q(kind="platform") & Q(school__isnull=True))
+                | (~Q(kind="platform") & Q(school__isnull=False)),
+                name="accounts_user_school_matches_kind",
+            )
+        ]
+
     def __str__(self):
-        return self.display_name or self.username
+        return self.display_name or self.login
+
+    def save(self, *args, **kwargs):
+        self.username = user_key(self.school_id, self.login)
+        super().save(*args, **kwargs)
 
 
 class UserSession(models.Model):
-    """One signed-in browser (spec §5.6). Django's own session row holds the session data."""
+    """One signed-in browser (Phase 1 spec §5.6). Django's own session row holds the data."""
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sessions")
     session_key = models.CharField(max_length=40, unique=True)
@@ -1507,7 +1571,7 @@ class UserSession(models.Model):
 
 
 class TotpDevice(models.Model):
-    """The authenticator app used as a second factor (spec §5.3)."""
+    """The authenticator app used as a second factor (Phase 1 spec §5.3)."""
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="totp_device")
     # shortcut: stored as-is (as django-otp does); encrypt at rest if the database is ever shared
@@ -1529,7 +1593,7 @@ class BackupCode(models.Model):
 
 
 class SmsCode(models.Model):
-    """A 6-digit code sent by SMS: hashed, 10 minutes, 5 attempts, single use (spec §5.2)."""
+    """A 6-digit code sent by SMS: hashed, 10 minutes, 5 attempts, single use (§5.2)."""
 
     class Purpose(models.TextChoices):
         SIGN_IN = "sign_in", "Second factor"
@@ -1553,7 +1617,8 @@ Run `.venv/Scripts/python manage.py makemigrations accounts --name security`.
 
 `backend/apps/accounts/signin.py`:
 ```python
-"""Password sign-in (spec §5.1, §5.5): one generic failure message and temporary lockouts.
+"""Password sign-in (Phase 1 spec §5.1, §5.5; amendment §3.3): one generic failure message,
+temporary lockouts, and only the accounts that belong to the address used.
 
 Lockout counters store their own deadline because DatabaseCache.incr() resets the expiry.
 """
@@ -1562,6 +1627,7 @@ import time
 
 from django.contrib.auth import login
 from django.core.cache import cache
+from django.http import Http404
 
 from apps.accounts import roles
 from apps.accounts.identifiers import normalise_identifier
@@ -1569,13 +1635,15 @@ from apps.accounts.models import TotpDevice, User
 from apps.audit.models import AuditLog
 from apps.audit.services import client_ip, record
 from apps.core.exceptions import ApiError
+from apps.school.hosts import ADMIN, SCHOOL, UNAVAILABLE, Site, resolve_host
 
 WINDOW_SECONDS = 15 * 60
 MAX_FAILURES_PER_ACCOUNT = 5
 MAX_FAILURES_PER_ADDRESS = 30
 GENERIC_FAILURE = "Incorrect username or password."
 LOCKED_MESSAGE = "Too many attempts. Please wait 15 minutes and try again."
-UNAVAILABLE = "Account unavailable. Contact the school."
+ACCOUNT_UNAVAILABLE = "Account unavailable. Contact the school."
+SCHOOL_KINDS = frozenset({User.Kind.STAFF, User.Kind.PARENT, User.Kind.STUDENT})
 
 PENDING_KEY = "pending_second_factor"
 PENDING_SECONDS = 10 * 60
@@ -1599,13 +1667,25 @@ def _add_failure(key: str) -> int:
     return count + 1
 
 
+def sign_in_site(request) -> Site:
+    """Where a sign-in belongs: a school's address, or the admin area (amendment §2.1)."""
+    site = resolve_host(request.get_host())
+    if site is None or site.kind not in (SCHOOL, ADMIN):
+        raise Http404("There is no sign-in at this address.")
+    if site.school is not None and site.school.is_suspended:
+        raise ApiError("suspended", UNAVAILABLE, 503)
+    return site
+
+
 def check_password_sign_in(request, kind: str, raw_identifier: str, password: str) -> User:
     """The user whose password matches, or ApiError. Callers decide what happens next."""
+    site = sign_in_site(request)
     try:
         identifier = normalise_identifier(kind, raw_identifier)
     except ValueError:
         identifier = (raw_identifier or "").strip().lower()[:150]
-    account_key = f"signin:account:{kind}:{identifier}"
+    scope = site.school.pk if site.school else "platform"
+    account_key = f"signin:account:{scope}:{kind}:{identifier}"
     address_key = f"signin:address:{client_ip(request)}"
     if (
         _failures(account_key) >= MAX_FAILURES_PER_ACCOUNT
@@ -1613,7 +1693,12 @@ def check_password_sign_in(request, kind: str, raw_identifier: str, password: st
     ):
         raise ApiError("locked_out", LOCKED_MESSAGE, 429)
 
-    user = User.objects.filter(kind=kind, username=identifier).first()
+    allowed = kind == User.Kind.PLATFORM if site.kind == ADMIN else kind in SCHOOL_KINDS
+    user = (
+        User.objects.filter(school=site.school, kind=kind, login=identifier).first()
+        if allowed
+        else None
+    )
     if user is None or not user.has_usable_password():
         User().set_password(password)  # same hashing time as a real check: timing reveals nothing
         matched = False
@@ -1622,17 +1707,29 @@ def check_password_sign_in(request, kind: str, raw_identifier: str, password: st
 
     if not matched:
         attempt = {"kind": kind, "identifier": identifier}
-        record(AuditLog.Action.SIGN_IN_FAILED, entity=user, new=attempt, request=request)
+        record(
+            AuditLog.Action.SIGN_IN_FAILED,
+            entity=user,
+            new=attempt,
+            request=request,
+            school=site.school,
+        )
         account_count = _add_failure(account_key)
         address_count = _add_failure(address_key)
         if account_count == MAX_FAILURES_PER_ACCOUNT or address_count == MAX_FAILURES_PER_ADDRESS:
-            record(AuditLog.Action.LOCKED_OUT, entity=user, new=attempt, request=request)
+            record(
+                AuditLog.Action.LOCKED_OUT,
+                entity=user,
+                new=attempt,
+                request=request,
+                school=site.school,
+            )
         raise ApiError("invalid_credentials", GENERIC_FAILURE, 400)
     if not user.is_active:
         record(
             AuditLog.Action.SIGN_IN_FAILED, entity=user, reason="Account inactive", request=request
         )
-        raise ApiError("account_unavailable", UNAVAILABLE, 403)
+        raise ApiError("account_unavailable", ACCOUNT_UNAVAILABLE, 403)
     cache.delete(account_key)
     return user
 
@@ -1642,7 +1739,7 @@ def has_authenticator(user: User) -> bool:
 
 
 def start_second_factor(request, user: User, *, remember: bool) -> dict:
-    """Password accepted: hold the user in the session until the second factor (spec §5.3)."""
+    """Password accepted: hold the user in the session until the second factor (§5.3)."""
     request.session.cycle_key()
     request.session[PENDING_KEY] = {
         "user_id": user.pk,
@@ -1658,10 +1755,14 @@ def start_second_factor(request, user: User, *, remember: bool) -> dict:
 
 
 def pending_user(request) -> User:
+    """The user part-way through signing in here, or ApiError when it has expired."""
+    site = sign_in_site(request)
     pending = request.session.get(PENDING_KEY)
     user = None
     if pending and _now() - pending["started"] <= PENDING_SECONDS:
-        user = User.objects.filter(pk=pending["user_id"], is_active=True).first()
+        user = User.objects.filter(
+            pk=pending["user_id"], is_active=True, school=site.school
+        ).first()
     if user is None:
         raise ApiError(
             "second_factor_expired", "Your sign-in has expired. Please start again.", 400
@@ -1676,20 +1777,22 @@ def complete_login(request, user: User, *, remember: bool) -> None:
 
 
 def me_payload(user: User) -> dict:
+    school = user.school
     return {
         "id": user.pk,
         "kind": user.kind,
-        "username": user.username,
+        "username": user.login,
         "display_name": str(user),
         "roles": roles.roles_of(user),
         "must_change_password": user.must_change_password,
         "has_authenticator": has_authenticator(user),
+        "school": {"name": school.name, "slug": school.slug} if school else None,
     }
 ```
 
 `backend/apps/accounts/views.py`:
 ```python
-"""Sign-in API (spec §5). Errors use the shared {code, message, fields} shape."""
+"""Sign-in API (Phase 1 spec §5). Errors use the shared {code, message, fields} shape."""
 
 from django.contrib.auth import logout
 from django.utils.decorators import method_decorator
@@ -1788,7 +1891,7 @@ def health(request):
 
 
 def csrf_failure(request, reason=""):
-    """Django's CSRF rejection in the API's error shape (spec §10)."""
+    """Django's CSRF rejection in the API's error shape (Phase 1 spec §10)."""
     message = "Your session has expired. Refresh the page and try again."
     return JsonResponse({"code": "csrf_failed", "message": message, "fields": {}}, status=403)
 ```
@@ -1797,51 +1900,50 @@ In `backend/config/urls.py`, add `path("api/auth/", include("apps.accounts.urls"
 
 In `backend/config/settings.py`, after `APPEND_SLASH = False`, add:
 ```python
+# The browser's Origin is checked against the forwarded host (USE_X_FORWARDED_HOST), so every
+# school's own address passes CSRF checks without listing them here.
 CSRF_FAILURE_VIEW = "apps.core.views.csrf_failure"
-# Browsers reach Django through the Next.js proxy, so the site's own origin must be trusted.
-CSRF_TRUSTED_ORIGINS = env.list(
-    "DJANGO_CSRF_TRUSTED_ORIGINS", default=["http://localhost:3000", "http://127.0.0.1:3000"]
-)
 ```
 
-In `backend/.env.example`, append:
-```
-# The site's own address(es), as the browser sees them. Production: https://<your domain>
-DJANGO_CSRF_TRUSTED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+In `backend/tests/test_tenancy_matrix.py`, add to `CLASSIFIED`:
+```python
+    "api/auth/login": "accounts of the address used only (tests/accounts/test_sign_in.py)",
+    "api/auth/logout": NO_SCHOOL_DATA,
+    "api/auth/me": "the signed-in user only (tests/accounts/test_sessions.py)",
 ```
 
 - [ ] **Step 5: Run the tests**
 
-Run: `cd backend && .venv/Scripts/python -m pytest tests/accounts -q`
+Run: `cd backend && .venv/Scripts/python -m pytest tests/accounts tests/test_tenancy_matrix.py -q`
 Expected: all pass.
 
 - [ ] **Step 6: Migrate, check and commit**
 
-Run: `.venv/Scripts/python manage.py migrate && .venv/Scripts/python -m pytest -q && .venv/Scripts/python -m ruff check . && .venv/Scripts/python -m ruff format --check .`
+Run: `.venv/Scripts/python manage.py migrate -v0 && .venv/Scripts/python -m pytest -q && .venv/Scripts/python -m ruff format . && .venv/Scripts/python -m ruff check .`
 
 ```bash
-git add backend/apps/accounts backend/apps/core/views.py backend/config backend/.env.example backend/tests/accounts
-git commit -m "Add password sign-in with generic failures, lockouts and CSRF protection"
+git add backend/apps/accounts backend/apps/core/views.py backend/config backend/tests
+git commit -m "Add password sign-in per school address, with lockouts and CSRF protection"
 ```
 
 ---
 
-### Task 5: Sessions: timeouts, "where you're signed in" and changing password
+### Task 5: Sessions: timeouts, school binding, devices list and password change
 
 **Files:**
 - Create: `backend/apps/accounts/sessions.py`, `backend/apps/accounts/middleware.py`
-- Modify: `backend/apps/accounts/signin.py` (`complete_login`), `backend/apps/accounts/views.py`, `backend/apps/accounts/urls.py`, `backend/config/settings.py` (MIDDLEWARE)
+- Modify: `backend/apps/accounts/signin.py` (`complete_login`), `backend/apps/accounts/views.py`, `backend/apps/accounts/urls.py`, `backend/config/settings.py` (MIDDLEWARE), `backend/tests/test_tenancy_matrix.py`
 - Test: `backend/tests/accounts/test_sessions.py`
 
 **Interfaces:**
-- Consumes: `UserSession`, `complete_login`, `me_payload`, `OpenView`, `validated`, `PASSWORD_MAX`.
+- Consumes: `UserSession`, `complete_login`, `me_payload`, `OpenView`, `validated`, `PASSWORD_MAX` (Task 4); `resolve_host` (Plan 2).
 - Produces:
-  - `sessions.py`: `session_policy(user, remember) -> (idle_s, max_s)`, `start_session(request, user, *, remember) -> UserSession`, `is_expired(session, now=None) -> bool`, `end_session(session)`, `end_other_sessions(user, keep_key) -> int`, `describe_device(user_agent) -> str`, `MINUTE`, `HOUR`, `DAY`.
-  - `GET /api/auth/sessions` returns `[{id, device, ip_address, signed_in_at, last_seen, current}]`.
-  - `DELETE /api/auth/sessions/<id>` returns 204.
-  - `POST /api/auth/password` with `{current_password, new_password}` returns `Me`.
-  - `views.check_new_password(password, user=None, field="new_password")`.
-  - Middleware `apps.accounts.middleware.SessionActivityMiddleware`.
+  - **`sessions.py`:** `session_policy(user, remember) -> (idle_s, max_s)`, `start_session(request, user, *, remember) -> UserSession`, `is_expired(session, now=None) -> bool`, `end_session(session)`, `end_other_sessions(user, keep_key) -> int`, `describe_device(user_agent) -> str`, `belongs_here(request) -> bool`, `MINUTE`, `HOUR`, `DAY`.
+  - **`GET /api/auth/sessions`** returns `[{id, device, ip_address, signed_in_at, last_seen, current}]`.
+  - **`DELETE /api/auth/sessions/<id>`** returns 204.
+  - **`POST /api/auth/password`** takes `{current_password, new_password}` and returns `Me`.
+  - **`views.check_new_password(password, user=None, field="new_password")`**.
+  - **`SessionActivityMiddleware`.** On `/api/` paths, a signed-in user is signed out unless the request came to their own school's address (or the admin address for platform staff) and that school is not suspended.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1857,6 +1959,7 @@ from apps.accounts import roles
 from apps.accounts.models import UserSession
 from apps.accounts.sessions import DAY, HOUR, MINUTE, describe_device, session_policy
 from apps.audit.models import AuditLog
+from apps.school.models import School
 from tests.helpers import PASSWORD, sign_in
 
 pytestmark = pytest.mark.django_db
@@ -1871,7 +1974,7 @@ def change_password(api, current=PASSWORD, new=NEW_PASSWORD):
 
 
 @pytest.mark.parametrize(
-    ("kind", "username", "role", "remember", "expected"),
+    ("kind", "login", "role", "remember", "expected"),
     [
         ("staff", "k.mensah", roles.ADMINISTRATOR, False, (30 * MINUTE, 12 * HOUR)),
         ("staff", "k.mensah", roles.TEACHER, True, (2 * HOUR, 12 * HOUR)),
@@ -1880,8 +1983,13 @@ def change_password(api, current=PASSWORD, new=NEW_PASSWORD):
         ("parent", "+233241234567", roles.PARENT, True, (30 * DAY, 30 * DAY)),
     ],
 )
-def test_session_policy(make_user, kind, username, role, remember, expected):
-    assert session_policy(make_user(username, kind=kind, role=role), remember) == expected
+def test_session_policy(make_user, kind, login, role, remember, expected):
+    assert session_policy(make_user(login, kind=kind, role=role), remember) == expected
+
+
+def test_platform_staff_get_the_second_factor_timeouts(make_user):
+    staff = make_user("ops", kind="platform", school=None)
+    assert session_policy(staff, True) == (30 * MINUTE, 12 * HOUR)
 
 
 def test_remembered_parents_stay_signed_in_for_thirty_days(api, make_user):
@@ -1915,9 +2023,36 @@ def test_activity_keeps_a_session_alive(api, make_user):
     assert UserSession.objects.get().last_seen > earlier
 
 
+def test_a_session_is_honoured_only_at_its_own_schools_address(api, make_user, other_school):
+    make_user()
+    sign_in(api, "k.mensah")
+    assert api.get("/api/auth/me", HTTP_HOST="brightfuture.localhost").json()["code"] == (
+        "not_authenticated"
+    )
+    assert api.get("/api/auth/me").json()["code"] == "not_authenticated"  # and it has ended
+
+
+def test_suspending_a_school_signs_its_users_out(api, make_user, school):
+    make_user()
+    sign_in(api, "k.mensah")
+    school.status = School.Status.SUSPENDED
+    school.save()
+    assert api.get("/api/auth/me").json()["code"] == "not_authenticated"
+
+
+def test_platform_sessions_are_honoured_only_at_the_admin_address(make_user):
+    staff = make_user("ops", kind="platform", school=None)
+    client = APIClient(HTTP_HOST="admin.localhost")
+    client.force_login(staff)
+    assert client.get("/api/auth/me").json()["school"] is None
+    assert client.get("/api/auth/me", HTTP_HOST="adsmart.localhost").json()["code"] == (
+        "not_authenticated"
+    )
+
+
 def test_where_you_are_signed_in_and_signing_out_another_device(api, make_user):
     make_user()
-    phone = APIClient(HTTP_USER_AGENT=ANDROID_CHROME)
+    phone = APIClient(HTTP_HOST="adsmart.localhost", HTTP_USER_AGENT=ANDROID_CHROME)
     sign_in(phone, "k.mensah")
     sign_in(api, "k.mensah")
     listed = api.get("/api/auth/sessions").json()
@@ -1941,7 +2076,7 @@ def test_the_current_session_ends_with_sign_out_not_revoke(api, make_user):
 def test_other_peoples_sessions_cannot_be_revoked(api, make_user):
     make_user()
     other_user = make_user("ama.boateng")
-    sign_in(APIClient(), "ama.boateng")
+    sign_in(APIClient(HTTP_HOST="adsmart.localhost"), "ama.boateng")
     sign_in(api, "k.mensah")
     theirs = UserSession.objects.get(user=other_user)
     assert api.delete(f"/api/auth/sessions/{theirs.pk}").status_code == 404
@@ -1949,7 +2084,7 @@ def test_other_peoples_sessions_cannot_be_revoked(api, make_user):
 
 def test_changing_the_password_signs_out_other_sessions(api, make_user):
     user = make_user()
-    other = APIClient()
+    other = APIClient(HTTP_HOST="adsmart.localhost")
     sign_in(other, "k.mensah")
     sign_in(api, "k.mensah")
     assert change_password(api).status_code == 200
@@ -2007,7 +2142,8 @@ Expected: ERROR, `ModuleNotFoundError: No module named 'apps.accounts.sessions'`
 
 `backend/apps/accounts/sessions.py`:
 ```python
-"""Signed-in sessions (spec §5.6): timeouts by role and the "Where you're signed in" list."""
+"""Signed-in sessions (Phase 1 spec §5.6, amendment §3.3): timeouts by role, binding to the
+school's own address, and the "Where you're signed in" list."""
 
 from datetime import timedelta
 from importlib import import_module
@@ -2018,6 +2154,7 @@ from django.utils import timezone
 from apps.accounts import roles
 from apps.accounts.models import User, UserSession
 from apps.audit.services import client_ip
+from apps.school.hosts import ADMIN, SCHOOL, resolve_host
 
 MINUTE, HOUR, DAY = 60, 60 * 60, 24 * 60 * 60
 
@@ -2083,6 +2220,17 @@ def end_other_sessions(user: User, keep_key: str | None) -> int:
     return len(others)
 
 
+def belongs_here(request) -> bool:
+    """Is this request at the signed-in user's own address, with their school still active?"""
+    site = resolve_host(request.get_host())
+    school_id = request.user.school_id
+    if site is None:
+        return False
+    if school_id is None:
+        return site.kind == ADMIN
+    return site.kind == SCHOOL and site.school.pk == school_id and not site.school.is_suspended
+
+
 def describe_device(user_agent: str) -> str:
     browser = next((name for token, name in BROWSERS if token in user_agent), "Unknown browser")
     system = next((name for token, name in SYSTEMS if token in user_agent), "unknown device")
@@ -2091,7 +2239,8 @@ def describe_device(user_agent: str) -> str:
 
 `backend/apps/accounts/middleware.py`:
 ```python
-"""Ends idle or over-age sessions (spec §5.6) and holds users who must change their password."""
+"""Ends sessions that are idle, over age, at the wrong address or for a suspended school
+(Phase 1 spec §5.6, amendment §3.3), and holds users who must change their password."""
 
 from datetime import timedelta
 
@@ -2100,7 +2249,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 
 from apps.accounts.models import UserSession
-from apps.accounts.sessions import is_expired
+from apps.accounts.sessions import belongs_here, is_expired
 
 TOUCH_EVERY = timedelta(minutes=1)
 OPEN_WHILE_PASSWORD_CHANGE = ("/api/auth/", "/api/public/", "/api/health")
@@ -2120,9 +2269,11 @@ class SessionActivityMiddleware:
             key = request.session.session_key
             session = UserSession.objects.filter(session_key=key, user=request.user).first()
             now = timezone.now()
+            wrong_place = request.path.startswith("/api/") and not belongs_here(request)
             # Sessions started outside the API (Django admin in development) are not tracked.
-            if session is not None and is_expired(session, now):
-                session.delete()
+            if wrong_place or (session is not None and is_expired(session, now)):
+                if session is not None:
+                    session.delete()
                 logout(request)
             elif session is not None and now - session.last_seen >= TOUCH_EVERY:
                 UserSession.objects.filter(pk=session.pk).update(last_seen=now)
@@ -2139,7 +2290,7 @@ class SessionActivityMiddleware:
 
 In `backend/config/settings.py` MIDDLEWARE, add `"apps.accounts.middleware.SessionActivityMiddleware",` right after `"django.contrib.auth.middleware.AuthenticationMiddleware",`.
 
-In `backend/apps/accounts/signin.py`, add `from apps.accounts.sessions import start_session`, and replace `complete_login` with:
+In `backend/apps/accounts/signin.py`, add `from apps.accounts.sessions import start_session` and replace `complete_login` with:
 ```python
 def complete_login(request, user: User, *, remember: bool) -> None:
     request.session.pop(PENDING_KEY, None)
@@ -2152,7 +2303,7 @@ def complete_login(request, user: User, *, remember: bool) -> None:
 
 `backend/apps/accounts/views.py`:
 ```python
-"""Sign-in API (spec §5). Errors use the shared {code, message, fields} shape."""
+"""Sign-in API (Phase 1 spec §5). Errors use the shared {code, message, fields} shape."""
 
 from django.contrib.auth import logout, update_session_auth_hash
 from django.contrib.auth.password_validation import validate_password
@@ -2315,18 +2466,25 @@ urlpatterns = [
 ]
 ```
 
+In `backend/tests/test_tenancy_matrix.py`, add to `CLASSIFIED`:
+```python
+    "api/auth/sessions": "the signed-in user's own sessions (tests/accounts/test_sessions.py)",
+    "api/auth/sessions/<int:pk>": "the signed-in user's own sessions (tests/accounts/test_sessions.py)",
+    "api/auth/password": "the signed-in user only (tests/accounts/test_sessions.py)",
+```
+
 - [ ] **Step 5: Run the tests**
 
-Run: `cd backend && .venv/Scripts/python -m pytest tests/accounts -q`
+Run: `cd backend && .venv/Scripts/python -m pytest tests/accounts tests/test_tenancy_matrix.py -q`
 Expected: all pass.
 
 - [ ] **Step 6: Check and commit**
 
-Run: `.venv/Scripts/python -m pytest -q && .venv/Scripts/python -m ruff check . && .venv/Scripts/python -m ruff format --check .`
+Run: `.venv/Scripts/python -m pytest -q && .venv/Scripts/python -m ruff format . && .venv/Scripts/python -m ruff check .`
 
 ```bash
-git add backend/apps/accounts backend/config/settings.py backend/tests/accounts
-git commit -m "Add role-based session timeouts, the signed-in devices list and password changes"
+git add backend/apps/accounts backend/config/settings.py backend/tests
+git commit -m "Add role-based timeouts, school-bound sessions, the devices list and password changes"
 ```
 
 ---
@@ -2335,19 +2493,20 @@ git commit -m "Add role-based session timeouts, the signed-in devices list and p
 
 **Files:**
 - Create: `backend/apps/accounts/second_factor.py`, `backend/apps/accounts/sms_codes.py`, `backend/apps/accounts/management/commands/reset_second_factor.py`
-- Modify: `backend/apps/accounts/views.py` (four views), `backend/apps/accounts/urls.py`, `backend/requirements.txt`
+- Modify: `backend/apps/accounts/views.py`, `backend/apps/accounts/urls.py`, `backend/requirements.txt`, `backend/tests/test_tenancy_matrix.py`
 - Test: `backend/tests/accounts/test_second_factor.py`
 
 **Interfaces:**
-- Consumes: `pending_user`, `complete_login`, `me_payload`, `has_authenticator`, `PENDING_KEY`, `end_other_sessions`, `send_sms`, `SmsMessage.Status`.
+- Consumes: `pending_user`, `complete_login`, `me_payload`, `has_authenticator`, `PENDING_KEY` (Task 4); `end_other_sessions` (Task 5); `send_sms` (Task 3).
 - Produces:
-  - `POST /api/auth/second-factor/setup` returns `{secret, otpauth_url, qr_image}` (`qr_image` is an SVG data URI).
-  - `POST /api/auth/second-factor/confirm` with `{code}` returns `{status: "signed_in", user, backup_codes: [10]}`.
-  - `POST /api/auth/second-factor/sms` returns `{sent: true}`.
-  - `POST /api/auth/second-factor/verify` with `{method: "totp"|"sms"|"backup", code}` returns `{status: "signed_in", user}`.
-  - `second_factor.py`: `matching_step(secret, code, *, after=None, now=None)`, `verify_totp(device, code)`, `new_device(user)`, `provisioning(user, secret)`, `issue_backup_codes(user) -> list[str]`, `use_backup_code(user, code) -> bool`, `reset_second_factor(user, *, by=None, request=None, reason="")`, `reject_code(request)` (always raises), `finish_second_factor(request, user) -> dict`.
-  - `sms_codes.py`: `send_code(user, purpose, phone) -> SmsMessage`, `check_code(user, purpose, code) -> SmsCode | None`, `consume(row) -> bool`, `sms_failed_message() -> str`.
-  - `manage.py reset_second_factor <username>`.
+  - **Endpoints:**
+    - `POST /api/auth/second-factor/setup` returns `{secret, otpauth_url, qr_image}`. The issuer is the school's name, or `PLATFORM_NAME` for platform staff.
+    - `POST /api/auth/second-factor/confirm` takes `{code}` and returns `{status, user, backup_codes}`.
+    - `POST /api/auth/second-factor/sms` returns `{sent: true}`.
+    - `POST /api/auth/second-factor/verify` takes `{method, code}` and returns `{status, user}`.
+  - **`second_factor.py`:** `matching_step`, `verify_totp`, `new_device`, `provisioning`, `issue_backup_codes`, `use_backup_code`, `reset_second_factor(user, *, by=None, request=None, reason="")`, `reject_code(request)`, `finish_second_factor(request, user)`.
+  - **`sms_codes.py`:** `send_code(user, purpose, phone) -> SmsMessage` (the text starts "<school name>: your code is …"), `check_code(user, purpose, code) -> SmsCode | None`, `consume(row) -> bool`, `sms_failed_message(school) -> str`.
+  - **`manage.py reset_second_factor <login> [--school SLUG]`**.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -2361,6 +2520,7 @@ import pyotp
 import pytest
 from django.core.management import call_command
 from django.utils import timezone
+from rest_framework.test import APIClient
 
 from apps.accounts import roles, signin
 from apps.accounts.models import BackupCode, SmsCode, TotpDevice
@@ -2387,16 +2547,16 @@ def with_authenticator(user):
     return secret
 
 
-def verify(api, method, code):
+def verify(api, method, code, **headers):
     payload = {"method": method, "code": code}
-    return api.post("/api/auth/second-factor/verify", payload, format="json")
+    return api.post("/api/auth/second-factor/verify", payload, format="json", **headers)
 
 
 def texted_code():
     return re.search(r"\d{6}", MemoryBackend.outbox[-1]["body"]).group()
 
 
-def test_first_sign_in_sets_up_an_authenticator(api, admin):
+def test_first_sign_in_sets_up_an_authenticator_named_after_the_school(api, admin):
     sign_in(api, "admin")
     setup = api.post("/api/auth/second-factor/setup").json()
     assert setup["qr_image"].startswith("data:image/svg+xml;base64,")
@@ -2407,6 +2567,25 @@ def test_first_sign_in_sets_up_an_authenticator(api, admin):
     assert body["status"] == "signed_in" and len(body["backup_codes"]) == 10
     assert api.get("/api/auth/me").json()["has_authenticator"] is True
     assert AuditLog.objects.filter(action="SECOND_FACTOR_SET_UP").count() == 1
+
+
+def test_platform_staff_set_up_an_authenticator_named_after_the_platform(make_user):
+    make_user("ops", kind="platform", school=None)
+    admin_api = APIClient(HTTP_HOST="admin.localhost")
+    assert sign_in(admin_api, "ops", kind="platform").json()["status"] == "second_factor"
+    setup = admin_api.post("/api/auth/second-factor/setup").json()
+    assert "issuer=SchoolSite" in setup["otpauth_url"]
+    code = pyotp.TOTP(setup["secret"]).now()
+    assert admin_api.post("/api/auth/second-factor/confirm", {"code": code}, format="json").json()[
+        "status"
+    ] == "signed_in"
+
+
+def test_a_pending_sign_in_cannot_be_finished_at_another_address(api, admin, other_school):
+    secret = with_authenticator(admin)
+    sign_in(api, "admin")
+    response = verify(api, "totp", pyotp.TOTP(secret).now(), HTTP_HOST="brightfuture.localhost")
+    assert response.json()["code"] == "second_factor_expired"
 
 
 def test_setup_is_refused_once_an_authenticator_exists(api, admin):
@@ -2442,12 +2621,14 @@ def test_neighbouring_steps_are_accepted_for_clock_drift():
     assert matching_step(secret, "١٢٣٤٥٦", now=now) is None
 
 
-def test_sms_fallback_sends_a_code_and_logs_it_redacted(api, admin):
+def test_sms_fallback_names_the_school_and_logs_the_code_redacted(api, admin, school):
     with_authenticator(admin)
     sign_in(api, "admin")
     assert api.post("/api/auth/second-factor/sms").json() == {"sent": True}
-    assert MemoryBackend.outbox[-1]["to"] == PHONE
-    assert "******" in SmsMessage.objects.get().body
+    sent = MemoryBackend.outbox[-1]
+    assert sent["to"] == PHONE and sent["body"].startswith("AD Smart School: your code is ")
+    logged = SmsMessage.objects.get()
+    assert "******" in logged.body and logged.school == school
     assert verify(api, "sms", texted_code()).json()["status"] == "signed_in"
 
 
@@ -2457,13 +2638,13 @@ def test_staff_without_a_phone_cannot_use_sms(api, make_user):
     assert api.post("/api/auth/second-factor/sms").json()["code"] == "no_phone"
 
 
-def test_a_failed_text_tells_the_user_to_call_the_school(api, admin, settings):
+def test_a_failed_text_gives_the_schools_phone_number(api, admin, settings):
     settings.SMS_BACKEND = "tests.notifications.test_sms.BrokenBackend"
     sign_in(api, "admin")
     response = api.post("/api/auth/second-factor/sms")
     assert response.status_code == 503
-    assert response.json()["message"].startswith(
-        "We couldn't send the code. Try again, or call the school"
+    assert response.json()["message"] == (
+        "We couldn't send the code. Try again, or call the school on 054 587 5881."
     )
 
 
@@ -2530,7 +2711,7 @@ def test_second_factor_steps_need_a_recent_password(api, admin, monkeypatch):
 def test_reset_second_factor_command(api, admin):
     with_authenticator(admin)
     issue_backup_codes(admin)
-    call_command("reset_second_factor", "Admin")
+    call_command("reset_second_factor", "Admin", school="adsmart")
     assert not TotpDevice.objects.filter(user=admin).exists()
     assert not BackupCode.objects.filter(user=admin).exists()
     assert AuditLog.objects.filter(action="SECOND_FACTOR_RESET").count() == 1
@@ -2548,12 +2729,14 @@ In `backend/requirements.txt`, add `pyotp==2.10.0` and `qrcode==8.2`, then run `
 
 `backend/apps/accounts/sms_codes.py`:
 ```python
-"""Six-digit SMS codes (spec §5.2, §5.3): hashed, valid 10 minutes, 5 attempts, single use."""
+"""Six-digit SMS codes (Phase 1 spec §5.2, §5.3): hashed, valid 10 minutes, 5 attempts, single
+use. Every message names the school it comes from (amendment §8)."""
 
 import hmac
 import secrets
 from datetime import timedelta
 
+from django.conf import settings
 from django.db.models import F
 from django.utils import timezone
 from django.utils.crypto import salted_hmac
@@ -2562,11 +2745,10 @@ from apps.accounts.models import SmsCode, User
 from apps.core.phones import format_gh_local
 from apps.notifications.models import SmsMessage
 from apps.notifications.sms import Purpose, send_sms
-from apps.school.models import SchoolProfile
 
 LIFETIME = timedelta(minutes=10)
 MAX_ATTEMPTS = 5
-TEXT = "Your AD Smart School code is {code}. It expires in 10 minutes. Never share it with anyone."
+TEXT = "{sender}: your code is {code}. It expires in 10 minutes. Never share it with anyone."
 
 
 def _digest(code: str) -> str:
@@ -2575,12 +2757,14 @@ def _digest(code: str) -> str:
 
 def send_code(user: User, purpose: str, phone: str) -> SmsMessage:
     """Text a new code. Only once it is sent does it replace any earlier code."""
+    sender = user.school.name if user.school else settings.PLATFORM_NAME
     code = f"{secrets.randbelow(10**6):06d}"
     message = send_sms(
         phone,
-        TEXT.format(code=code),
+        TEXT.format(sender=sender, code=code),
         purpose=Purpose.SIGN_IN_CODE,
-        redacted_body=TEXT.format(code="******"),
+        redacted_body=TEXT.format(sender=sender, code="******"),
+        school=user.school,
     )
     if message.status == SmsMessage.Status.SENT:
         now = timezone.now()
@@ -2613,17 +2797,19 @@ def consume(row: SmsCode) -> bool:
     return SmsCode.objects.filter(pk=row.pk, used_at__isnull=True).update(used_at=timezone.now()) == 1
 
 
-def sms_failed_message() -> str:
-    school = SchoolProfile.load()
-    phone = format_gh_local(school.phone) if school and school.phone else ""
-    return "We couldn't send the code. Try again, or call the school" + (
-        f" on {phone}." if phone else "."
-    )
+def sms_failed_message(school) -> str:
+    """Phase 1 spec §10, with the school's own phone number (amendment §8)."""
+    if school is not None and school.phone:
+        return (
+            "We couldn't send the code. Try again, or call the school on "
+            f"{format_gh_local(school.phone)}."
+        )
+    return "We couldn't send the code. Try again in a few minutes, or use a backup code."
 ```
 
 `backend/apps/accounts/second_factor.py`:
 ```python
-"""Authenticator app and backup codes for the second factor (spec §5.3)."""
+"""Authenticator app and backup codes for the second factor (Phase 1 spec §5.3)."""
 
 import base64
 import hmac
@@ -2633,6 +2819,7 @@ import time
 import pyotp
 import qrcode
 import qrcode.image.svg
+from django.conf import settings
 from django.utils import timezone
 from django.utils.crypto import salted_hmac
 
@@ -2643,7 +2830,6 @@ from apps.audit.models import AuditLog
 from apps.audit.services import record
 from apps.core.exceptions import ApiError
 
-ISSUER = "AD Smart School"
 BACKUP_CODE_COUNT = 10
 BACKUP_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"  # no 0/o or 1/i/l to misread
 MAX_WRONG_CODES = 5
@@ -2658,7 +2844,8 @@ def new_device(user: User) -> TotpDevice:
 
 
 def provisioning(user: User, secret: str) -> dict:
-    uri = pyotp.TOTP(secret).provisioning_uri(name=user.username, issuer_name=ISSUER)
+    issuer = user.school.name if user.school else settings.PLATFORM_NAME
+    uri = pyotp.TOTP(secret).provisioning_uri(name=user.login, issuer_name=issuer)
     svg = qrcode.make(uri, image_factory=qrcode.image.svg.SvgPathImage).to_string()
     return {
         "secret": secret,
@@ -2724,7 +2911,7 @@ def reset_second_factor(user: User, *, by: User | None = None, request=None, rea
 
 
 def reject_code(request):
-    """Count a wrong code; the fifth ends the attempt (spec §5.5). Always raises."""
+    """Count a wrong code; the fifth ends the attempt (§5.5). Always raises."""
     pending = request.session[PENDING_KEY]
     pending["failures"] = pending.get("failures", 0) + 1
     if pending["failures"] >= MAX_WRONG_CODES:
@@ -2749,23 +2936,27 @@ from apps.accounts.second_factor import reset_second_factor
 
 class Command(BaseCommand):
     help = (
-        "Remove a user's authenticator app and backup codes. They set up a new one at their "
-        "next sign-in. Use this when the only Administrator has lost their phone (spec §5.3)."
+        "Remove a user's authenticator app and backup codes; they set up a new one at their "
+        "next sign-in. Use it when a school's only Administrator, or platform staff, lose "
+        "their phone (Phase 1 spec §5.3)."
     )
 
     def add_arguments(self, parser):
-        parser.add_argument("username")
+        parser.add_argument("login")
+        parser.add_argument("--school", default="", help="The school's slug; omit for platform staff")
 
-    def handle(self, *args, username, **options):
-        user = User.objects.filter(username__iexact=username.strip()).first()
+    def handle(self, *args, login, school, **options):
+        users = User.objects.filter(login__iexact=login.strip())
+        users = users.filter(school__slug=school) if school else users.filter(school__isnull=True)
+        user = users.first()
         if user is None:
-            raise CommandError(f"No user called {username}.")
+            raise CommandError(f"No user called {login} there.")
         reset_second_factor(user, reason="Reset with manage.py reset_second_factor")
-        self.stdout.write(self.style.SUCCESS(f"Second factor reset for {user.username}."))
+        self.stdout.write(self.style.SUCCESS(f"Second factor reset for {user.login}."))
 ```
 
 In `backend/apps/accounts/views.py`:
-- Extend the imports:
+- Replace the `models` and `signin` import lines with:
 ```python
 from apps.accounts.models import SmsCode, TotpDevice, User, UserSession
 from apps.accounts.second_factor import (
@@ -2788,8 +2979,7 @@ from apps.accounts.signin import (
 from apps.accounts.sms_codes import check_code, consume, send_code, sms_failed_message
 from apps.notifications.models import SmsMessage
 ```
-  These replace the old `models` and `signin` import lines.
-- Append the four views:
+- Append:
 ```python
 
 
@@ -2844,7 +3034,7 @@ class SecondFactorSmsView(OpenView):
                 429,
             )
         if message.status != SmsMessage.Status.SENT:
-            raise ApiError("sms_failed", sms_failed_message(), 503)
+            raise ApiError("sms_failed", sms_failed_message(user.school), 503)
         return Response({"sent": True})
 
 
@@ -2876,33 +3066,41 @@ In `backend/apps/accounts/urls.py`, add:
     path("second-factor/verify", views.SecondFactorVerifyView.as_view()),
 ```
 
+In `backend/tests/test_tenancy_matrix.py`, add to `CLASSIFIED`:
+```python
+    "api/auth/second-factor/setup": "the pending user at their own address (test_second_factor.py)",
+    "api/auth/second-factor/confirm": "the pending user at their own address (test_second_factor.py)",
+    "api/auth/second-factor/sms": "the pending user at their own address (test_second_factor.py)",
+    "api/auth/second-factor/verify": "the pending user at their own address (test_second_factor.py)",
+```
+
 - [ ] **Step 4: Run the tests**
 
-Run: `cd backend && .venv/Scripts/python -m pytest tests/accounts -q`
+Run: `cd backend && .venv/Scripts/python -m pytest tests/accounts tests/test_tenancy_matrix.py -q`
 Expected: all pass.
 
 - [ ] **Step 5: Check and commit**
 
-Run: `.venv/Scripts/python -m pytest -q && .venv/Scripts/python -m ruff check . && .venv/Scripts/python -m ruff format --check .`
+Run: `.venv/Scripts/python -m pytest -q && .venv/Scripts/python -m ruff format . && .venv/Scripts/python -m ruff check .`
 
 ```bash
-git add backend/apps/accounts backend/requirements.txt backend/tests/accounts
+git add backend/apps/accounts backend/requirements.txt backend/tests
 git commit -m "Add the second factor: authenticator app, SMS fallback and backup codes"
 ```
 
 ---
 
-### Task 7: Parent activation and password reset by SMS code
+### Task 7: Parent activation and password reset by SMS code, per school
 
 **Files:**
-- Modify: `backend/apps/accounts/views.py`, `backend/apps/accounts/urls.py`, `backend/config/settings.py` (throttle rate)
+- Modify: `backend/apps/accounts/views.py`, `backend/apps/accounts/urls.py`, `backend/config/settings.py` (throttle rate), `backend/tests/test_tenancy_matrix.py`
 - Test: `backend/tests/accounts/test_parent_activation.py`
 
 **Interfaces:**
-- Consumes: `send_code`, `check_code`, `consume`, `check_new_password`, `complete_login`, `end_other_sessions`, `normalise_gh_phone`.
+- Consumes: `request_school` (Plan 2); `send_code`, `check_code`, `consume` (Task 6); `check_new_password` (Task 5); `complete_login`, `me_payload` (Task 4); `end_other_sessions` (Task 5).
 - Produces:
-  - `POST /api/auth/parent/request-code` with `{phone}` always returns `{message: "If this number is registered, a code has been sent."}`. Limited to 10 per hour per IP (scope `sms_code_ip`).
-  - `POST /api/auth/parent/set-password` with `{phone, code, password, remember}` returns `{status: "signed_in", user}`.
+  - `POST /api/auth/parent/request-code` takes `{phone}` and always answers `{message: "If this number is registered, a code has been sent."}`. It is limited to 10 per hour per IP (scope `sms_code_ip`), and only parents of the school at the address used get a code.
+  - `POST /api/auth/parent/set-password` takes `{phone, code, password, remember}` and returns `{status: "signed_in", user}`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -2922,6 +3120,7 @@ from tests.helpers import PASSWORD, sign_in
 pytestmark = pytest.mark.django_db
 PHONE = "+233241234567"
 NEW = "our family passphrase"
+OTHER = {"HTTP_HOST": "brightfuture.localhost"}
 SENT = {"message": "If this number is registered, a code has been sent."}
 BAD_CODE = {
     "code": "invalid_code",
@@ -2935,13 +3134,13 @@ def parent(make_user):
     return make_user(PHONE, kind="parent", password=None, display_name="Ama Mensah", phone=PHONE)
 
 
-def request_code(api, phone="024 123 4567"):
-    return api.post("/api/auth/parent/request-code", {"phone": phone}, format="json")
+def request_code(api, phone="024 123 4567", **headers):
+    return api.post("/api/auth/parent/request-code", {"phone": phone}, format="json", **headers)
 
 
-def set_password(api, code, password=NEW, phone="024 123 4567"):
+def set_password(api, code, password=NEW, phone="024 123 4567", **headers):
     payload = {"phone": phone, "code": code, "password": password}
-    return api.post("/api/auth/parent/set-password", payload, format="json")
+    return api.post("/api/auth/parent/set-password", payload, format="json", **headers)
 
 
 def texted_code():
@@ -2951,10 +3150,26 @@ def texted_code():
 def test_registered_and_unknown_numbers_get_the_same_reply(api, parent):
     assert request_code(api).json() == request_code(api, "020 123 4567").json() == SENT
     assert [message["to"] for message in MemoryBackend.outbox] == [PHONE]
+    assert MemoryBackend.outbox[0]["body"].startswith("AD Smart School: your code is ")
 
 
-def test_an_invalid_number_is_a_field_error(api):
+def test_codes_are_only_sent_for_the_school_at_the_address_used(api, parent, other_school):
+    assert request_code(api, **OTHER).json() == SENT
+    assert MemoryBackend.outbox == []
+
+
+def test_a_code_from_one_school_does_not_work_at_another(api, parent, other_school, make_user):
+    make_user(PHONE, kind="parent", password=None, school=other_school)
+    request_code(api)
+    assert set_password(api, texted_code(), **OTHER).json() == BAD_CODE
+
+
+def test_an_invalid_number_is_a_field_error(api, school):
     assert request_code(api, "12345").json()["fields"] == {"phone": [MOBILE_MESSAGE]}
+
+
+def test_there_is_no_activation_at_the_admin_address(api, parent):
+    assert request_code(api, HTTP_HOST="admin.localhost").status_code == 404
 
 
 def test_a_parent_activates_and_is_signed_in(api, parent):
@@ -2964,14 +3179,15 @@ def test_a_parent_activates_and_is_signed_in(api, parent):
     parent.refresh_from_db()
     assert parent.activated_at is not None and parent.check_password(NEW)
     assert AuditLog.objects.filter(action="ACCOUNT_ACTIVATED").count() == 1
-    assert sign_in(APIClient(), "024 123 4567", NEW, kind="parent").json()["status"] == "signed_in"
+    fresh = APIClient(HTTP_HOST="adsmart.localhost")
+    assert sign_in(fresh, "024 123 4567", NEW, kind="parent").json()["status"] == "signed_in"
 
 
 def test_forgotten_passwords_are_reset_and_other_sessions_end(api, parent):
     parent.set_password(PASSWORD)
     parent.activated_at = timezone.now()
     parent.save()
-    elsewhere = APIClient()
+    elsewhere = APIClient(HTTP_HOST="adsmart.localhost")
     sign_in(elsewhere, "024 123 4567", kind="parent")
     request_code(api)
     assert set_password(api, texted_code()).json()["status"] == "signed_in"
@@ -3007,7 +3223,7 @@ def test_three_codes_an_hour_per_number(api, parent):
     assert len(MemoryBackend.outbox) == 3
 
 
-def test_ten_requests_an_hour_per_address(api):
+def test_ten_requests_an_hour_per_address(api, school):
     for _ in range(10):
         request_code(api, "020 123 4567")
     assert request_code(api, "020 123 4567").status_code == 429
@@ -3020,7 +3236,7 @@ Expected: FAIL, 404s on `/api/auth/parent/...`.
 
 - [ ] **Step 3: Add the views, URLs and throttle rate**
 
-In `backend/apps/accounts/views.py`, add `from rest_framework.throttling import AnonRateThrottle` and `from apps.core.phones import normalise_gh_phone`, then append:
+In `backend/apps/accounts/views.py`, add the imports `from rest_framework.throttling import AnonRateThrottle`, `from apps.accounts.sessions import end_other_sessions` (merged into the existing sessions import), `from apps.core.phones import normalise_gh_phone` and `from apps.school.hosts import request_school`, then append:
 ```python
 
 
@@ -3052,27 +3268,31 @@ CODE_SENT = "If this number is registered, a code has been sent."
 BAD_CODE = "That code is wrong or has expired. Request a new code."
 
 
-def active_parent(phone: str) -> User | None:
-    return User.objects.filter(kind=User.Kind.PARENT, username=phone, is_active=True).first()
+def active_parent(school, phone: str) -> User | None:
+    return User.objects.filter(
+        school=school, kind=User.Kind.PARENT, login=phone, is_active=True
+    ).first()
 
 
 class ParentRequestCodeView(OpenView):
     throttle_classes = [SmsCodeAddressThrottle]
 
     def post(self, request):
+        school = request_school(request)
         phone = validated(RequestCodeSerializer, request)["phone"]
-        user = active_parent(phone)
+        user = active_parent(school, phone)
         if user is not None:
-            send_code(user, SmsCode.Purpose.ACTIVATION, phone)  # outcome not revealed (spec §5.2)
+            send_code(user, SmsCode.Purpose.ACTIVATION, phone)  # outcome not revealed (§5.2)
         return Response({"message": CODE_SENT})
 
 
 class ParentSetPasswordView(OpenView):
     def post(self, request):
+        school = request_school(request)
         data = validated(SetPasswordSerializer, request)
         # Checked before the lookup, so a weak password says nothing about the number.
         check_new_password(data["password"], field="password")
-        user = active_parent(data["phone"])
+        user = active_parent(school, data["phone"])
         row = check_code(user, SmsCode.Purpose.ACTIVATION, data["code"]) if user else None
         if row is None:
             raise ApiError("invalid_code", BAD_CODE, 400)
@@ -3097,38 +3317,49 @@ In `backend/apps/accounts/urls.py`, add:
     path("parent/set-password", views.ParentSetPasswordView.as_view()),
 ```
 
-In `backend/config/settings.py` `DEFAULT_THROTTLE_RATES`, add `"sms_code_ip": "10/hour"` (spec §5.5).
+In `backend/config/settings.py` `DEFAULT_THROTTLE_RATES`, add `"sms_code_ip": "10/hour"`.
+
+In `backend/tests/test_tenancy_matrix.py`, add to `CLASSIFIED`:
+```python
+    "api/auth/parent/request-code": SCHOOL_FROM_HOST,
+    "api/auth/parent/set-password": SCHOOL_FROM_HOST,
+```
 
 - [ ] **Step 4: Run the tests**
 
-Run: `cd backend && .venv/Scripts/python -m pytest tests/accounts -q`
+Run: `cd backend && .venv/Scripts/python -m pytest tests/accounts tests/test_tenancy_matrix.py -q`
 Expected: all pass.
 
 - [ ] **Step 5: Check and commit**
 
-Run: `.venv/Scripts/python -m pytest -q && .venv/Scripts/python -m ruff check . && .venv/Scripts/python -m ruff format --check .`
+Run: `.venv/Scripts/python -m pytest -q && .venv/Scripts/python -m ruff format . && .venv/Scripts/python -m ruff check .`
 
 ```bash
-git add backend/apps/accounts backend/config/settings.py backend/tests/accounts
-git commit -m "Let parents activate or reset their account with an SMS code"
+git add backend/apps/accounts backend/config/settings.py backend/tests
+git commit -m "Let parents activate or reset their account with an SMS code from their school"
 ```
 
 ---
 
-### Task 8: Frontend: the sign-in page and second-factor step
+### Task 8: Frontend: sign-in at each school's address and at the admin address
 
 **Files:**
-- Modify: `frontend/src/lib/types.ts`, `frontend/src/lib/client-api.ts`, `frontend/src/lib/client-api.test.ts`, `frontend/src/lib/enquiry-schema.ts` (export `GH_MOBILE`), `frontend/vitest.setup.ts`
-- Create: `frontend/src/test/http.ts`, `frontend/src/lib/safe-next.ts`, `frontend/src/lib/safe-next.test.ts`, `frontend/src/components/ui/form-alert.tsx`, `frontend/src/components/auth/password-input.tsx`, `frontend/src/components/auth/sign-in-form.tsx`, `frontend/src/components/auth/sign-in-form.test.tsx`, `frontend/src/components/auth/second-factor.tsx`, `frontend/src/components/auth/second-factor.test.tsx`, `frontend/src/app/(auth)/layout.tsx`, `frontend/src/app/(auth)/sign-in/page.tsx`
+- Move: `frontend/src/app/sites/[host]/{about,admissions,contact,levels,news,privacy,page.tsx}` → `frontend/src/app/sites/[host]/(public)/`
+- Create: `frontend/src/app/sites/[host]/(public)/layout.tsx`, `frontend/src/app/sites/[host]/(auth)/layout.tsx`, `frontend/src/app/sites/[host]/(auth)/sign-in/page.tsx`, `frontend/src/app/platform-admin/layout.tsx`, `frontend/src/app/platform-admin/page.tsx`, `frontend/src/app/platform-admin/sign-in/page.tsx`
+- Create: `frontend/src/test/http.ts`, `frontend/src/lib/safe-next.ts`, `frontend/src/lib/safe-next.test.ts`, `frontend/src/components/ui/form-alert.tsx`, `frontend/src/components/auth/auth-frame.tsx`, `frontend/src/components/auth/password-input.tsx`, `frontend/src/components/auth/sign-in-form.tsx`, `frontend/src/components/auth/sign-in-form.test.tsx`, `frontend/src/components/auth/second-factor.tsx`, `frontend/src/components/auth/second-factor.test.tsx`
+- Modify: `frontend/src/app/sites/[host]/layout.tsx`, `frontend/src/lib/types.ts`, `frontend/src/lib/client-api.ts`, `frontend/src/lib/client-api.test.ts`, `frontend/vitest.setup.ts`, `frontend/.env.local.example`
 
 **Interfaces:**
-- Consumes: the Task 4 and Task 6 endpoints.
+- Consumes: the Task 4 and Task 6 endpoints; `getSite(host)`, `getPlatform()`, `BrandLink`, `ThemeToggle`, `Field`, `inputClasses` (Plan 2).
 - Produces:
-  - `client-api.ts`: `getJson`, `postJson(path, data?)`, `deleteJson(path)` (both send `X-CSRFToken` from the `csrftoken` cookie; a 204 resolves to `undefined`), `errorMessage(caught) -> string`, `fieldErrors(caught) -> Record<string, string>`, `OFFLINE_MESSAGE`.
-  - `safeNext(next, fallback = "/account")`.
-  - Types: `AccountKind`, `Me`, `SignInResult`, `SessionInfo`.
-  - `<FormAlert message focusKey />`, `<PasswordInput />`.
-  - Test helpers `respond`, `mockApi(routes)` and `bodyOf(fetchMock, method, path)` in `@/test/http`.
+  - **`client-api.ts`:**
+    - `getJson`.
+    - `postJson(path, data?)` and `deleteJson(path)`. Both send `X-CSRFToken` from the `csrftoken` cookie, and a 204 resolves to `undefined`.
+    - `errorMessage(caught) -> string`, `fieldErrors(caught) -> Record<string, string>`, `OFFLINE_MESSAGE`.
+  - **Helpers and types:** `safeNext(next, fallback = "/account")`; types `AccountKind` (now including `"platform"`), `Me` (with `school`), `SignInResult`, `SessionInfo`.
+  - **Components:** `<FormAlert message focusKey />`, `<PasswordInput />`, `<AuthFrame name logo? backToWebsite?>`, and `<SignInForm kinds />`, where `kinds` is the account kinds this address accepts and the first is selected.
+  - **Test helpers in `@/test/http`:** `respond`, `mockApi(routes)` and `bodyOf(fetchMock, method, path)`.
+  - **Routes:** school addresses get `/sign-in`. The admin address gets `/sign-in`, and `/` redirects to `/account`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -3162,7 +3393,7 @@ export function bodyOf(fetchMock: ReturnType<typeof mockApi>, method: string, pa
 }
 ```
 
-`frontend/src/lib/client-api.test.ts`:
+`frontend/src/lib/client-api.test.ts` (replaces the file):
 ```ts
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -3259,12 +3490,13 @@ import { describe, expect, it, vi } from "vitest";
 import { bodyOf, mockApi } from "@/test/http";
 import { SignInForm } from "./sign-in-form";
 
+const SCHOOL = ["parent", "student", "staff"] as const;
 const INVALID = { code: "invalid_credentials", message: "Incorrect username or password.", fields: {} };
 
 describe("sign-in form", () => {
   it("asks parents for their mobile number and offers to keep them signed in", () => {
     mockApi([]);
-    render(<SignInForm />);
+    render(<SignInForm kinds={SCHOOL} />);
     expect(screen.getByRole("tab", { name: "Parent" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByLabelText(/mobile number/i)).toHaveAttribute("type", "tel");
     expect(screen.getByLabelText(/keep me signed in/i)).toBeInTheDocument();
@@ -3274,7 +3506,7 @@ describe("sign-in form", () => {
   it("moves between tabs with the arrow keys", async () => {
     mockApi([]);
     const user = userEvent.setup();
-    render(<SignInForm />);
+    render(<SignInForm kinds={SCHOOL} />);
     await user.click(screen.getByRole("tab", { name: "Parent" }));
     await user.keyboard("{ArrowLeft}");
     expect(screen.getByRole("tab", { name: "Staff" })).toHaveFocus();
@@ -3288,7 +3520,7 @@ describe("sign-in form", () => {
     );
     const fetchMock = mockApi([["POST", "/api/auth/login", 200, { status: "signed_in", user: {} }]]);
     const user = userEvent.setup();
-    render(<SignInForm />);
+    render(<SignInForm kinds={SCHOOL} />);
     await user.type(screen.getByLabelText(/mobile number/i), "024 123 4567");
     await user.type(screen.getByLabelText(/^password/i), "correct horse battery");
     await user.click(screen.getByLabelText(/keep me signed in/i));
@@ -3303,16 +3535,30 @@ describe("sign-in form", () => {
     });
   });
 
+  it("shows platform staff a username field without tabs", async () => {
+    const fetchMock = mockApi([["POST", "/api/auth/login", 400, INVALID]]);
+    const user = userEvent.setup();
+    render(<SignInForm kinds={["platform"]} />);
+    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+    expect(screen.getByText(/ask another member of the platform team/i)).toBeInTheDocument();
+    await user.type(screen.getByLabelText(/username/i), "ops");
+    await user.type(screen.getByLabelText(/^password/i), "correct horse battery");
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Incorrect username or password.");
+    expect(bodyOf(fetchMock, "POST", "/api/auth/login")).toMatchObject({ kind: "platform", remember: false });
+  });
+
   it("skips the form when already signed in", async () => {
     mockApi([["GET", "/api/auth/me", 200, { id: 1 }]]);
-    render(<SignInForm />);
+    render(<SignInForm kinds={SCHOOL} />);
     await waitFor(() => expect(useRouter().replace).toHaveBeenCalledWith("/account"));
   });
 
   it("shows the server's message and moves focus to it", async () => {
     mockApi([["POST", "/api/auth/login", 400, INVALID]]);
     const user = userEvent.setup();
-    render(<SignInForm />);
+    render(<SignInForm kinds={SCHOOL} />);
     await user.type(screen.getByLabelText(/mobile number/i), "024 123 4567");
     await user.type(screen.getByLabelText(/^password/i), "wrong password");
     await user.click(screen.getByRole("button", { name: "Sign in" }));
@@ -3325,7 +3571,7 @@ describe("sign-in form", () => {
   it("needs both fields before calling the server", async () => {
     const fetchMock = mockApi([]);
     const user = userEvent.setup();
-    render(<SignInForm />);
+    render(<SignInForm kinds={SCHOOL} />);
     await user.click(screen.getByRole("button", { name: "Sign in" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Enter your mobile number and password.");
     expect(bodyOf(fetchMock, "POST", "/api/auth/login")).toBeUndefined();
@@ -3334,7 +3580,7 @@ describe("sign-in form", () => {
   it("asks for the second step when the role needs one", async () => {
     mockApi([["POST", "/api/auth/login", 200, { status: "second_factor", totp_ready: true, sms_available: true }]]);
     const user = userEvent.setup();
-    render(<SignInForm />);
+    render(<SignInForm kinds={SCHOOL} />);
     await user.click(screen.getByRole("tab", { name: "Staff" }));
     await user.type(screen.getByLabelText(/username/i), "admin");
     await user.type(screen.getByLabelText(/^password/i), "correct horse battery");
@@ -3411,7 +3657,7 @@ describe("second factor", () => {
 });
 ```
 
-In `frontend/vitest.setup.ts`, replace the `next/navigation` mock and extend the `afterEach`:
+In `frontend/vitest.setup.ts`, replace the `next/navigation` mock with:
 ```ts
 vi.mock("next/navigation", () => {
   const router = { replace: vi.fn(), push: vi.fn(), refresh: vi.fn(), back: vi.fn(), forward: vi.fn(), prefetch: vi.fn() };
@@ -3419,6 +3665,9 @@ vi.mock("next/navigation", () => {
     usePathname: vi.fn(() => "/"),
     useRouter: vi.fn(() => router), // one stable router, as in Next.js
     useSearchParams: vi.fn(() => new URLSearchParams()),
+    redirect: vi.fn((url: string) => {
+      throw new Error(`NEXT_REDIRECT ${url}`);
+    }),
     notFound: vi.fn(() => {
       throw new Error("NEXT_NOT_FOUND");
     }),
@@ -3434,7 +3683,7 @@ In its `afterEach`, add:
     () => new URLSearchParams() as unknown as ReturnType<typeof useSearchParams>,
   );
 ```
-Also add `import { usePathname, useSearchParams } from "next/navigation";`. The `vi.unstubAllGlobals()` here also undoes `vi.stubGlobal("fetch")` from every test.
+Also add `import { usePathname, useSearchParams } from "next/navigation";`. Every existing test stubs `fetch` inside the test itself, so unstubbing after each test is safe.
 
 - [ ] **Step 2: Run them to see them fail**
 
@@ -3443,14 +3692,12 @@ Expected: FAIL. `deleteJson`, `errorMessage`, `safe-next`, `sign-in-form` and `s
 
 - [ ] **Step 3: Write the library code**
 
-In `frontend/src/lib/enquiry-schema.ts`, change `const GH_MOBILE` to `export const GH_MOBILE`.
-
 In `frontend/src/lib/types.ts`, append:
 ```ts
 
-export type AccountKind = "staff" | "parent" | "student";
+export type AccountKind = "staff" | "parent" | "student" | "platform";
 
-/** GET /api/auth/me (Plan 2). */
+/** GET /api/auth/me. `school` is null for platform staff. */
 export type Me = {
   id: number;
   kind: AccountKind;
@@ -3459,6 +3706,7 @@ export type Me = {
   roles: string[];
   must_change_password: boolean;
   has_authenticator: boolean;
+  school: { name: string; slug: string } | null;
 };
 
 export type SignInResult =
@@ -3515,7 +3763,7 @@ async function handle<T>(response: Response): Promise<T> {
   throw new ApiRequestError(response.status, body);
 }
 
-/** Django's CSRF cookie; GET /api/auth/me hands it out (spec §2.2). */
+/** Django's CSRF cookie; GET /api/auth/me hands it out. */
 function csrfToken(): string {
   const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
   return match ? decodeURIComponent(match[1]) : "";
@@ -3620,6 +3868,41 @@ export function PasswordInput({ className, ...props }: Props) {
 }
 ```
 
+`frontend/src/components/auth/auth-frame.tsx`:
+```tsx
+import Link from "next/link";
+import type { ReactNode } from "react";
+import { BrandLink } from "@/components/brand/brand-link";
+import { ThemeToggle } from "@/components/site/theme-toggle";
+import type { ImageData } from "@/lib/types";
+
+type Props = { name: string; logo?: ImageData | null; backToWebsite?: boolean; children: ReactNode };
+
+/** The frame around sign-in and activation: a school's own brand, or the admin area's. */
+export function AuthFrame({ name, logo = null, backToWebsite = false, children }: Props) {
+  return (
+    <div className="bg-brand-mesh flex min-h-dvh flex-col items-center px-4 py-8 sm:justify-center">
+      <div className="on-dark mb-6 text-white">
+        <BrandLink name={name} logo={logo} />
+      </div>
+      <main id="main" className="glass-frosted animate-rise w-full max-w-md rounded-card p-6 shadow-elev-2 sm:p-8">
+        {children}
+      </main>
+      <div className="on-dark mt-6 flex w-full max-w-md flex-wrap items-center justify-between gap-3 text-sm text-white">
+        {backToWebsite ? (
+          <Link href="/" className="link">
+            Back to the website
+          </Link>
+        ) : (
+          <span />
+        )}
+        <ThemeToggle className="glass-clear" />
+      </div>
+    </div>
+  );
+}
+```
+
 `frontend/src/components/auth/second-factor.tsx`:
 ```tsx
 "use client";
@@ -3641,7 +3924,7 @@ const HEADINGS: Record<Method, string> = {
   backup: "Enter a backup code",
 };
 
-/** The second sign-in step for Administrators, Head Teachers, Accountants and the Proprietor (spec §5.3). */
+/** The second sign-in step for senior school staff and the platform team (spec §5.3, amendment §4). */
 export function SecondFactor({ totp_ready, sms_available, onDone, onRestart }: Props) {
   const [method, setMethod] = useState<Method>("totp");
   const [setup, setSetup] = useState<Setup | null>(null);
@@ -3864,19 +4147,29 @@ import type { AccountKind, SignInResult } from "@/lib/types";
 import { PasswordInput } from "./password-input";
 import { SecondFactor, type SecondFactorStart } from "./second-factor";
 
-type Tab = { kind: AccountKind; label: string; identifier: string; hint?: string; inputMode: "tel" | "numeric" | "text" };
+type Tab = { label: string; identifier: string; hint?: string; inputMode: "tel" | "numeric" | "text" };
 
-const TABS: Tab[] = [
-  { kind: "parent", label: "Parent", identifier: "Mobile number", hint: "The number the school has for you, e.g. 024 123 4567.", inputMode: "tel" },
-  { kind: "student", label: "Student", identifier: "Student ID", hint: "Your 7-digit Student ID, e.g. 26-0147-3.", inputMode: "numeric" },
-  { kind: "staff", label: "Staff", identifier: "Username", inputMode: "text" },
-];
+const TABS: Record<AccountKind, Tab> = {
+  parent: { label: "Parent", identifier: "Mobile number", hint: "The number the school has for you, e.g. 024 123 4567.", inputMode: "tel" },
+  student: { label: "Student", identifier: "Student ID", hint: "Your 7-digit Student ID, e.g. 26-0147-3.", inputMode: "numeric" },
+  staff: { label: "Staff", identifier: "Username", inputMode: "text" },
+  platform: { label: "Platform staff", identifier: "Username", inputMode: "text" },
+};
 
-/** One sign-in page with Parent, Student and Staff tabs (spec §5.1). */
-export function SignInForm() {
+const FORGOTTEN: Record<Exclude<AccountKind, "parent">, string> = {
+  student: "Forgot your password? Ask your class teacher.",
+  staff: "Forgot your password? Ask the school administrator.",
+  platform: "Forgot your password? Ask another member of the platform team.",
+};
+
+/**
+ * Sign-in for the accounts this address accepts (spec §5.1, amendment §2.1): a school's
+ * Parent, Student and Staff tabs, or platform staff alone at the admin address.
+ */
+export function SignInForm({ kinds }: { kinds: readonly AccountKind[] }) {
   const router = useRouter();
   const next = safeNext(useSearchParams().get("next"));
-  const [kind, setKind] = useState<AccountKind>("parent");
+  const [kind, setKind] = useState<AccountKind>(kinds[0]);
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
@@ -3884,9 +4177,10 @@ export function SignInForm() {
   const [attempt, setAttempt] = useState(0);
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<SecondFactorStart | null>(null);
-  const tab = TABS.find((item) => item.kind === kind) ?? TABS[0];
+  const tab = TABS[kind];
+  const tabbed = kinds.length > 1;
 
-  // Already signed in? Go straight on. The request also gives the browser its CSRF cookie.
+  // Already signed in here? Go straight on. The request also gives the browser its CSRF cookie.
   useEffect(() => {
     let cancelled = false;
     getJson("/api/auth/me").then(
@@ -3915,9 +4209,9 @@ export function SignInForm() {
     const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
     if (!step) return;
     event.preventDefault();
-    const target = TABS[(index + step + TABS.length) % TABS.length];
-    selectTab(target.kind);
-    document.getElementById(`sign-in-tab-${target.kind}`)?.focus();
+    const target = kinds[(index + step + kinds.length) % kinds.length];
+    selectTab(target);
+    document.getElementById(`sign-in-tab-${target}`)?.focus();
   }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -3955,38 +4249,40 @@ export function SignInForm() {
 
   return (
     <div>
-      <div role="tablist" aria-label="I am a" className="grid grid-cols-3 gap-1 rounded-control bg-ink/5 p-1">
-        {TABS.map((item, index) => {
-          const selected = item.kind === kind;
-          return (
-            <button
-              key={item.kind}
-              id={`sign-in-tab-${item.kind}`}
-              type="button"
-              role="tab"
-              aria-selected={selected}
-              aria-controls="sign-in-panel"
-              tabIndex={selected ? 0 : -1}
-              onClick={() => selectTab(item.kind)}
-              onKeyDown={(event) => onTabKeyDown(event, index)}
-              className={cn(
-                "press min-h-11 cursor-pointer rounded-[10px] text-sm font-semibold",
-                selected ? "bg-card text-ink shadow-elev-1" : "text-ink-muted hover:text-ink",
-              )}
-            >
-              {item.label}
-            </button>
-          );
-        })}
-      </div>
+      {tabbed && (
+        <div role="tablist" aria-label="I am a" className="flex gap-1 rounded-control bg-ink/5 p-1">
+          {kinds.map((item, index) => {
+            const selected = item === kind;
+            return (
+              <button
+                key={item}
+                id={`sign-in-tab-${item}`}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                aria-controls="sign-in-panel"
+                tabIndex={selected ? 0 : -1}
+                onClick={() => selectTab(item)}
+                onKeyDown={(event) => onTabKeyDown(event, index)}
+                className={cn(
+                  "press min-h-11 flex-1 cursor-pointer rounded-[10px] text-sm font-semibold",
+                  selected ? "bg-card text-ink shadow-elev-1" : "text-ink-muted hover:text-ink",
+                )}
+              >
+                {TABS[item].label}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <form
         id="sign-in-panel"
-        role="tabpanel"
-        aria-labelledby={`sign-in-tab-${kind}`}
+        role={tabbed ? "tabpanel" : undefined}
+        aria-labelledby={tabbed ? `sign-in-tab-${kind}` : undefined}
         noValidate
         onSubmit={onSubmit}
-        className="mt-6 space-y-5"
+        className={cn("space-y-5", tabbed && "mt-6")}
       >
         <FormAlert message={error} focusKey={attempt} />
         <Field id="sign-in-identifier" label={tab.identifier} hint={tab.hint} required>
@@ -4029,13 +4325,13 @@ export function SignInForm() {
           {busy ? "Signing in…" : "Sign in"}
         </Button>
         <p className="text-center text-sm">
-          {kind === "parent" && (
+          {kind === "parent" ? (
             <Link href="/activate" className="link">
               First time, or forgot your password?
             </Link>
+          ) : (
+            FORGOTTEN[kind]
           )}
-          {kind === "student" && "Forgot your password? Ask your class teacher."}
-          {kind === "staff" && "Forgot your password? Ask the school administrator."}
         </p>
       </form>
     </div>
@@ -4043,54 +4339,105 @@ export function SignInForm() {
 }
 ```
 
-`frontend/src/app/(auth)/layout.tsx`:
+- [ ] **Step 5: Split each school's routes into public, sign-in and portal groups, and add the admin area**
+
+Move the public pages into a `(public)` group, so sign-in and the portal get their own frame:
+```bash
+cd "frontend/src/app/sites/[host]" && mkdir "(public)" && git mv about admissions contact levels news privacy page.tsx "(public)/"
+```
+`robots.txt`, `sitemap.xml`, `opengraph-image.tsx` and `seo.test.ts` stay where they are.
+
+`frontend/src/app/sites/[host]/layout.tsx`: keep `generateStaticParams` and `generateMetadata` as they are. Replace the imports and the default export with:
 ```tsx
 import type { Metadata } from "next";
-import Link from "next/link";
 import type { ReactNode } from "react";
-import { BrandLink } from "@/components/brand/brand-link";
-import { ThemeToggle } from "@/components/site/theme-toggle";
-import { getSite } from "@/lib/api";
-
-export const metadata: Metadata = { robots: { index: false, follow: false } };
-
-export default async function AuthLayout({ children }: { children: ReactNode }) {
-  const site = await getSite();
+import { BrandStyle } from "@/components/site/brand-style";
+import { contentOf, getSite } from "@/lib/api";
+```
+```tsx
+/** Every page at a school's address wears that school's colours. */
+export default async function SiteLayout({ children, params }: Params & { children: ReactNode }) {
+  const site = await getSite((await params).host);
   return (
-    <div className="bg-brand-mesh flex min-h-dvh flex-col items-center px-4 py-8 sm:justify-center">
-      <div className="on-dark mb-6 text-white">
-        <BrandLink name={site.school.name} />
-      </div>
-      <main id="main" className="glass-frosted animate-rise w-full max-w-md rounded-card p-6 shadow-elev-2 sm:p-8">
-        {children}
-      </main>
-      <div className="on-dark mt-6 flex w-full max-w-md flex-wrap items-center justify-between gap-3 text-sm text-white">
-        <Link href="/" className="link">
-          Back to the website
-        </Link>
-        <ThemeToggle className="glass-clear" />
-      </div>
-    </div>
+    <>
+      <BrandStyle brand={site.brand} />
+      {children}
+    </>
   );
 }
 ```
 
-`frontend/src/app/(auth)/sign-in/page.tsx`:
+`frontend/src/app/sites/[host]/(public)/layout.tsx`:
+```tsx
+import type { ReactNode } from "react";
+import { Footer } from "@/components/site/footer";
+import { Header } from "@/components/site/header";
+import { OfflineBar } from "@/components/site/offline-bar";
+import { PreviewRibbon } from "@/components/site/preview-ribbon";
+import { SchoolJsonLd } from "@/components/site/school-json-ld";
+import { SkipLink } from "@/components/site/skip-link";
+import { getSite } from "@/lib/api";
+
+type Props = { children: ReactNode; params: Promise<{ host: string }> };
+
+/** The public website's frame: header, footer and, before launch, the preview ribbon. */
+export default async function PublicLayout({ children, params }: Props) {
+  const site = await getSite((await params).host);
+  return (
+    <>
+      <SkipLink />
+      <Header schoolName={site.school.name} logo={site.school.logo} portalUrl="/sign-in" />
+      <OfflineBar />
+      <main id="main" tabIndex={-1} className="outline-none">
+        {children}
+      </main>
+      <Footer site={site} />
+      {!site.is_public && <PreviewRibbon />}
+      <SchoolJsonLd school={site.school} />
+    </>
+  );
+}
+```
+
+`frontend/src/app/sites/[host]/(auth)/layout.tsx`:
+```tsx
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
+import { AuthFrame } from "@/components/auth/auth-frame";
+import { getSite } from "@/lib/api";
+
+export const metadata: Metadata = { robots: { index: false, follow: false } };
+
+type Props = { children: ReactNode; params: Promise<{ host: string }> };
+
+export default async function AuthLayout({ children, params }: Props) {
+  const { school } = await getSite((await params).host);
+  return (
+    <AuthFrame name={school.name} logo={school.logo} backToWebsite>
+      {children}
+    </AuthFrame>
+  );
+}
+```
+
+`frontend/src/app/sites/[host]/(auth)/sign-in/page.tsx`:
 ```tsx
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { SignInForm } from "@/components/auth/sign-in-form";
+import { getSite } from "@/lib/api";
 
 export const metadata: Metadata = { title: "Sign in" };
 
-export default function SignInPage() {
+export default async function SignInPage({ params }: { params: Promise<{ host: string }> }) {
+  const { school } = await getSite((await params).host);
   return (
     <>
       <h1 className="text-2xl font-semibold">Sign in</h1>
-      <p className="mt-1 text-ink-muted">For parents, pupils and staff of the school.</p>
+      <p className="mt-1 text-ink-muted">For parents, pupils and staff of {school.name}.</p>
       <div className="mt-6">
         <Suspense>
-          <SignInForm />
+          <SignInForm kinds={["parent", "student", "staff"]} />
         </Suspense>
       </div>
     </>
@@ -4098,16 +4445,78 @@ export default function SignInPage() {
 }
 ```
 
-- [ ] **Step 5: Run the tests and checks**
+`frontend/src/app/platform-admin/layout.tsx`:
+```tsx
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
+import { getPlatform } from "@/lib/api";
 
-Run: `cd frontend && npm test && npm run lint && npm run typecheck`
-Expected: all tests pass, and lint and typecheck are clean.
+export async function generateMetadata(): Promise<Metadata> {
+  const { name } = await getPlatform();
+  return {
+    title: { default: `${name} admin`, template: `%s · ${name} admin` },
+    robots: { index: false, follow: false },
+  };
+}
 
-- [ ] **Step 6: Commit**
+/** The admin address: the platform team only (amendment §5). */
+export default function PlatformAdminLayout({ children }: { children: ReactNode }) {
+  return children;
+}
+```
+
+`frontend/src/app/platform-admin/page.tsx`:
+```tsx
+import { redirect } from "next/navigation";
+
+/** Plan 5 puts the schools list here; until then the admin address opens on the Account page. */
+export default function PlatformAdminHome() {
+  redirect("/account");
+}
+```
+
+`frontend/src/app/platform-admin/sign-in/page.tsx`:
+```tsx
+import type { Metadata } from "next";
+import { Suspense } from "react";
+import { AuthFrame } from "@/components/auth/auth-frame";
+import { SignInForm } from "@/components/auth/sign-in-form";
+import { getPlatform } from "@/lib/api";
+
+export const metadata: Metadata = { title: "Sign in" };
+
+export default async function PlatformSignInPage() {
+  const { name } = await getPlatform();
+  return (
+    <AuthFrame name={`${name} admin`}>
+      <h1 className="text-2xl font-semibold">Sign in</h1>
+      <p className="mt-1 text-ink-muted">For the {name} team.</p>
+      <div className="mt-6">
+        <Suspense>
+          <SignInForm kinds={["platform"]} />
+        </Suspense>
+      </div>
+    </AuthFrame>
+  );
+}
+```
+
+In `frontend/.env.local.example`, delete the two `NEXT_PUBLIC_PORTAL_URL` lines: the sign-in button now always shows.
+
+- [ ] **Step 6: Run the tests and checks**
+
+Run: `cd frontend && rm -rf .next/dev && npm test && npm run lint && npm run typecheck`
+Expected: all tests pass, and lint and typecheck are clean. Deleting `.next/dev` drops route types generated for the old page locations.
+
+- [ ] **Step 7: Check both addresses in the dev servers**
+
+With Django and `npm run dev` running, open `http://adsmart.localhost:3000/sign-in`. It shows "For parents, pupils and staff of AD Smart School." with three tabs, in the school's colours. Then open `http://admin.localhost:3000/`. It redirects to `/account`, which does not exist until Task 9.
+
+- [ ] **Step 8: Commit**
 
 ```bash
-git add frontend/src frontend/vitest.setup.ts
-git commit -m "Add the sign-in page with Parent, Student and Staff tabs and the second-factor step"
+git add frontend/src frontend/vitest.setup.ts frontend/.env.local.example
+git commit -m "Add sign-in at each school's address and at the admin address, with the second-factor step"
 ```
 
 ---
@@ -4115,15 +4524,20 @@ git commit -m "Add the sign-in page with Parent, Student and Staff tabs and the 
 ### Task 9: Frontend: parent activation, the portal frame and the Account page
 
 **Files:**
-- Create: `frontend/src/lib/identifiers.ts`, `frontend/src/lib/identifiers.test.ts`, `frontend/src/components/auth/activate-form.tsx`, `frontend/src/components/auth/activate-form.test.tsx`, `frontend/src/app/(auth)/activate/page.tsx`, `frontend/src/components/portal/auth-provider.tsx`, `frontend/src/components/portal/auth-provider.test.tsx`, `frontend/src/components/portal/portal-shell.tsx`, `frontend/src/components/portal/account-view.tsx`, `frontend/src/components/portal/account-view.test.tsx`, `frontend/src/app/(portal)/layout.tsx`, `frontend/src/app/(portal)/account/page.tsx`
-- Modify: `frontend/src/lib/dates.ts`, `frontend/src/lib/dates.test.ts`, `frontend/src/app/(public)/layout.tsx`, `frontend/.env.local.example`
+- Create: `frontend/src/lib/identifiers.ts`, `frontend/src/lib/identifiers.test.ts`, `frontend/src/components/auth/activate-form.tsx`, `frontend/src/components/auth/activate-form.test.tsx`, `frontend/src/components/portal/auth-provider.tsx`, `frontend/src/components/portal/auth-provider.test.tsx`, `frontend/src/components/portal/portal-shell.tsx`, `frontend/src/components/portal/account-view.tsx`, `frontend/src/components/portal/account-view.test.tsx`
+- Create: `frontend/src/app/sites/[host]/(auth)/activate/page.tsx`, `frontend/src/app/sites/[host]/(portal)/layout.tsx`, `frontend/src/app/sites/[host]/(portal)/account/page.tsx`, `frontend/src/app/platform-admin/(portal)/layout.tsx`, `frontend/src/app/platform-admin/(portal)/account/page.tsx`
+- Modify: `frontend/src/lib/dates.ts`, `frontend/src/lib/dates.test.ts`
 
 **Interfaces:**
-- Consumes: the Task 5 and Task 7 endpoints, `FormAlert`, `PasswordInput`, `client-api`, and `mockApi` / `bodyOf`.
+- Consumes:
+  - The Task 5 and Task 7 endpoints.
+  - From Task 8: `FormAlert`, `PasswordInput`, `client-api`, and `mockApi` / `bodyOf`.
+  - From Plan 2: `publicPath` and `GH_MOBILE`.
 - Produces:
-  - `<AuthProvider>` and `useAuth() -> { me, refresh, signOut }`. Plan 4 builds role homes on these.
-  - `<PortalShell schoolName>`.
-  - `formatPhoneLocal`, `formatStudentId`, `formatIdentifier(me)`, `formatDateTime(iso)`.
+  - **`<AuthProvider>` and `useAuth() -> { me, refresh, signOut }`.** Plans 4 and 5 build role homes on these.
+  - **`<PortalShell name logo?>`.**
+  - **Formatters:** `formatPhoneLocal`, `formatStudentId`, `formatIdentifier(me)`, `formatDateTime(iso)`.
+  - **Routes:** `/activate` at school addresses; `/account` at school addresses and at the admin address.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -4147,6 +4561,7 @@ describe("identifiers", () => {
     expect(formatIdentifier({ kind: "parent", username: "+233241234567" })).toBe("024 123 4567");
     expect(formatIdentifier({ kind: "student", username: "2601473" })).toBe("26-0147-3");
     expect(formatIdentifier({ kind: "staff", username: "k.mensah" })).toBe("k.mensah");
+    expect(formatIdentifier({ kind: "platform", username: "ops" })).toBe("ops");
   });
 });
 ```
@@ -4236,7 +4651,10 @@ import { describe, expect, it, vi } from "vitest";
 import { mockApi } from "@/test/http";
 import { AuthProvider } from "./auth-provider";
 
-const ME = { id: 1, kind: "parent", username: "+233241234567", display_name: "Ama Mensah", roles: ["Parent"], must_change_password: false, has_authenticator: false };
+const ME = {
+  id: 1, kind: "parent", username: "+233241234567", display_name: "Ama Mensah", roles: ["Parent"],
+  must_change_password: false, has_authenticator: false, school: { name: "AD Smart School", slug: "adsmart" },
+};
 const SIGNED_OUT = { code: "not_authenticated", message: "Please sign in.", fields: {} };
 
 describe("AuthProvider", () => {
@@ -4246,8 +4664,8 @@ describe("AuthProvider", () => {
     expect(await screen.findByText("private")).toBeInTheDocument();
   });
 
-  it("sends signed-out visitors to sign in, remembering where they were going", async () => {
-    vi.mocked(usePathname).mockReturnValue("/account");
+  it("sends signed-out visitors to sign in at the same address, remembering where they were going", async () => {
+    vi.mocked(usePathname).mockReturnValue("/sites/adsmart.localhost/account");
     mockApi([["GET", "/api/auth/me", 403, SIGNED_OUT]]);
     render(<AuthProvider><p>private</p></AuthProvider>);
     await waitFor(() => expect(useRouter().replace).toHaveBeenCalledWith("/sign-in?next=%2Faccount"));
@@ -4280,7 +4698,10 @@ import { bodyOf, mockApi } from "@/test/http";
 import { AccountView } from "./account-view";
 import { AuthProvider } from "./auth-provider";
 
-const ME = { id: 1, kind: "parent", username: "+233241234567", display_name: "Ama Mensah", roles: ["Parent"], must_change_password: false, has_authenticator: false };
+const ME = {
+  id: 1, kind: "parent", username: "+233241234567", display_name: "Ama Mensah", roles: ["Parent"],
+  must_change_password: false, has_authenticator: false, school: { name: "AD Smart School", slug: "adsmart" },
+};
 const SESSIONS = [
   { id: 1, device: "Chrome on Windows", ip_address: "41.66.1.2", signed_in_at: "2026-10-09T08:00:00Z", last_seen: "2026-10-09T14:05:00Z", current: true },
   { id: 7, device: "Chrome on Android", ip_address: null, signed_in_at: "2026-10-01T08:00:00Z", last_seen: "2026-10-08T19:30:00Z", current: false },
@@ -4570,7 +4991,7 @@ export function ActivateForm() {
 }
 ```
 
-`frontend/src/app/(auth)/activate/page.tsx`:
+`frontend/src/app/sites/[host]/(auth)/activate/page.tsx`:
 ```tsx
 import type { Metadata } from "next";
 import { ActivateForm } from "@/components/auth/activate-form";
@@ -4599,6 +5020,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { ApiRequestError, getJson, postJson } from "@/lib/client-api";
+import { publicPath } from "@/lib/hosts";
 import type { Me } from "@/lib/types";
 
 type AuthValue = { me: Me; refresh: () => Promise<void>; signOut: () => Promise<void> };
@@ -4618,12 +5040,12 @@ function stateFor(caught: unknown): State {
 }
 
 /**
- * Loads the signed-in user and sends everyone else to sign in. The server still decides what
- * each user may see (spec §4.2); this only keeps the screens tidy.
+ * Loads the user signed in at this address and sends everyone else to its sign-in page. The
+ * server still decides what each user may see (spec §4.2); this only keeps the screens tidy.
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = publicPath(usePathname());
   const [state, setState] = useState<State>({ status: "loading" });
 
   useEffect(() => {
@@ -4702,17 +5124,20 @@ import type { ReactNode } from "react";
 import { BrandLink } from "@/components/brand/brand-link";
 import { SkipLink } from "@/components/site/skip-link";
 import { Button } from "@/components/ui/button";
+import type { ImageData } from "@/lib/types";
 import { useAuth } from "./auth-provider";
 
-/** The signed-in frame: brand, who is signed in and Sign out. Plan 4 adds navigation. */
-export function PortalShell({ schoolName, children }: { schoolName: string; children: ReactNode }) {
+type Props = { name: string; logo?: ImageData | null; children: ReactNode };
+
+/** The signed-in frame: brand, who is signed in and Sign out. Plans 4 and 5 add navigation. */
+export function PortalShell({ name, logo = null, children }: Props) {
   const { me, signOut } = useAuth();
   return (
     <>
       <SkipLink />
       <header className="glass-frosted sticky top-0 z-30 border-b border-line">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2 sm:px-6">
-          <BrandLink name={schoolName} />
+          <BrandLink name={name} logo={logo} />
           <div className="flex items-center gap-3">
             <span className="hidden max-w-48 truncate text-sm font-medium md:inline">{me.display_name}</span>
             <Button variant="outline" onClick={signOut} className="px-3">
@@ -4743,10 +5168,15 @@ import { FormAlert } from "@/components/ui/form-alert";
 import { deleteJson, errorMessage, fieldErrors, getJson, postJson } from "@/lib/client-api";
 import { formatDateTime } from "@/lib/dates";
 import { formatIdentifier } from "@/lib/identifiers";
-import type { SessionInfo } from "@/lib/types";
+import type { AccountKind, SessionInfo } from "@/lib/types";
 import { useAuth } from "./auth-provider";
 
-const IDENTIFIER_LABEL = { staff: "Username", parent: "Mobile number", student: "Student ID" } as const;
+const IDENTIFIER_LABEL: Record<AccountKind, string> = {
+  staff: "Username",
+  parent: "Mobile number",
+  student: "Student ID",
+  platform: "Username",
+};
 const CHECK_FORM = "Please check the highlighted fields.";
 const PASSWORD_HINT = "At least 8 characters. A short sentence is easy to remember.";
 
@@ -4943,7 +5373,7 @@ function Sessions() {
 }
 ```
 
-`frontend/src/app/(portal)/layout.tsx`:
+`frontend/src/app/sites/[host]/(portal)/layout.tsx`:
 ```tsx
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
@@ -4953,17 +5383,21 @@ import { getSite } from "@/lib/api";
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
-export default async function PortalLayout({ children }: { children: ReactNode }) {
-  const site = await getSite();
+type Props = { children: ReactNode; params: Promise<{ host: string }> };
+
+export default async function PortalLayout({ children, params }: Props) {
+  const { school } = await getSite((await params).host);
   return (
     <AuthProvider>
-      <PortalShell schoolName={site.school.name}>{children}</PortalShell>
+      <PortalShell name={school.name} logo={school.logo}>
+        {children}
+      </PortalShell>
     </AuthProvider>
   );
 }
 ```
 
-`frontend/src/app/(portal)/account/page.tsx`:
+`frontend/src/app/sites/[host]/(portal)/account/page.tsx`:
 ```tsx
 import type { Metadata } from "next";
 import { AccountView } from "@/components/portal/account-view";
@@ -4975,9 +5409,34 @@ export default function AccountPage() {
 }
 ```
 
-In `frontend/src/app/(public)/layout.tsx`, delete the `const portalUrl = …` line and pass `portalUrl="/sign-in"` to `<Header>`. The portal exists now, so the button is always shown.
+`frontend/src/app/platform-admin/(portal)/layout.tsx`:
+```tsx
+import type { ReactNode } from "react";
+import { AuthProvider } from "@/components/portal/auth-provider";
+import { PortalShell } from "@/components/portal/portal-shell";
+import { getPlatform } from "@/lib/api";
 
-In `frontend/.env.local.example`, delete the two `NEXT_PUBLIC_PORTAL_URL` lines.
+export default async function PlatformPortalLayout({ children }: { children: ReactNode }) {
+  const { name } = await getPlatform();
+  return (
+    <AuthProvider>
+      <PortalShell name={`${name} admin`}>{children}</PortalShell>
+    </AuthProvider>
+  );
+}
+```
+
+`frontend/src/app/platform-admin/(portal)/account/page.tsx`:
+```tsx
+import type { Metadata } from "next";
+import { AccountView } from "@/components/portal/account-view";
+
+export const metadata: Metadata = { title: "Your account" };
+
+export default function PlatformAccountPage() {
+  return <AccountView />;
+}
+```
 
 - [ ] **Step 6: Run the tests and checks**
 
@@ -4987,20 +5446,20 @@ Expected: all pass.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add frontend/src frontend/.env.local.example
-git commit -m "Add parent activation, the portal frame and the Account page"
+git add frontend/src
+git commit -m "Add parent activation, the portal frame and the Account page for schools and the admin area"
 ```
 
 ---
 
-### Task 10: Browser tests for sign-in, plus docs
+### Task 10: Browser tests for sign-in at several addresses, plus docs
 
 **Files:**
 - Create: `frontend/e2e/accounts.json`, `frontend/e2e/totp.ts`, `frontend/e2e/sign-in.spec.ts`
 - Modify: `frontend/e2e/serve.mjs`, `.gitignore`, `README.md`
 
 **Interfaces:**
-- Consumes: everything above, running through the real Next.js proxy.
+- Consumes: everything above, running through the real Next.js proxy at `adsmart.localhost:3100`, `brightfuture.localhost:3100` and `admin.localhost:3100`.
 
 - [ ] **Step 1: Write the browser tests and their accounts**
 
@@ -5009,7 +5468,8 @@ git commit -m "Add parent activation, the portal frame and the Account page"
 {
   "password": "e2e only passphrase 2026",
   "staff": { "phone": "e2e-admin-phone", "desktop": "e2e-admin-desktop" },
-  "parents": { "phone": "0241234561", "desktop": "0241234562" }
+  "parents": { "phone": "0241234561", "desktop": "0241234562" },
+  "platform": { "phone": "e2e-ops-phone", "desktop": "e2e-ops-desktop" }
 }
 ```
 
@@ -5048,6 +5508,8 @@ import { totp } from "./totp";
 
 type Project = keyof typeof accounts.staff;
 const OUTBOX = path.resolve(process.cwd(), "../backend/e2e-sms.jsonl");
+const OTHER_SCHOOL = "http://brightfuture.localhost:3100";
+const ADMIN = "http://admin.localhost:3100";
 
 function lastCodeTo(e164: string): string {
   const messages = fs
@@ -5067,43 +5529,54 @@ async function expectAccessibleInBothThemes(page: Page) {
   }
 }
 
-test("the sign-in page is accessible in light and dark", async ({ page }) => {
+async function signIn(page: Page, tab: string | null, username: string, password: string) {
+  if (tab) await page.getByRole("tab", { name: tab }).click();
+  await page.getByLabel(/username/i).fill(username);
+  await page.getByLabel(/^password/i).fill(password);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+}
+
+async function setUpAuthenticator(page: Page) {
+  await expect(page.getByRole("heading", { name: "Set up your authenticator app" })).toBeVisible();
+  const secret = (await page.getByTestId("manual-key").textContent())?.trim() ?? "";
+  await page.getByLabel(/6-digit code/i).fill(totp(secret));
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page.getByRole("heading", { name: "Save your backup codes" })).toBeVisible();
+  await page.getByRole("button", { name: /saved them/i }).click();
+  await expect(page.getByRole("heading", { name: "Your account" })).toBeVisible();
+}
+
+test("each school's sign-in page names that school and is accessible in light and dark", async ({ page }) => {
   await page.goto("/sign-in");
-  await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+  await expect(page.getByText("For parents, pupils and staff of AD Smart School.")).toBeVisible();
   await expectAccessibleInBothThemes(page);
+  await page.goto(`${OTHER_SCHOOL}/sign-in`);
+  await expect(page.getByText("For parents, pupils and staff of Bright Future Academy.")).toBeVisible();
 });
 
 test("a wrong password gets the one generic message", async ({ page }) => {
   await page.goto("/sign-in");
-  await page.getByRole("tab", { name: "Staff" }).click();
-  await page.getByLabel(/username/i).fill("nobody.here");
-  await page.getByLabel(/^password/i).fill("not the password");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await signIn(page, "Staff", "nobody.here", "not the password");
+  await expect(page.getByRole("alert")).toHaveText("Incorrect username or password.");
+});
+
+test("an account from one school cannot sign in at another", async ({ page }, testInfo) => {
+  await page.goto(`${OTHER_SCHOOL}/sign-in`);
+  await signIn(page, "Staff", accounts.staff[testInfo.project.name as Project], accounts.password);
   await expect(page.getByRole("alert")).toHaveText("Incorrect username or password.");
 });
 
 test("an administrator sets up the second factor at first sign-in", async ({ page }, testInfo) => {
   await page.goto("/sign-in");
-  await page.getByRole("tab", { name: "Staff" }).click();
-  await page.getByLabel(/username/i).fill(accounts.staff[testInfo.project.name as Project]);
-  await page.getByLabel(/^password/i).fill(accounts.password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-
-  await expect(page.getByRole("heading", { name: "Set up your authenticator app" })).toBeVisible();
-  const secret = (await page.getByTestId("manual-key").textContent())?.trim() ?? "";
-  await page.getByLabel(/6-digit code/i).fill(totp(secret));
-  await page.getByRole("button", { name: "Continue" }).click();
-
-  await expect(page.getByRole("heading", { name: "Save your backup codes" })).toBeVisible();
-  await page.getByRole("button", { name: /saved them/i }).click();
-  await expect(page.getByRole("heading", { name: "Your account" })).toBeVisible();
+  await signIn(page, "Staff", accounts.staff[testInfo.project.name as Project], accounts.password);
+  await setUpAuthenticator(page);
   await expectAccessibleInBothThemes(page);
 
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(page).toHaveURL(/\/sign-in/);
 });
 
-test("a parent activates their account with an SMS code", async ({ page }, testInfo) => {
+test("a parent activates their account with an SMS code from their school", async ({ page }, testInfo) => {
   const local = accounts.parents[testInfo.project.name as Project];
   await page.goto("/sign-in");
   await page.getByRole("link", { name: /first time/i }).click();
@@ -5120,6 +5593,15 @@ test("a parent activates their account with an SMS code", async ({ page }, testI
   await expect(page.getByText(`${local.slice(0, 3)} ${local.slice(3, 6)} ${local.slice(6)}`)).toBeVisible();
   await expectAccessibleInBothThemes(page);
 });
+
+test("platform staff sign in at the admin address with a second factor", async ({ page }, testInfo) => {
+  await page.goto(`${ADMIN}/`);
+  await expect(page).toHaveURL(`${ADMIN}/sign-in?next=%2Faccount`);
+  await expect(page.getByRole("tab")).toHaveCount(0);
+  await signIn(page, null, accounts.platform[testInfo.project.name as Project], accounts.password);
+  await setUpAuthenticator(page);
+  await expect(page.getByText("Platform Admin", { exact: true })).toBeVisible();
+});
 ```
 
 - [ ] **Step 2: Make the browser-test server create the accounts**
@@ -5129,22 +5611,26 @@ In `frontend/e2e/serve.mjs`:
 ```js
 const accounts = JSON.parse(fs.readFileSync(path.join(here, "accounts.json"), "utf-8"));
 ```
-- Add these two entries to `djangoEnv`:
+- Add to `djangoEnv`:
 ```js
   SMS_FILE_PATH: path.join(backend, "e2e-sms.jsonl"),
-  DJANGO_CSRF_TRUSTED_ORIGINS: "http://127.0.0.1:3100,http://localhost:3100",
 ```
 - After the `fs.rmSync(djangoEnv.DJANGO_MEDIA_ROOT, …)` line, add `fs.rmSync(djangoEnv.SMS_FILE_PATH, { force: true });`.
-- After the `seed_website` line, add:
+- After the `create_school` call, add:
 ```js
-// Test accounts. No shell, so names and passwords with spaces arrive intact.
+// Test accounts at AD Smart School and on the platform team. No shell: names keep their spaces.
 const createUser = (...args) =>
   run(python, ["manage.py", "create_user", ...args], { cwd: backend, env: djangoEnv, shell: false });
 for (const [project, username] of Object.entries(accounts.staff)) {
-  await createUser("--kind", "staff", "--username", username, "--name", `Esi Admin ${project}`, "--role", "Administrator", "--password", accounts.password);
+  await createUser("--kind", "staff", "--school", "adsmart", "--username", username, "--name", `Esi Admin ${project}`,
+    "--role", "Administrator", "--password", accounts.password);
 }
 for (const [project, phone] of Object.entries(accounts.parents)) {
-  await createUser("--kind", "parent", "--username", phone, "--name", `Ama Mensah ${project}`);
+  await createUser("--kind", "parent", "--school", "adsmart", "--username", phone, "--name", `Ama Mensah ${project}`);
+}
+for (const [project, username] of Object.entries(accounts.platform)) {
+  await createUser("--kind", "platform", "--username", username, "--name", `Kojo Ops ${project}`,
+    "--password", accounts.password);
 }
 ```
 
@@ -5153,21 +5639,29 @@ In `.gitignore`, add `backend/e2e-sms.jsonl` under `backend/e2e-media/`.
 - [ ] **Step 3: Run the browser tests**
 
 Run: `cd frontend && npm run e2e`
-Expected: all specs pass in both projects (phone 375px, desktop 1440px), including the four new sign-in tests.
+Expected: all specs pass in both projects (phone 375px, desktop 1440px), including the six new sign-in tests.
 
 - [ ] **Step 4: Document sign-in for the owner**
 
-In `README.md`, add a section "Accounts and sign-in":
+In `README.md`, add a section "Accounts and sign-in" after "One platform, many schools":
 ```markdown
 ## Accounts and sign-in
 
-- Create the first Administrator (you will be asked for a password):
-  `cd backend && .venv/Scripts/python manage.py create_user --kind staff --username admin --name "Your Name" --role Administrator --phone 024xxxxxxx`
-- At their first sign-in, Administrators, Head Teachers, Accountants and the Proprietor set up an
-  authenticator app (Google or Microsoft Authenticator) and save 10 backup codes.
-- If the only Administrator loses their phone: `manage.py reset_second_factor admin`.
-- Parents are created awaiting activation. They choose "First time, or forgot your password?" on the
-  sign-in page and get a code by SMS. In development the code is printed in the Django log.
+Everyone signs in at their own address. A school's staff, parents and pupils use that school's
+address (for example `adsmart.localhost:3000/sign-in`); your team uses the admin address
+(`admin.localhost:3000`). An account belongs to one school, so the same username at two schools is
+two different people.
+
+- Create a school's first Administrator (you will be asked for a password):
+  `cd backend && .venv/Scripts/python manage.py create_user --kind staff --school adsmart --username admin --name "Your Name" --role Administrator --phone 024xxxxxxx`
+- Add someone to your team: `manage.py create_user --kind platform --username yourname --name "Your Name"`
+- At their first sign-in, Administrators, Head Teachers, Accountants, Proprietors and everyone on
+  your team set up an authenticator app (Google or Microsoft Authenticator) and save 10 backup codes.
+- If someone loses their phone: `manage.py reset_second_factor admin --school adsmart`
+  (leave out `--school` for your team).
+- Parents are created awaiting activation. They choose "First time, or forgot your password?" on
+  their school's sign-in page and get a code by SMS in the school's name. In development the code is
+  printed in the Django log.
 ```
 
 - [ ] **Step 5: Run every check and commit**
@@ -5177,5 +5671,5 @@ Expected: "All checks passed."
 
 ```bash
 git add frontend/e2e .gitignore README.md
-git commit -m "Add browser tests for staff second factor and parent activation"
+git commit -m "Add browser tests for sign-in at school and admin addresses, and document accounts"
 ```
