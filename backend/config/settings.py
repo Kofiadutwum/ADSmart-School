@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "apps.accounts",
     "apps.audit",
+    "apps.notifications",
     "apps.core",
     "apps.school",
     "apps.consent",
@@ -130,6 +131,10 @@ MAILERS = {
 DEFAULT_FROM_EMAIL = env(
     "DJANGO_DEFAULT_FROM_EMAIL", default="AD Smart School <no-reply@localhost>"
 )
+
+# SMS (Phase 1 spec §3.7). Development logs codes to the console (and SMS_FILE_PATH, if set).
+SMS_BACKEND = env("SMS_BACKEND", default="apps.notifications.backends.ConsoleBackend")
+SMS_FILE_PATH = env("SMS_FILE_PATH", default="")
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.SessionAuthentication"],

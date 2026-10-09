@@ -13,3 +13,4 @@ PLATFORM_DOMAIN = "localhost"
 PLATFORM_EMAIL = "hello@schoolsite.test"
 SITE_URL_TEMPLATE = "http://{host}:3000"
 ALLOWED_HOSTS = ["*"]
+SMS_BACKEND = "apps.notifications.backends.MemoryBackend"

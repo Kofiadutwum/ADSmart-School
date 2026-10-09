@@ -8,6 +8,9 @@ from tests.helpers import make_school
 def _isolated_media_and_cache(settings, tmp_path):
     settings.MEDIA_ROOT = tmp_path / "media"
     cache.clear()
+    from apps.notifications.backends import MemoryBackend
+
+    MemoryBackend.outbox.clear()
     yield
     cache.clear()
 
