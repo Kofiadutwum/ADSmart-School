@@ -46,7 +46,10 @@ This cycle is done when:
 | Existing records | None. Generate realistic demo data, which the admin replaces with real records over time (§9) |
 | Architecture | Django REST API + React frontend, using **Next.js** |
 | Visual direction | **Warm Authority** (logo palette), with **glassmorphism**, **swipe interactions** and **spring/swing animations** throughout (§8) |
+| Themes | **Light and dark modes**, following the device setting by default, with a Light / Dark / System toggle (§8.8) |
+| Font | **Poppins** for all text (§8.3) |
 | Browser visual companion | Declined; design discussed in text |
+| Process | After spec approval, the owner asked to continue **without further questions**: plans are written, self-reviewed and executed without stopping for approval |
 
 ### 1.3 Assumptions (owner may correct)
 
@@ -98,7 +101,7 @@ ad-smart-school/
 
 | Kind | Examples | Served how |
 |---|---|---|
-| Public | Website photo slots, news covers, logo | Public URLs, responsive WebP/AVIF via `next/image` |
+| Public | Website photo slots, news covers, logo | Public URLs. On upload, Django (Pillow) generates WebP renditions at 480, 960 and 1600 px wide (never upscaled). The API returns `src`, `srcset`, `width`, `height` and `alt`, and the frontend renders a plain `<img srcset sizes loading>`. This needs no image-optimiser server and works the same in every environment |
 | Private | Student photos, pick-up-person photos | Only through an authenticated, permission-checked API endpoint. Never by a guessable public URL |
 
 Development stores files on local disk. Production uses the host's disk or S3-compatible storage, chosen at deploy.
@@ -421,33 +424,35 @@ The direction comes from the UI/UX Pro Max design-system searches, adapted:
 - **Logo palette in place of generic navy and gold.**
 - The owner's request for **glassmorphism, swipes and swing animations** everywhere, within the accessibility and performance limits below.
 
-### 8.1 Colour tokens
+### 8.1 Colour tokens (light and dark)
 
-All colours are taken from the logo. Contrast figures are WCAG ratios.
+All colours are taken from the logo. In dark mode the brand hues are lightened, keeping the same hue, so they stay readable on a deep indigo-black background. Contrast figures are WCAG ratios, each measured against that theme's `--paper`.
 
-| Token | Hex | Use | Contrast |
-|---|---|---|---|
-| `--brand-indigo` | `#0F1A9E` | Headings, primary buttons, header tint | White on it: 12.6:1 |
-| `--brand-amber` | `#F0AD1C` | Primary CTA fill (*Apply for admission*), Early Years category | `--ink` on it: 9.1:1. **Never use amber as text on light backgrounds** (2:1) |
-| `--brand-cerulean` | `#0277BD` | Links, info, Primary category | White on it: 4.8:1 |
-| `--brand-violet` | `#8806A8` | Accents, JHS category | White on it: 7.9:1 |
-| `--brand-copper` | `#C4601F` | Small decorative highlights only | White on it: 4.2:1, so **large text (≥ 24 px) or decoration only** |
-| `--ink` | `#14123A` | Body text | On `--paper`: ~17:1 |
-| `--ink-muted` | `#4A4E69` | Secondary text | On `--paper`: 7.7:1 |
-| `--paper` | `#FAF9F6` | Page background | |
-| `--card` | `#FFFFFF` | Solid surfaces (Lite mode) | |
-| `--danger` | `#DC2626` | Errors, destructive actions | White on it: 4.8:1 |
-| `--success` | `#15803D` | Success states | White on it: 5.0:1 |
+| Token | Light | Dark | Use | Contrast (light / dark) |
+|---|---|---|---|---|
+| `--paper` | `#FAF9F6` | `#0B0A1F` | Page background | |
+| `--card` | `#FFFFFF` | `#15133A` | Solid surfaces (Lite mode) | |
+| `--ink` | `#14123A` | `#ECEBFA` | Body text | ~17:1 / 16.3:1 |
+| `--ink-muted` | `#4A4E69` | `#B4B3D6` | Secondary text | 7.7:1 / 9.6:1 |
+| `--accent-indigo` | `#0F1A9E` | `#9AA2FF` | Headings accents, links on surfaces, focus ring | 12.6:1 (white on it) / 8.4:1 |
+| `--btn-primary` | `#0F1A9E` | `#3B46D9` | Primary button fill, with white text | 12.6:1 / 6.9:1 |
+| `--brand-amber` | `#F0AD1C` | `#F0AD1C` | Main call-to-action fill with `#14123A` text; Early Years category | 9.1:1 (dark text on amber) in both. **Amber is never text on light backgrounds** (2:1); on dark backgrounds it may be text (9.9:1) |
+| `--accent-cerulean` | `#0277BD` | `#5BB8F5` | Links, info, Primary category | 4.8:1 (white on it) / 8.9:1 |
+| `--accent-violet` | `#8806A8` | `#D58BF0` | Accents, JHS category | 7.9:1 (white on it) / 8.2:1 |
+| `--accent-copper` | `#C4601F` | `#E08A4F` | Small decorative highlights only | 4.2:1, so large text or decoration only / decoration only |
+| `--danger` | `#DC2626` | `#F87171` | Errors, destructive actions | 4.8:1 (white on it) / 7.0:1 |
+| `--success` | `#15803D` | `#4ADE80` | Success states | 5.0:1 (white on it) / 11.2:1 |
 
 - **Category colours:** Early Years = amber, Primary = cerulean, JHS = violet. They are always paired with a text label, never colour alone.
-- **Light theme only** in Phase 1. Every colour is a token, so dark mode can be added later.
+- **Brand gradient** (behind glass): light theme indigo `#0F1A9E` → cerulean `#0277BD` → violet `#8806A8` with an amber glow. Dark theme uses the same hues at lower brightness, `#0B0A1F` → `#1B1F6B` → `#3A1450`, with a faint amber glow.
+- **One source of truth:** every colour is a CSS variable defined once per theme. Components never contain raw hex values.
 
 ### 8.2 Glass
 
 | Tier | Recipe | Allowed for |
 |---|---|---|
-| **Clear glass** | `rgba(255,255,255,0.18)` fill, `backdrop-filter: blur(16px) saturate(140%)`, 1 px `rgba(255,255,255,0.35)` border, soft inner highlight | Only over photos and brand gradients, and only for **large text and controls**: hero card, header over the hero, sign-in card. Text is white over an indigo scrim gradient (≥ 55%) beneath the glass, with contrast verified for each hero photo |
-| **Frosted glass** | `rgba(255,255,255,0.85)` fill, `backdrop-filter: blur(12px)`, 1 px `rgba(15,26,158,0.08)` border | Everything people read or type in: forms, tables, profiles, dashboard tiles, menus, toasts, modals, bottom sheets, sticky header and nav bars once scrolled |
+| **Clear glass** | Light: `rgba(255,255,255,0.18)` fill, 1 px `rgba(255,255,255,0.35)` border. Dark: `rgba(255,255,255,0.08)` fill, 1 px `rgba(255,255,255,0.14)` border. Both: `backdrop-filter: blur(16px) saturate(140%)`, soft inner highlight | Only over photos and brand gradients, and only for **large text and controls**: hero card, header over the hero, sign-in card. Text is white over an indigo scrim gradient (≥ 55%) beneath the glass, with contrast verified for each hero photo |
+| **Frosted glass** | Light: `rgba(255,255,255,0.85)` fill, 1 px `rgba(15,26,158,0.08)` border. Dark: `rgba(21,19,58,0.80)` fill, 1 px `rgba(154,162,255,0.14)` border. Both: `backdrop-filter: blur(12px)` | Everything people read or type in: forms, tables, profiles, dashboard tiles, menus, toasts, modals, bottom sheets, sticky header and nav bars once scrolled |
 
 - **Backgrounds behind glass:**
   - **Portal and sign-in:** a soft, static mesh gradient of the logo colours (indigo → cerulean → violet, with an amber glow). It is a static CSS gradient, not an animated canvas.
@@ -464,11 +469,12 @@ All colours are taken from the logo. Contrast figures are WCAG ratios.
 
 ### 8.3 Typography
 
-- **Fonts:** Outfit for headings, chosen because its geometric round forms echo the logo's lettering. Work Sans for body text and UI.
-- **Scale:** 14 (labels and captions; never body), 16 (body, inputs), 18, 22, 28, 36, 48 (hero on desktop; 36 on phones).
-- **Body text:** line height 1.6 and lines of 60–75 characters on desktop.
+- **Font (owner's choice):** **Poppins** for all text: headings, body and UI. It is a geometric sans-serif whose round forms echo the logo's lettering, under the SIL Open Font License (free for commercial web use). It is self-hosted through `next/font/google`, with weights 400, 500, 600 and 700 and the Latin subset only.
+- **Fallback stack:** `Poppins, ui-sans-serif, system-ui, "Segoe UI", Roboto, Arial, sans-serif`, with `next/font`'s size-adjusted fallback so the layout doesn't shift when Poppins loads.
+- **Scale:** 14 (labels and captions; never body), 16 (body, inputs), 18, 22, 28, 36, 48 (hero on desktop; 36 on phones). Poppins runs wide, so headings use slightly tighter tracking (−0.01em) and the hero is capped at 48 px.
+- **Body text:** line height 1.65 and lines of 60–70 characters on desktop.
 - **Weights:** headings 600–700, body 400, labels 500.
-- **Numbers:** tabular figures for IDs, dates and counts.
+- **Numbers:** `font-variant-numeric: tabular-nums` for IDs, dates and counts.
 
 ### 8.4 Shape, depth and spacing
 
@@ -478,6 +484,7 @@ All colours are taken from the logo. Contrast figures are WCAG ratios.
 - **Breakpoints:** 375, 768, 1024, 1440.
 - **Icons:** Lucide only, with consistent stroke. Icons are never emoji.
 - **Gem motif:** a small faceted shape from the logo, used sparingly as a section accent.
+- **Logo in dark mode:** the logo's deep indigo would vanish on a dark background, so in dark mode the logo sits on a soft white rounded tile. The logo's own colours are never altered.
 
 ### 8.5 Swipe interactions
 
@@ -529,6 +536,17 @@ Built with Motion for React (`LazyMotion` + `domAnimation`), loaded only where u
 - Icon-only buttons have accessible names. Decorative icons use `aria-hidden`.
 - Toasts don't steal focus (`aria-live="polite"`).
 - Text resizes to 200% without breaking the layout or causing horizontal scrolling.
+- Both themes meet every rule above. Contrast is checked separately in light and dark, never assumed from one.
+
+### 8.8 Light and dark themes
+
+- **Default:** follow the device (`prefers-color-scheme`).
+- **Toggle:** a three-way **Light / Dark / System** control. On the website it sits in the header (an icon button opening a small menu, also in the mobile menu); in the portal it goes in the account menu (Plan 4). The choice is stored on the device under `localStorage` key `adss-theme`. Storage failures, such as private mode, fall back to System.
+- **No flash:** a tiny inline script in `<head>` sets `data-theme="light|dark"` on `<html>` before the first paint. CSS defines light tokens on `:root` and dark tokens on `[data-theme="dark"]`, with a `prefers-color-scheme` fallback for the rare case where the script can't run.
+- **Browser chrome:** `color-scheme` and the `theme-color` meta tag follow the active theme, so scrollbars, form controls and the phone's address bar match.
+- **Switching:** a 200 ms cross-fade where the View Transitions API is available and motion is allowed; otherwise an instant switch.
+- **Accessibility:** the toggle has a visible label for each option and announces the current choice (`aria-checked` on menu radio items).
+- **Photos:** unchanged between themes. Hero scrims keep text contrast in both themes.
 
 ---
 
@@ -608,7 +626,7 @@ Behaviour is test-driven: the test is written before the code.
 
 **Frontend (Vitest + React Testing Library):** form validation and error mapping, swipe components with button alternatives, Lite-mode switching, reduced-motion behaviour.
 
-**Browser tests (Playwright):** run at **375 px and 1440 px**, with axe accessibility scans on every visited page:
+**Browser tests (Playwright):** run at **375 px and 1440 px**, with axe accessibility scans on every visited page **in both light and dark themes**:
 1. Public site → submit enquiry → confirmation.
 2. Parent activation via SMS code (console backend) → sign-in → sees children.
 3. Administrator sign-in with second factor → add student → appears in class list with a valid Student ID.
@@ -620,7 +638,7 @@ Behaviour is test-driven: the test is written before the code.
 
 ## 13. Development setup and deploy readiness
 
-- **Prerequisites the owner installs once:** PostgreSQL (exact steps go in the implementation plan). Python 3.14 (`py` launcher), Node 24 and git are already present.
+- **Prerequisites the owner installs once:** PostgreSQL. Python 3.14 (`py` launcher), Node 24 and git are already present. The database is chosen by `DATABASE_URL`. **Plan 1 (website) runs on SQLite** so work can start before PostgreSQL is installed; its tables use nothing database-specific. **Plan 2 switches development and tests to PostgreSQL** and re-runs every test.
 - **Project-local tooling:** a Python virtual environment with pinned requirements; npm for the frontend.
 - **Running locally:** two commands start the system. Django serves on `:8000`; Next.js serves on `:3000` and proxies `/api`.
 - **OneDrive:** the working folder `Codes/` is inside OneDrive. OneDrive on Windows cannot exclude sub-folders by pattern, and syncing `node_modules/`, `.venv/` and `.next/` (tens of thousands of files) causes slowness and file-lock errors during installs and builds. **The repository therefore lives at `C:\Dev\ad-smart-school\`**, outside OneDrive (moved there on 9 October 2026, at the owner's request). Off-machine backup comes from git (a private GitHub repository) rather than OneDrive. The source photos stay in `Codes/` and are copied into the repository.
@@ -633,7 +651,7 @@ Behaviour is test-driven: the test is written before the code.
 
 - Phases 2–10 of SMS spec §38: finance and ledger, canteen and extra classes, SMS reminders, payments (Paystack, MoMo, USSD), attendance, assessment and results, report cards, early-years daily reports, safeguarding and health tools, bus, bookshop and uniforms, lesson notes, timetable, rollover, advanced reports, learning resources and AI.
 - Bulk import from spreadsheets: the school has no existing records. It can be added later if needed.
-- Dark mode, and languages other than English.
+- Languages other than English.
 - The production launch itself (§15).
 
 ---
