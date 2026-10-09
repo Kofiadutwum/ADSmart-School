@@ -1,26 +1,303 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+@custom-variant lite (&:where([data-lite], [data-lite] *));
+
+/* ---------- Tokens (spec §8.1). Light theme ---------- */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --paper: #faf9f6;
+  --card: #ffffff;
+  --ink: #14123a;
+  --ink-muted: #4a4e69;
+  --accent-indigo: #0f1a9e;
+  --btn-primary: #0f1a9e;
+  --brand-amber: #f0ad1c;
+  --on-amber: #14123a;
+  --accent-cerulean: #0277bd;
+  --accent-violet: #8806a8;
+  --accent-copper: #c4601f;
+  --danger: #dc2626;
+  --success: #15803d;
+  --line: rgb(20 18 58 / 0.12);
+  --logo-tile: #ffffff;
+
+  --glass-clear-bg: rgb(11 10 31 / 0.38);
+  --glass-clear-border: rgb(255 255 255 / 0.22);
+  --glass-clear-lite-bg: rgb(15 26 158 / 0.88);
+  --glass-frosted-bg: rgb(255 255 255 / 0.85);
+  --glass-frosted-border: rgb(15 26 158 / 0.08);
+
+  --mesh-a: #0f1a9e;
+  --mesh-b: #0277bd;
+  --mesh-c: #8806a8;
+  --mesh-glow: rgb(240 173 28 / 0.35);
+  --scrim: linear-gradient(
+    180deg,
+    rgb(11 10 31 / 0.35) 0%,
+    rgb(15 26 158 / 0.55) 55%,
+    rgb(11 10 31 / 0.85) 100%
+  );
+
+  --elev-1: 0 1px 2px rgb(20 18 58 / 0.06), 0 4px 12px rgb(20 18 58 / 0.06);
+  --elev-2: 0 2px 6px rgb(20 18 58 / 0.08), 0 16px 40px rgb(20 18 58 / 0.14);
+
+  color-scheme: light;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* ---------- Dark theme ---------- */
+[data-theme="dark"] {
+  --paper: #0b0a1f;
+  --card: #15133a;
+  --ink: #ecebfa;
+  --ink-muted: #b4b3d6;
+  --accent-indigo: #9aa2ff;
+  --btn-primary: #3b46d9;
+  --accent-cerulean: #5bb8f5;
+  --accent-violet: #d58bf0;
+  --accent-copper: #e08a4f;
+  --danger: #f87171;
+  --success: #4ade80;
+  --line: rgb(236 235 250 / 0.12);
+
+  --glass-clear-bg: rgb(11 10 31 / 0.45);
+  --glass-clear-border: rgb(255 255 255 / 0.14);
+  --glass-clear-lite-bg: rgb(27 31 107 / 0.92);
+  --glass-frosted-bg: rgb(21 19 58 / 0.8);
+  --glass-frosted-border: rgb(154 162 255 / 0.14);
+
+  --mesh-a: #0b0a1f;
+  --mesh-b: #1b1f6b;
+  --mesh-c: #3a1450;
+  --mesh-glow: rgb(240 173 28 / 0.14);
+
+  --elev-1: 0 1px 2px rgb(0 0 0 / 0.4);
+  --elev-2: 0 16px 40px rgb(0 0 0 / 0.45);
+
+  color-scheme: dark;
 }
 
+/* Fallback for the rare case where the boot script cannot run. */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  :root:not([data-theme]) {
+    --paper: #0b0a1f;
+    --card: #15133a;
+    --ink: #ecebfa;
+    --ink-muted: #b4b3d6;
+    --accent-indigo: #9aa2ff;
+    --btn-primary: #3b46d9;
+    --accent-cerulean: #5bb8f5;
+    --accent-violet: #d58bf0;
+    --accent-copper: #e08a4f;
+    --danger: #f87171;
+    --success: #4ade80;
+    --line: rgb(236 235 250 / 0.12);
+    --glass-clear-bg: rgb(11 10 31 / 0.45);
+    --glass-clear-border: rgb(255 255 255 / 0.14);
+    --glass-clear-lite-bg: rgb(27 31 107 / 0.92);
+    --glass-frosted-bg: rgb(21 19 58 / 0.8);
+    --glass-frosted-border: rgb(154 162 255 / 0.14);
+    --mesh-a: #0b0a1f;
+    --mesh-b: #1b1f6b;
+    --mesh-c: #3a1450;
+    --mesh-glow: rgb(240 173 28 / 0.14);
+    --elev-1: 0 1px 2px rgb(0 0 0 / 0.4);
+    --elev-2: 0 16px 40px rgb(0 0 0 / 0.45);
+    color-scheme: dark;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ---------- Tailwind theme ---------- */
+@theme inline {
+  --font-sans:
+    var(--font-poppins), ui-sans-serif, system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+  --color-paper: var(--paper);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-indigo: var(--accent-indigo);
+  --color-primary: var(--btn-primary);
+  --color-amber: var(--brand-amber);
+  --color-on-amber: var(--on-amber);
+  --color-cerulean: var(--accent-cerulean);
+  --color-violet: var(--accent-violet);
+  --color-copper: var(--accent-copper);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-line: var(--line);
+  --radius-control: 12px;
+  --radius-card: 16px;
+  --shadow-elev-1: var(--elev-1);
+  --shadow-elev-2: var(--elev-2);
+}
+
+/* ---------- Base ---------- */
+@layer base {
+  html {
+    scroll-padding-top: 6rem;
+    -webkit-text-size-adjust: 100%;
+    background-color: var(--paper);
+  }
+  body {
+    line-height: 1.65;
+  }
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    text-wrap: balance;
+  }
+  :focus-visible {
+    outline: 2px solid var(--accent-indigo);
+    outline-offset: 2px;
+  }
+  .on-dark :focus-visible {
+    outline-color: var(--brand-amber);
+  }
+}
+
+/* ---------- Components ---------- */
+@layer components {
+  .glass-clear {
+    background: var(--glass-clear-bg);
+    border: 1px solid var(--glass-clear-border);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    backdrop-filter: blur(16px) saturate(140%);
+  }
+  .glass-frosted {
+    background: var(--glass-frosted-bg);
+    border: 1px solid var(--glass-frosted-border);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
+  /* Frosted look without blur: for long lists and large areas (spec §8.2). */
+  .surface {
+    background: var(--glass-frosted-bg);
+    border: 1px solid var(--glass-frosted-border);
+  }
+  [data-lite] .glass-clear {
+    background: var(--glass-clear-lite-bg);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  [data-lite] .glass-frosted,
+  [data-lite] .surface {
+    background: var(--card);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .bg-brand-mesh {
+    background:
+      radial-gradient(60% 50% at 12% 18%, var(--mesh-glow), transparent 70%),
+      radial-gradient(
+        50% 60% at 90% 8%,
+        color-mix(in srgb, var(--mesh-c) 70%, transparent),
+        transparent 70%
+      ),
+      linear-gradient(135deg, var(--mesh-a) 0%, var(--mesh-b) 55%, var(--mesh-c) 100%);
+  }
+  .scrim {
+    background: var(--scrim);
+  }
+
+  .press {
+    transition-property: transform, filter, background-color, color, box-shadow;
+    transition-duration: 160ms;
+    transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .press:active {
+    transform: scale(0.97);
+  }
+
+  .link {
+    color: var(--accent-indigo);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+  .on-dark .link {
+    color: #ffffff;
+  }
+
+  .logo-tile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: var(--logo-tile);
+    padding: 4px 6px;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
+  }
+
+  .animate-rise {
+    animation: rise 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .animate-pop {
+    animation: pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+  .animate-sheet-in {
+    animation: sheet-in 320ms cubic-bezier(0.34, 1.3, 0.64, 1) both;
+  }
+  .animate-fade-in {
+    animation: fade-in 200ms ease-out both;
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Theme switch cross-fade (View Transitions API). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 200ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
