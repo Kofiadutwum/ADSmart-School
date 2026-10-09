@@ -9,6 +9,8 @@ from django.db import transaction
 from apps.accounts import roles
 from apps.accounts.identifiers import normalise_identifier
 from apps.accounts.models import User
+from apps.audit.models import AuditLog
+from apps.audit.services import record
 from apps.core.phones import normalise_gh_phone
 from apps.school.models import School
 
@@ -76,5 +78,11 @@ class Command(BaseCommand):
 
         names = set(role) | ({DEFAULT_ROLE[kind]} if kind in DEFAULT_ROLE else set())
         user.groups.set(Group.objects.filter(name__in=names))
+        record(
+            AuditLog.Action.USER_CREATED,
+            entity=user,
+            new={"kind": kind, "roles": sorted(names)},
+            reason="Created with manage.py create_user",
+        )
         where = owner.name if owner else "the platform"
         self.stdout.write(self.style.SUCCESS(f"Created {kind} {identifier} at {where}."))

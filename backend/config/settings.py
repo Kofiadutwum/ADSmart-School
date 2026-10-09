@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "apps.accounts",
+    "apps.audit",
     "apps.core",
     "apps.school",
     "apps.consent",
