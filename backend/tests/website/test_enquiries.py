@@ -149,3 +149,17 @@ def test_email_failure_does_not_lose_the_enquiry(api, school, payload, monkeypat
 
     assert api.post(URL, payload, format="json").status_code == 201
     assert Enquiry.objects.count() == 1
+
+
+def test_ip_throttle_uses_the_address_added_by_the_reverse_proxy(api, school, payload):
+    """Caddy appends the real client IP; Next.js passes the header through unchanged.
+    A forged first entry must not let a visitor dodge the per-IP limit."""
+    payload["data_consent"] = False
+    forged = [
+        api.post(
+            URL, payload, format="json", HTTP_X_FORWARDED_FOR=f"10.0.0.{n}, 203.0.113.7"
+        ).status_code
+        for n in range(31)
+    ]
+
+    assert forged[30] == 429

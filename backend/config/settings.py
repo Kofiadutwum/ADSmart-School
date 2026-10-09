@@ -117,7 +117,9 @@ REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
     "EXCEPTION_HANDLER": "apps.core.exceptions.api_exception_handler",
-    # Reverse proxies in front of Django: Next.js in development (1); Caddy + Next.js later (2).
+    # Proxies that append to X-Forwarded-For. Next.js passes the header through without adding
+    # to it, so this stays 1 in production (Caddy adds the client IP). Raising it would let
+    # visitors forge their IP and dodge the enquiry limits (see test_ip_throttle_uses_...).
     "NUM_PROXIES": env.int("DJANGO_NUM_PROXIES", default=1),
     # Generous per-IP limits: many Ghanaian mobile users share one public IP (carrier NAT).
     "DEFAULT_THROTTLE_RATES": {"enquiry_ip": "30/hour", "enquiry_token": "60/hour"},
