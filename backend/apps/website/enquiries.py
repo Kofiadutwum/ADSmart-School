@@ -10,7 +10,6 @@ from django.utils import timezone
 
 from apps.core.exceptions import ApiError
 from apps.core.phones import format_gh_local
-from apps.school.models import SchoolProfile
 from apps.website.models import Enquiry
 
 logger = logging.getLogger(__name__)
@@ -38,10 +37,10 @@ def check_form_token(token: str) -> None:
         )
 
 
-def phone_limit_reached(phone_e164: str) -> bool:
+def phone_limit_reached(school, phone_e164: str) -> bool:
     since = timezone.now() - timedelta(days=1)
-    recent = Enquiry.objects.filter(phone=phone_e164, created_at__gte=since).count()
-    return recent >= MAX_PER_PHONE_PER_DAY
+    recent = Enquiry.objects.for_school(school).filter(phone=phone_e164, created_at__gte=since)
+    return recent.count() >= MAX_PER_PHONE_PER_DAY
 
 
 def _format_date(value) -> str:
@@ -49,8 +48,8 @@ def _format_date(value) -> str:
 
 
 def notify_school(enquiry: Enquiry) -> None:
-    school = SchoolProfile.load()
-    if school is None or not school.email:
+    school = enquiry.school
+    if not school.email:
         logger.warning("Enquiry %s saved but no school email is set", enquiry.pk)
         return
     body = "\n".join(

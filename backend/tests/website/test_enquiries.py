@@ -44,6 +44,7 @@ def test_a_valid_enquiry_is_saved_and_emailed_to_the_school(api, school, payload
     assert response.status_code == 201
     assert response.json() == {"status": "received"}
     enquiry = Enquiry.objects.get()
+    assert enquiry.school == school
     assert enquiry.phone == "+233241234567"
     assert enquiry.status == Enquiry.Status.NEW
     assert len(mail.outbox) == 1
@@ -51,6 +52,32 @@ def test_a_valid_enquiry_is_saved_and_emailed_to_the_school(api, school, payload
     assert mail.outbox[0].subject == "New admission enquiry: Lower Primary (Basic 1–3)"
     assert "Ama Mensah" in mail.outbox[0].body
     assert "024 123 4567" in mail.outbox[0].body
+
+
+def test_enquiries_go_to_the_school_at_the_address_used(api, school, other_school, payload):
+    response = api.post(URL, payload, format="json", HTTP_HOST="brightfuture.localhost")
+
+    assert response.status_code == 201
+    assert Enquiry.objects.get().school == other_school
+    assert mail.outbox[0].to == ["office@brightfuture.example"]
+
+
+def test_enquiries_to_an_unknown_address_are_not_found(api, db, payload):
+    response = api.post(URL, payload, format="json", HTTP_HOST="nobody.localhost")
+
+    assert response.status_code == 404
+    assert Enquiry.objects.count() == 0
+
+
+def test_the_level_must_be_one_the_school_teaches(api, other_school, payload):
+    payload["level_wanted"] = "jhs"
+
+    response = api.post(URL, payload, format="json", HTTP_HOST="brightfuture.localhost")
+
+    assert response.status_code == 400
+    assert response.json()["fields"]["level_wanted"] == [
+        "We don't teach that level. Choose one of the levels listed."
+    ]
 
 
 def test_accepts_ghanaian_letters_in_names(api, school, payload):
@@ -131,6 +158,16 @@ def test_fourth_enquiry_from_same_phone_in_a_day_is_refused(api, school, payload
 
     assert response.status_code == 429
     assert response.json()["code"] == "too_many_enquiries"
+
+
+def test_the_phone_limit_is_counted_per_school(api, school, other_school, payload):
+    for _ in range(3):
+        api.post(URL, payload, format="json")
+    payload["level_wanted"] = "kg"
+
+    response = api.post(URL, payload, format="json", HTTP_HOST="brightfuture.localhost")
+
+    assert response.status_code == 201
 
 
 def test_ip_throttle_allows_thirty_per_hour(api, school, payload):

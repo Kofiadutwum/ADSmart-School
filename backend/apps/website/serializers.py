@@ -55,6 +55,14 @@ class EnquirySerializer(serializers.ModelSerializer):
         except ValueError as exc:
             raise serializers.ValidationError(str(exc)) from exc
 
+    def validate_level_wanted(self, value: str) -> str:
+        school = self.context.get("school")
+        if school is not None and value not in school.levels_offered:
+            raise serializers.ValidationError(
+                "We don't teach that level. Choose one of the levels listed."
+            )
+        return value
+
     def validate_child_date_of_birth(self, value: date) -> date:
         today = timezone.localdate()
         if value > today:

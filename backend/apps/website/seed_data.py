@@ -3,6 +3,7 @@ is_draft) until the school confirms it, so the site stays in preview (spec §6.5
 
 from dataclasses import dataclass
 
+SCHOOL_SLUG = "adsmart"
 SCHOOL = {
     "name": "AD Smart School",
     "motto": "",

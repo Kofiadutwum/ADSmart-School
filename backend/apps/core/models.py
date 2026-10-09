@@ -22,8 +22,9 @@ class ImageRenditionsMixin(models.Model):
 
     def save(self, *args, **kwargs):
         name_before_save = self._source_name()
+        # Renditions given up front (shared placeholder photos) are kept as they are.
         changed = bool(name_before_save) and (
-            self._state.adding or name_before_save != self._rendered_name
+            (self._state.adding and not self.renditions) or name_before_save != self._rendered_name
         )
         cleared = not name_before_save and bool(self._rendered_name)
         super().save(*args, **kwargs)

@@ -16,7 +16,17 @@ if (BASE_DIR / ".env").exists():
 
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = env.bool("DJANGO_DEBUG", default=False)
-ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
+# Any host may reach Django because only Next.js (on the same machine) can: each request's
+# host is matched to a school by apps.school.hosts, and unknown hosts get 404 (amendment §2.4).
+ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["*"])
+USE_X_FORWARDED_HOST = True
+
+PLATFORM_NAME = env("PLATFORM_NAME", default="SchoolSite")
+PLATFORM_DOMAIN = env("PLATFORM_DOMAIN", default="localhost")
+PLATFORM_EMAIL = env("PLATFORM_EMAIL", default="")
+# How a school's address is written in links: development "http://{host}:3000",
+# production "https://{host}".
+SITE_URL_TEMPLATE = env("SITE_URL_TEMPLATE", default="http://{host}:3000")
 
 INSTALLED_APPS = [
     "django.contrib.admin",

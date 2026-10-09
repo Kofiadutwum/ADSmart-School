@@ -1,7 +1,7 @@
 import pytest
 
 from apps.consent.models import PrivacyNotice
-from apps.school.models import SchoolProfile
+from apps.school.models import School
 from apps.website.models import ContentBlock, FeatureBlock, NewsPost, PhotoSlot
 from apps.website.seed_data import LEVEL_CODES
 from apps.website.seeding import seed_website
@@ -10,18 +10,19 @@ from apps.website.services import is_site_public
 pytestmark = pytest.mark.django_db
 
 
-def test_seed_creates_a_complete_preview_site():
+def test_seed_creates_ad_smart_school_with_a_complete_preview_site():
     created = seed_website()
 
+    school = School.objects.get(slug="adsmart")
     assert created > 0
-    assert SchoolProfile.load().phone == "+233545875881"
-    assert PhotoSlot.objects.count() == 14
-    assert PhotoSlot.objects.filter(is_placeholder=False).count() == 0
+    assert school.phone == "+233545875881"
+    assert PhotoSlot.objects.for_school(school).count() == 14
+    assert not PhotoSlot.objects.filter(is_placeholder=False).exists()
     assert all(slot.renditions for slot in PhotoSlot.objects.all())
-    assert FeatureBlock.objects.filter(enabled=True).count() == 0
-    assert NewsPost.objects.published().count() == 1
-    assert PrivacyNotice.current().is_draft is True
-    assert is_site_public() is False
+    assert not FeatureBlock.objects.filter(enabled=True).exists()
+    assert NewsPost.objects.for_school(school).published().count() == 1
+    assert PrivacyNotice.current(school).is_draft is True
+    assert is_site_public(school) is False
 
 
 def test_seed_provides_every_level_block():

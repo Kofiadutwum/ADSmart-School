@@ -1,32 +1,32 @@
-"""Website rules that span several models."""
+"""Website rules that span several models, always for one school."""
 
 from apps.consent.models import PrivacyNotice
-from apps.core.exceptions import ApiError
 from apps.core.images import image_payload
 from apps.core.phones import format_gh_local, whatsapp_link
-from apps.school.models import SchoolProfile
-from apps.website.models import ContentBlock, Fact, FeatureBlock, NewsPost, PhotoSlot, SiteSettings
+from apps.school.branding import brand_tokens
+from apps.school.models import School
+from apps.website.models import ContentBlock, Fact, FeatureBlock, NewsPost, PhotoSlot
 
 
-def publication_blockers() -> list[str]:
-    """Everything still keeping the site in preview (spec §6.5). Empty means public."""
+def publication_blockers(school: School) -> list[str]:
+    """Everything still keeping the site in preview (Phase 1 spec §6.5). Empty means public."""
     blockers = []
-    placeholders = PhotoSlot.objects.filter(is_placeholder=True).count()
+    placeholders = PhotoSlot.objects.for_school(school).filter(is_placeholder=True).count()
     if placeholders:
         blockers.append(f"{placeholders} photo slot(s) still use placeholder photos")
-    provisional = ContentBlock.objects.filter(needs_review=True).count()
+    provisional = ContentBlock.objects.for_school(school).filter(needs_review=True).count()
     if provisional:
         blockers.append(f"{provisional} text block(s) still need review")
-    notice = PrivacyNotice.current()
+    notice = PrivacyNotice.current(school)
     if notice is None or notice.is_draft:
         blockers.append("The privacy notice has not been reviewed")
-    if not SiteSettings.load().is_live:
+    if not school.is_live:
         blockers.append("The site has not been marked live")
     return blockers
 
 
-def is_site_public() -> bool:
-    return not publication_blockers()
+def is_site_public(school: School) -> bool:
+    return not publication_blockers(school)
 
 
 def _photo(slot: PhotoSlot) -> dict | None:
@@ -36,12 +36,10 @@ def _photo(slot: PhotoSlot) -> dict | None:
     return {**payload, "caption": slot.caption, "is_placeholder": slot.is_placeholder}
 
 
-def build_site_payload() -> dict:
-    school = SchoolProfile.load()
-    if school is None:
-        raise ApiError("not_configured", "The school profile has not been set up yet.", 503)
+def build_site_payload(school: School) -> dict:
     years = school.years_since_founding()
-    slots = list(PhotoSlot.objects.all())
+    slots = list(PhotoSlot.objects.for_school(school))
+    facts = Fact.objects.for_school(school).filter(visible=True)
     return {
         "school": {
             "name": school.name,
@@ -57,16 +55,21 @@ def build_site_payload() -> dict:
             "whatsapp_link": whatsapp_link(school.whatsapp) if school.whatsapp else "",
             "email": school.email,
             "map_query": school.map_query,
+            "logo": image_payload(school.renditions, f"{school.name} logo"),
+            "base_url": school.base_url(),
+            "levels_offered": school.levels_offered,
         },
-        "is_public": is_site_public(),
-        "content": {block.key: block.text for block in ContentBlock.objects.all()},
+        "brand": brand_tokens(school.brand_primary, school.brand_accent),
+        "is_public": is_site_public(school),
+        "content": {block.key: block.text for block in ContentBlock.objects.for_school(school)},
         "facts": [
-            {"label": fact.label, "value": fact.display_value(years)}
-            for fact in Fact.objects.filter(visible=True)
+            {"label": fact.label, "value": value}
+            for fact in facts
+            if (value := fact.display_value(years)) is not None
         ],
         "features": [
             {"key": f.key, "title": f.title, "text": f.text, "icon": f.icon}
-            for f in FeatureBlock.objects.filter(enabled=True)
+            for f in FeatureBlock.objects.for_school(school).filter(enabled=True)
         ],
         "photos": {s.key: _photo(s) for s in slots if not s.key.startswith("gallery_")},
         "gallery": [photo for s in slots if s.key.startswith("gallery_") and (photo := _photo(s))],

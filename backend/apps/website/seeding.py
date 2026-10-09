@@ -3,41 +3,49 @@ from django.core.files import File
 from django.utils import timezone
 
 from apps.consent.models import PrivacyNotice
-from apps.school.models import SchoolProfile
+from apps.school.models import School
 from apps.website import seed_data
-from apps.website.models import ContentBlock, Fact, FeatureBlock, NewsPost, PhotoSlot, SiteSettings
+from apps.website.models import ContentBlock, Fact, FeatureBlock, NewsPost, PhotoSlot
 
 SEED_PHOTO_DIR = settings.BASE_DIR / "seed" / "placeholder_photos"
 
 
 def seed_website() -> int:
-    """Create any missing default content. Existing rows are never changed."""
+    """Create AD Smart School and any missing default content. Existing rows never change."""
     created = 0
 
-    if SchoolProfile.load() is None:
-        SchoolProfile(**seed_data.SCHOOL).save()
+    school = School.objects.filter(slug=seed_data.SCHOOL_SLUG).first()
+    if school is None:
+        school = School(slug=seed_data.SCHOOL_SLUG, **seed_data.SCHOOL)
+        school.full_clean()
+        school.save()
         created += 1
 
     for key, text, help_text in seed_data.CONTENT_BLOCKS:
         _, made = ContentBlock.objects.get_or_create(
-            key=key, defaults={"text": text, "help_text": help_text}
+            school=school, key=key, defaults={"text": text, "help_text": help_text}
         )
         created += made
 
     for order, (label, value) in enumerate(seed_data.FACTS):
-        _, made = Fact.objects.get_or_create(label=label, defaults={"value": value, "order": order})
+        _, made = Fact.objects.get_or_create(
+            school=school, label=label, defaults={"value": value, "order": order}
+        )
         created += made
 
     for order, (key, title, text, icon) in enumerate(seed_data.FEATURES):
         _, made = FeatureBlock.objects.get_or_create(
-            key=key, defaults={"title": title, "text": text, "icon": icon, "order": order}
+            school=school,
+            key=key,
+            defaults={"title": title, "text": text, "icon": icon, "order": order},
         )
         created += made
 
     for order, photo in enumerate(seed_data.PHOTOS):
-        if PhotoSlot.objects.filter(key=photo.key).exists():
+        if PhotoSlot.objects.for_school(school).filter(key=photo.key).exists():
             continue
         slot = PhotoSlot(
+            school=school,
             key=photo.key,
             alt_text=photo.alt_text,
             caption=photo.caption,
@@ -51,6 +59,7 @@ def seed_website() -> int:
 
     for post in seed_data.NEWS:
         _, made = NewsPost.objects.get_or_create(
+            school=school,
             slug=post["slug"],
             defaults={
                 "title": post["title"],
@@ -63,6 +72,7 @@ def seed_website() -> int:
         created += made
 
     _, made = PrivacyNotice.objects.get_or_create(
+        school=school,
         version=seed_data.PRIVACY_NOTICE["version"],
         defaults={
             "title": seed_data.PRIVACY_NOTICE["title"],
@@ -71,6 +81,4 @@ def seed_website() -> int:
         },
     )
     created += made
-
-    SiteSettings.load()
     return created
