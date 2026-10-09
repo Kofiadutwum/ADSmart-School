@@ -1,10 +1,18 @@
-"""Default website content. Everything here is provisional (needs_review / is_placeholder /
-is_draft) until the school confirms it, so the site stays in preview (spec §6.5)."""
+"""Starting content for a school's website (amendment §7.4).
+
+Everything is provisional (needs_review / is_placeholder / is_draft) until the school confirms
+it, so a new site stays in preview (Phase 1 spec §6.5). Text may use the names returned by
+context_for(): {name}, {town}, {span} ("Crèche–JHS"), {span_words} ("Crèche to JHS"),
+{subline} and {history}.
+"""
 
 from dataclasses import dataclass
 
-SCHOOL_SLUG = "adsmart"
-SCHOOL = {
+from apps.school.models import LEVEL_CODES
+
+# The platform's first school (amendment §1).
+FIRST_SCHOOL = {
+    "slug": "adsmart",
     "name": "AD Smart School",
     "motto": "",
     "founded_year": 2001,
@@ -17,8 +25,50 @@ SCHOOL = {
     "email": "kofiadutwumjnr881@gmail.com",
     "map_query": "Kronom, Kumasi, Ghana",
 }
+FIRST_SCHOOL_LOGO = "ad-smart-school-logo.png"
+FIRST_SCHOOL_NEWS = [
+    {
+        "slug": "welcome-to-our-new-website",
+        "title": "Welcome to our new website",
+        "summary": "School news, key dates and admissions information, together in one place.",
+        "body": "We are building a new website and school system for AD Smart School.\n\n"
+        "Soon you will find school news, key dates and admissions information here, and "
+        "parents will be able to follow their children's progress online.",
+    },
+]
 
-LEVEL_CODES = ("creche", "nursery", "kg", "lower_primary", "upper_primary", "jhs")
+_START = {
+    "creche": "Crèche",
+    "nursery": "Nursery",
+    "kg": "KG",
+    "lower_primary": "Basic 1",
+    "upper_primary": "Basic 4",
+    "jhs": "JHS",
+}
+_END = {**_START, "lower_primary": "Basic 3", "upper_primary": "Basic 6"}
+
+
+def level_span(levels: list[str], joiner: str) -> str:
+    """From the first level offered to the last, e.g. "Crèche–JHS" or "Basic 1 to JHS"."""
+    start, end = _START[levels[0]], _END[levels[-1]]
+    return start if start == end else f"{start}{joiner}{end}"
+
+
+def context_for(school) -> dict[str, str]:
+    founded = school.founded_year
+    return {
+        "name": school.name,
+        "town": school.town,
+        "span": level_span(school.levels_offered, "–"),
+        "span_words": level_span(school.levels_offered, " to "),
+        "subline": f"{school.town} · Since {founded}" if founded else school.town,
+        "history": (
+            f"{school.name} opened its doors in {school.town} in {founded}."
+            if founded
+            else f"{school.name} is a school in {school.town}."
+        ),
+    }
+
 
 # code: (ages, one-line summary, longer detail)
 _LEVELS = {
@@ -63,24 +113,14 @@ _LEVELS = {
     ),
 }
 
-_LEVEL_BLOCKS = [
-    item
-    for code, (ages, summary, detail) in _LEVELS.items()
-    for item in (
-        (f"level_{code}_ages", ages, f"Levels: age range for {code}"),
-        (f"level_{code}_summary", summary, f"Levels: one-line summary for {code}"),
-        (f"level_{code}_detail", detail, f"Levels page: longer description for {code}"),
-    )
-]
-
-# (key, text, where it appears)
-CONTENT_BLOCKS: list[tuple[str, str, str]] = [
-    ("hero_headline", "Bright beginnings, from Crèche to JHS", "Home: main headline"),
-    ("hero_subline", "Kronom, Kumasi · Since 2001", "Home: small line above the headline"),
+# (key, text template, where it appears)
+_BLOCKS: list[tuple[str, str, str]] = [
+    ("hero_headline", "Bright beginnings, from {span_words}", "Home: main headline"),
+    ("hero_subline", "{subline}", "Home: small line above the headline"),
     (
         "hero_intro",
-        "A caring school for children from Crèche to Junior High in Kronom, Kumasi. Come "
-        "and see where your child will learn, play and grow.",
+        "A caring school for children from {span_words} in {town}. Come and see where your "
+        "child will learn, play and grow.",
         "Home: introduction under the headline",
     ),
     (
@@ -89,7 +129,6 @@ CONTENT_BLOCKS: list[tuple[str, str, str]] = [
         "teachers who know them.",
         "Home: introduction to the levels",
     ),
-    *_LEVEL_BLOCKS,
     (
         "for_parents_intro",
         "Staying close to your child's school day, even on a basic phone.",
@@ -109,15 +148,14 @@ CONTENT_BLOCKS: list[tuple[str, str, str]] = [
     ),
     (
         "about_history",
-        "AD Smart School opened its doors in Kronom, Kumasi in 2001.\n\nToday we teach "
-        "children from Crèche through Junior High School, so families can stay with us "
-        "from their child's first steps to the BECE.",
+        "{history}\n\nToday we teach children from {span_words}, so families can stay with "
+        "us as their children grow.",
         "About: the school's story",
     ),
     (
         "head_teacher_welcome",
-        "Welcome to AD Smart School. Our teachers work hard to make every child feel safe, "
-        "valued and excited to learn. We look forward to meeting you and your family.",
+        "Welcome to {name}. Our teachers work hard to make every child feel safe, valued and "
+        "excited to learn. We look forward to meeting you and your family.",
         "About: replace with the head teacher's own welcome",
     ),
     ("head_teacher_name", "The Head Teacher", "About: the head teacher's name and title"),
@@ -144,14 +182,34 @@ CONTENT_BLOCKS: list[tuple[str, str, str]] = [
         "Admissions: documents to bring (one '- ' line each)",
     ),
     ("contact_hours", "Monday to Friday, 7:00 am to 4:00 pm", "Contact: office hours"),
-    ("footer_tagline", "Bright beginnings, from Crèche to JHS.", "Footer: short tagline"),
+    ("footer_tagline", "Bright beginnings, from {span_words}.", "Footer: short tagline"),
 ]
 
-# (label, value)
-FACTS = [
-    ("years serving Kronom", "{years}"),
-    ("every stage of basic education", "Crèche–JHS"),
-]
+
+def content_blocks(levels: list[str]) -> list[tuple[str, str, str]]:
+    """Text templates for a school teaching `levels`; level blocks only for those levels."""
+    level_blocks = [
+        item
+        for code in levels
+        for item in (
+            (f"level_{code}_ages", _LEVELS[code][0], f"Levels: age range for {code}"),
+            (f"level_{code}_summary", _LEVELS[code][1], f"Levels: one-line summary for {code}"),
+            (f"level_{code}_detail", _LEVELS[code][2], f"Levels page: longer text for {code}"),
+        )
+    ]
+    return _BLOCKS + level_blocks
+
+
+def facts_for(school) -> list[tuple[str, str]]:
+    """True facts only (Phase 1 spec §6.2): years since founding, if known, and the levels."""
+    facts = []
+    if school.founded_year:
+        facts.append((f"years serving {school.town}", "{years}"))
+    every_level = list(school.levels_offered) == list(LEVEL_CODES)
+    label = "every stage of basic education" if every_level else "levels under one roof"
+    facts.append((label, level_span(school.levels_offered, "–")))
+    return facts
+
 
 # (key, title, text, icon): all switched off until the feature is live
 FEATURES = [
@@ -277,42 +335,45 @@ PHOTOS = [
     ),
 ]
 
-NEWS = [
-    {
-        "slug": "welcome-to-our-new-website",
-        "title": "Welcome to our new website",
-        "summary": "School news, key dates and admissions information, together in one place.",
-        "body": "We are building a new website and school system for AD Smart School.\n\n"
-        "Soon you will find school news, key dates and admissions information here, and "
-        "parents will be able to follow their children's progress online.",
-    },
-]
+PRIVACY_NOTICE_BODY = "\n\n".join(
+    [
+        "## Who we are",
+        "{name}, {town}, is responsible for the personal information described in this notice.",
+        "## What we collect through this website",
+        "When you send an admissions enquiry we collect your name, phone number and (if "
+        "you give it) email address, your child's name and date of birth, the level you "
+        "are interested in, your preferred visit date and your message.",
+        "## Why we use it",
+        "We use these details only to reply to your enquiry and to arrange a visit. We do "
+        "not sell them or share them with anyone outside the school.",
+        "## Who can see it",
+        "Only the school staff who handle admissions.",
+        "## How long we keep it",
+        "If your child does not join the school, we delete the enquiry within 12 months.",
+        "## Your rights",
+        "You can ask us for a copy of the information we hold about you, ask us to "
+        "correct it, or ask us to delete it. Contact the school office to do so.",
+        "## The law",
+        "We handle personal information in line with Ghana's Data Protection Act, 2012 (Act 843).",
+    ]
+)
 
-PRIVACY_NOTICE = {
-    "version": "2026-draft-1",
-    "title": "Privacy notice",
-    "body": "\n\n".join(
-        [
-            "## Who we are",
-            "AD Smart School, Kronom, Kumasi, is responsible for the personal information "
-            "described in this notice.",
-            "## What we collect through this website",
-            "When you send an admissions enquiry we collect your name, phone number and (if "
-            "you give it) email address, your child's name and date of birth, the level you "
-            "are interested in, your preferred visit date and your message.",
-            "## Why we use it",
-            "We use these details only to reply to your enquiry and to arrange a visit. We do "
-            "not sell them or share them with anyone outside the school.",
-            "## Who can see it",
-            "Only the school staff who handle admissions.",
-            "## How long we keep it",
-            "If your child does not join the school, we delete the enquiry within 12 months.",
-            "## Your rights",
-            "You can ask us for a copy of the information we hold about you, ask us to "
-            "correct it, or ask us to delete it. Contact the school office to do so.",
-            "## The law",
-            "We handle personal information in line with Ghana's Data Protection Act, 2012 "
-            "(Act 843).",
-        ]
-    ),
-}
+PLATFORM_PRIVACY_NOTICE_BODY = "\n\n".join(
+    [
+        "## Who we are",
+        "{platform} runs websites and school systems for schools in Ghana. This notice "
+        "covers this website and the requests sent through it.",
+        "## What we collect",
+        "When you ask us to get your school online we collect the school's name and town, "
+        "your name, phone number and (if you give it) email address, and your message.",
+        "## Why we use it",
+        "Only to reply to you and talk about setting up your school. We do not sell it or "
+        "share it with anyone else.",
+        "## How long we keep it",
+        "If your school does not join, we delete your request within 12 months.",
+        "## Your rights",
+        "You can ask for a copy of what we hold about you, or ask us to correct or delete it.",
+        "## The law",
+        "We handle personal information in line with Ghana's Data Protection Act, 2012 (Act 843).",
+    ]
+)
