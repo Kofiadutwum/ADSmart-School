@@ -7,6 +7,7 @@ SCHOOL_FROM_PATH = "school from the host in the path (tests/website/test_public_
 SCHOOL_FROM_HOST = "school from the address used (tests/website/test_enquiries.py)"
 PLATFORM_ONLY = "platform host only (tests/website/test_platform.py)"
 NO_SCHOOL_DATA = "no school data"
+PENDING_USER = "the pending user at their own address (tests/accounts/test_second_factor.py)"
 OWN_SESSIONS = "the signed-in user's own sessions (tests/accounts/test_sessions.py)"
 
 CLASSIFIED = {
@@ -26,6 +27,10 @@ CLASSIFIED = {
     "api/auth/sessions": OWN_SESSIONS,
     "api/auth/sessions/<int:pk>": OWN_SESSIONS,
     "api/auth/password": "the signed-in user only (tests/accounts/test_sessions.py)",
+    "api/auth/second-factor/setup": PENDING_USER,
+    "api/auth/second-factor/confirm": PENDING_USER,
+    "api/auth/second-factor/sms": PENDING_USER,
+    "api/auth/second-factor/verify": PENDING_USER,
 }
 
 

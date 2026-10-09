@@ -12,18 +12,31 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.accounts.models import User, UserSession
+from apps.accounts.models import SmsCode, TotpDevice, User, UserSession
 from apps.accounts.roles import needs_second_factor
+from apps.accounts.second_factor import (
+    finish_second_factor,
+    issue_backup_codes,
+    new_device,
+    provisioning,
+    reject_code,
+    use_backup_code,
+    verify_totp,
+)
 from apps.accounts.sessions import describe_device, end_other_sessions, end_session, is_expired
 from apps.accounts.signin import (
     check_password_sign_in,
     complete_login,
+    has_authenticator,
     me_payload,
+    pending_user,
     start_second_factor,
 )
+from apps.accounts.sms_codes import check_code, consume, send_code, sms_failed_message
 from apps.audit.models import AuditLog
 from apps.audit.services import record
 from apps.core.exceptions import ApiError
+from apps.notifications.models import SmsMessage
 
 PASSWORD_MAX = 256
 
@@ -143,3 +156,78 @@ class PasswordView(APIView):
         end_other_sessions(user, keep_key=new_key)
         record(AuditLog.Action.PASSWORD_CHANGED, entity=user, request=request)
         return Response(me_payload(user))
+
+
+class CodeSerializer(serializers.Serializer):
+    code = serializers.CharField(max_length=20)
+
+
+class VerifySerializer(CodeSerializer):
+    method = serializers.ChoiceField(choices=["totp", "sms", "backup"])
+
+
+class SecondFactorSetupView(OpenView):
+    def post(self, request):
+        user = pending_user(request)
+        if has_authenticator(user):
+            raise ApiError(
+                "already_set_up", "An authenticator app is already set up for this account.", 400
+            )
+        return Response(provisioning(user, new_device(user).secret))
+
+
+class SecondFactorConfirmView(OpenView):
+    def post(self, request):
+        user = pending_user(request)
+        code = validated(CodeSerializer, request)["code"]
+        device = TotpDevice.objects.filter(user=user, confirmed_at__isnull=True).first()
+        if device is None or not verify_totp(device, code):
+            reject_code(request)
+        device.confirmed_at = timezone.now()
+        device.save(update_fields=["confirmed_at"])
+        codes = issue_backup_codes(user)
+        record(AuditLog.Action.SECOND_FACTOR_SET_UP, actor=user, entity=user, request=request)
+        return Response({**finish_second_factor(request, user), "backup_codes": codes})
+
+
+class SecondFactorSmsView(OpenView):
+    def post(self, request):
+        user = pending_user(request)
+        if not user.phone:
+            raise ApiError(
+                "no_phone",
+                "There's no mobile number on your account. Use your authenticator app or a "
+                "backup code.",
+                400,
+            )
+        message = send_code(user, SmsCode.Purpose.SIGN_IN, user.phone)
+        if message.status == SmsMessage.Status.REFUSED:
+            raise ApiError(
+                "too_many_codes",
+                "Too many codes have been sent to your phone. Wait an hour, or use your "
+                "authenticator app or a backup code.",
+                429,
+            )
+        if message.status != SmsMessage.Status.SENT:
+            raise ApiError("sms_failed", sms_failed_message(user.school), 503)
+        return Response({"sent": True})
+
+
+class SecondFactorVerifyView(OpenView):
+    def post(self, request):
+        user = pending_user(request)
+        data = validated(VerifySerializer, request)
+        method, code = data["method"], data["code"]
+        if method == "totp":
+            device = TotpDevice.objects.filter(user=user, confirmed_at__isnull=False).first()
+            ok = device is not None and verify_totp(device, code)
+        elif method == "sms":
+            row = check_code(user, SmsCode.Purpose.SIGN_IN, code)
+            ok = row is not None and consume(row)
+        else:
+            ok = use_backup_code(user, code)
+            if ok:
+                record(AuditLog.Action.BACKUP_CODE_USED, actor=user, entity=user, request=request)
+        if not ok:
+            reject_code(request)
+        return Response(finish_second_factor(request, user))

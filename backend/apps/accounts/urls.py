@@ -9,4 +9,8 @@ urlpatterns = [
     path("sessions", views.SessionsView.as_view()),
     path("sessions/<int:pk>", views.SessionDetailView.as_view()),
     path("password", views.PasswordView.as_view()),
+    path("second-factor/setup", views.SecondFactorSetupView.as_view()),
+    path("second-factor/confirm", views.SecondFactorConfirmView.as_view()),
+    path("second-factor/sms", views.SecondFactorSmsView.as_view()),
+    path("second-factor/verify", views.SecondFactorVerifyView.as_view()),
 ]
