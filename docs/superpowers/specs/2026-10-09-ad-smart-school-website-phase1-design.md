@@ -189,7 +189,8 @@ Inputs such as `024 xxx xxxx`, `+233 24 xxx xxxx` and `23324xxxxxxx` are validat
 
 | Model | Key fields |
 |---|---|
-| `ContentBlock` | key (e.g. `hero_headline`, `hero_subline`, `about_history`, `head_teacher_welcome`), text |
+| `ContentBlock` | key (e.g. `hero_headline`, `hero_subline`, `about_history`, `head_teacher_welcome`), text, help_text, needs_review (bool, default true: provisional copy blocks go-live, §6.5) |
+| `SiteSettings` (single row) | is_live, went_live_at |
 | `PhotoSlot` | key (`hero`, `about`, `gallery_1` … `gallery_n`, `level_<code>`), image, alt_text, caption, is_placeholder |
 | `Fact` | label, value, order, visible |
 | `FeatureBlock` | key (`SMS_UPDATES`, `MOMO_USSD`, `DAILY_CARE`, `SAFE_PICKUP`), title, text, enabled (**default off**) |
@@ -336,7 +337,11 @@ Home · About · Levels · Admissions · News (list and article) · Contact · P
 ### 6.5 Placeholder photos and the go-live gate
 
 - **Placeholders:** the 14 images in `Codes/` are copied in as placeholders (`is_placeholder = true`). They include AI-generated images and photographs of other schools, so they must **not** appear on the live public site.
-- **The gate:** while any slot is a placeholder, or the site is not marked live, every public page shows a **"Preview: not yet public"** ribbon and sends `noindex`.
+- **The gate:** while **any** of the following holds, every public page shows a **"Preview: not yet public"** ribbon and sends `noindex`:
+  - any photo slot is still a placeholder
+  - any text block is still provisional (`ContentBlock.needs_review`): the seeded copy, ages and admission requirements need the school's confirmation (§15)
+  - the privacy notice is missing or still a draft (Act 843)
+  - the site has not been marked live
 - **The checklist:** the Administrator dashboard's **go-live checklist** (§7.2) lists each remaining placeholder slot.
 
 ### 6.6 Performance budget
@@ -451,7 +456,7 @@ All colours are taken from the logo. In dark mode the brand hues are lightened, 
 
 | Tier | Recipe | Allowed for |
 |---|---|---|
-| **Clear glass** | Light: `rgba(255,255,255,0.18)` fill, 1 px `rgba(255,255,255,0.35)` border. Dark: `rgba(255,255,255,0.08)` fill, 1 px `rgba(255,255,255,0.14)` border. Both: `backdrop-filter: blur(16px) saturate(140%)`, soft inner highlight | Only over photos and brand gradients, and only for **large text and controls**: hero card, header over the hero, sign-in card. Text is white over an indigo scrim gradient (≥ 55%) beneath the glass, with contrast verified for each hero photo |
+| **Clear glass** | A **dark-tinted** clear glass, so white text stays readable even over a bright photo. Light: `rgba(11,10,31,0.38)` fill, 1 px `rgba(255,255,255,0.22)` border. Dark: `rgba(11,10,31,0.45)` fill, 1 px `rgba(255,255,255,0.14)` border. Both: `backdrop-filter: blur(16px) saturate(140%)`, soft inner highlight. (A white-tinted 18% fill was rejected: over a white photo it gives white text only about 2.8:1. The dark tint gives about 7.7:1 in the worst case.) | Only over photos and brand gradients, and only for **large text and controls**: hero card, header over the hero, sign-in card. Text is white over an indigo scrim gradient (≥ 55%) beneath the glass, with contrast verified for each hero photo |
 | **Frosted glass** | Light: `rgba(255,255,255,0.85)` fill, 1 px `rgba(15,26,158,0.08)` border. Dark: `rgba(21,19,58,0.80)` fill, 1 px `rgba(154,162,255,0.14)` border. Both: `backdrop-filter: blur(12px)` | Everything people read or type in: forms, tables, profiles, dashboard tiles, menus, toasts, modals, bottom sheets, sticky header and nav bars once scrolled |
 
 - **Backgrounds behind glass:**
@@ -469,7 +474,7 @@ All colours are taken from the logo. In dark mode the brand hues are lightened, 
 
 ### 8.3 Typography
 
-- **Font (owner's choice):** **Poppins** for all text: headings, body and UI. It is a geometric sans-serif whose round forms echo the logo's lettering, under the SIL Open Font License (free for commercial web use). It is self-hosted through `next/font/google`, with weights 400, 500, 600 and 700 and the Latin subset only.
+- **Font (owner's choice):** **Poppins** for all text: headings, body and UI. It is a geometric sans-serif whose round forms echo the logo's lettering, under the SIL Open Font License (free for commercial web use). It is self-hosted through `next/font/google`, with weights 400, 500, 600 and 700 and the `latin` and `latin-ext` subsets. `latin-ext` covers Ghanaian letters such as Ɛ/ɛ and Ɔ/ɔ in names, and browsers download it only when such a letter appears on the page.
 - **Fallback stack:** `Poppins, ui-sans-serif, system-ui, "Segoe UI", Roboto, Arial, sans-serif`, with `next/font`'s size-adjusted fallback so the layout doesn't shift when Poppins loads.
 - **Scale:** 14 (labels and captions; never body), 16 (body, inputs), 18, 22, 28, 36, 48 (hero on desktop; 36 on phones). Poppins runs wide, so headings use slightly tighter tracking (−0.01em) and the hero is capped at 48 px.
 - **Body text:** line height 1.65 and lines of 60–70 characters on desktop.
@@ -541,7 +546,7 @@ Built with Motion for React (`LazyMotion` + `domAnimation`), loaded only where u
 ### 8.8 Light and dark themes
 
 - **Default:** follow the device (`prefers-color-scheme`).
-- **Toggle:** a three-way **Light / Dark / System** control. On the website it sits in the header (an icon button opening a small menu, also in the mobile menu); in the portal it goes in the account menu (Plan 4). The choice is stored on the device under `localStorage` key `adss-theme`. Storage failures, such as private mode, fall back to System.
+- **Toggle:** a three-way **Light / Dark / System** segmented control: a radio group of three labelled icon buttons, always visible with no menu to open. On the website it sits in the header on desktop and in the mobile menu on phones; in the portal it goes in the account menu (Plan 4). The choice is stored on the device under `localStorage` key `adss-theme`. Storage failures, such as private mode, fall back to System.
 - **No flash:** a tiny inline script in `<head>` sets `data-theme="light|dark"` on `<html>` before the first paint. CSS defines light tokens on `:root` and dark tokens on `[data-theme="dark"]`, with a `prefers-color-scheme` fallback for the rare case where the script can't run.
 - **Browser chrome:** `color-scheme` and the `theme-color` meta tag follow the active theme, so scrollbars, form controls and the phone's address bar match.
 - **Switching:** a 200 ms cross-fade where the View Transitions API is available and motion is allowed; otherwise an instant switch.
