@@ -1,12 +1,13 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import path
+from django.urls import include, path
 
 from apps.core.views import health
 
 urlpatterns = [
     path("api/health", health, name="health"),
+    path("api/public/", include("apps.website.urls")),
 ]
 
 if settings.DEBUG:
