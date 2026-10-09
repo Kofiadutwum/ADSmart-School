@@ -15,11 +15,7 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.SITE_URL ?? "http://localhost:3000"),
-  title: { default: "AD Smart School · Kronom, Kumasi", template: "%s · AD Smart School" },
-  description:
-    "AD Smart School in Kronom, Kumasi: Crèche, Nursery, KG, Primary and Junior High School since 2001.",
-  applicationName: "AD Smart School",
+  title: { default: "School websites", template: "%s" },
 };
 
 export const viewport: Viewport = {

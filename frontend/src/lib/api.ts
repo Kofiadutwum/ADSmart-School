@@ -1,3 +1,4 @@
+import { notFound, redirect } from "next/navigation";
 import type { NewsPost, NewsSummary, PrivacyNotice, SiteData } from "./types";
 
 /** Public pages are rebuilt at most every five minutes (ISR). */
@@ -13,26 +14,30 @@ async function fetchJson<T>(path: string): Promise<T | null> {
     next: { revalidate: REVALIDATE_SECONDS },
   });
   if (response.status === 404) return null;
+  if (response.status === 503 && ((await response.json()) as { code?: string }).code === "suspended") {
+    redirect("/unavailable");
+  }
   if (!response.ok) throw new Error(`Website API ${path} answered ${response.status}`);
   return (await response.json()) as T;
 }
 
-export async function getSite(): Promise<SiteData> {
-  const site = await fetchJson<SiteData>("/api/public/site");
-  if (!site) throw new Error("Website API is missing /api/public/site");
-  return site;
+const sitePath = (host: string) => `/api/public/sites/${encodeURIComponent(host)}`;
+
+/** The school at this address. Unknown addresses show the not-found page. */
+export async function getSite(host: string): Promise<SiteData> {
+  return (await fetchJson<SiteData>(`${sitePath(host)}/site`)) ?? notFound();
 }
 
-export async function getNewsList(limit = 20): Promise<NewsSummary[]> {
-  return (await fetchJson<NewsSummary[]>(`/api/public/news?limit=${limit}`)) ?? [];
+export async function getNewsList(host: string, limit = 20): Promise<NewsSummary[]> {
+  return (await fetchJson<NewsSummary[]>(`${sitePath(host)}/news?limit=${limit}`)) ?? [];
 }
 
-export async function getNewsPost(slug: string): Promise<NewsPost | null> {
-  return fetchJson<NewsPost>(`/api/public/news/${encodeURIComponent(slug)}`);
+export async function getNewsPost(host: string, slug: string): Promise<NewsPost | null> {
+  return fetchJson<NewsPost>(`${sitePath(host)}/news/${encodeURIComponent(slug)}`);
 }
 
-export async function getPrivacyNotice(): Promise<PrivacyNotice | null> {
-  return fetchJson<PrivacyNotice>("/api/public/privacy-notice");
+export async function getPrivacyNotice(host: string): Promise<PrivacyNotice | null> {
+  return fetchJson<PrivacyNotice>(`${sitePath(host)}/privacy-notice`);
 }
 
 export function contentOf(site: SiteData, key: string, fallback = ""): string {

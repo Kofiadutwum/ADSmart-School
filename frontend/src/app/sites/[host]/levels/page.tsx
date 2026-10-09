@@ -5,22 +5,27 @@ import { ButtonLink } from "@/components/ui/button";
 import { CategoryBadge } from "@/components/ui/category-badge";
 import { Container } from "@/components/ui/container";
 import { contentOf, getSite } from "@/lib/api";
-import { LEVELS } from "@/lib/levels";
+import { levelsTitle, offeredLevels } from "@/lib/levels";
+
+type Props = { params: Promise<{ host: string }> };
 
 export const revalidate = 300;
-export const metadata: Metadata = {
-  title: "Levels",
-  description: "Crèche, Nursery, Kindergarten, Primary and Junior High School at AD Smart School, Kronom, Kumasi.",
-};
 
-export default async function LevelsPage() {
-  const site = await getSite();
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { school } = await getSite((await params).host);
+  const names = offeredLevels(school.levels_offered).map((level) => level.shortName);
+  return { title: "Levels", description: `${names.join(", ")} at ${school.name}, ${school.town}.` };
+}
+
+export default async function LevelsPage({ params }: Props) {
+  const site = await getSite((await params).host);
+  const levels = offeredLevels(site.school.levels_offered);
   return (
     <>
-      <PageHero eyebrow="Our levels" title="From Crèche to JHS" intro={contentOf(site, "levels_intro")} />
+      <PageHero eyebrow="Our levels" title={levelsTitle(levels)} intro={contentOf(site, "levels_intro")} />
       <section className="py-16 sm:py-24">
         <Container className="space-y-6">
-          {LEVELS.map((level) => (
+          {levels.map((level) => (
             <article
               key={level.code}
               id={level.code}

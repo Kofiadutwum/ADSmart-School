@@ -2,17 +2,23 @@ import type { Metadata } from "next";
 import { PageHero } from "@/components/site/page-hero";
 import { Container } from "@/components/ui/container";
 import { RichText } from "@/components/ui/rich-text";
-import { getPrivacyNotice } from "@/lib/api";
+import { getPrivacyNotice, getSite } from "@/lib/api";
 import { formatDate } from "@/lib/dates";
 
-export const revalidate = 300;
-export const metadata: Metadata = {
-  title: "Privacy notice",
-  description: "How AD Smart School uses and protects personal information (Data Protection Act, 2012).",
-};
+type Props = { params: Promise<{ host: string }> };
 
-export default async function PrivacyPage() {
-  const notice = await getPrivacyNotice();
+export const revalidate = 300;
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { school } = await getSite((await params).host);
+  return {
+    title: "Privacy notice",
+    description: `How ${school.name} uses and protects personal information (Data Protection Act, 2012).`,
+  };
+}
+
+export default async function PrivacyPage({ params }: Props) {
+  const notice = await getPrivacyNotice((await params).host);
   return (
     <>
       <PageHero eyebrow="Your data" title={notice?.title ?? "Privacy notice"} />

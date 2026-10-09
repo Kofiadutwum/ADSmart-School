@@ -7,6 +7,7 @@ import { BrandLink } from "@/components/brand/brand-link";
 import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { cn } from "@/lib/cn";
+import { publicPath } from "@/lib/hosts";
 import { MobileMenu } from "./mobile-menu";
 import { isActive, NAV_ITEMS } from "./nav";
 import { ThemeToggle } from "./theme-toggle";
@@ -21,7 +22,7 @@ const serverScrolled = () => false;
 type Props = { schoolName: string; portalUrl?: string };
 
 export function Header({ schoolName, portalUrl }: Props) {
-  const pathname = usePathname();
+  const pathname = publicPath(usePathname());
   const scrolled = useSyncExternalStore(subscribeToScroll, isScrolled, serverScrolled);
 
   return (

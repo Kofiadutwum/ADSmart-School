@@ -5,10 +5,11 @@ import { CategoryBadge } from "@/components/ui/category-badge";
 import { Container } from "@/components/ui/container";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { contentOf } from "@/lib/api";
-import { LEVELS } from "@/lib/levels";
+import { LEVELS, offeredLevels } from "@/lib/levels";
 import type { SiteData } from "@/lib/types";
 
 export function LevelsSection({ site }: { site: SiteData }) {
+  const levels = offeredLevels(site.school.levels_offered);
   return (
     <section aria-labelledby="levels-title" className="relative isolate overflow-hidden py-20 sm:py-28">
       <div
@@ -19,11 +20,11 @@ export function LevelsSection({ site }: { site: SiteData }) {
         <SectionHeading
           id="levels-title"
           eyebrow="Our levels"
-          title="From first steps to the BECE"
+          title={levels.length === LEVELS.length ? "From first steps to the BECE" : "The levels we teach"}
           intro={contentOf(site, "levels_intro")}
         />
         <CardRail label="School levels" className="mt-10">
-          {LEVELS.map((level, index) => (
+          {levels.map((level, index) => (
             <SwingIn key={level.code} index={index} className="h-full">
               <article className="surface flex h-full flex-col rounded-card p-6 shadow-elev-1">
                 <CategoryBadge category={level.category} className="self-start" />

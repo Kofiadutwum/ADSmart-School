@@ -8,14 +8,17 @@ import { ResponsiveImage } from "@/components/ui/responsive-image";
 import { RichText } from "@/components/ui/rich-text";
 import { contentOf, getSite } from "@/lib/api";
 
-export const revalidate = 300;
-export const metadata: Metadata = {
-  title: "About us",
-  description: "The story of AD Smart School in Kronom, Kumasi, teaching children from Crèche to JHS since 2001.",
-};
+type Props = { params: Promise<{ host: string }> };
 
-export default async function AboutPage() {
-  const site = await getSite();
+export const revalidate = 300;
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { school } = await getSite((await params).host);
+  return { title: "About us", description: `The story of ${school.name} in ${school.town}.` };
+}
+
+export default async function AboutPage({ params }: Props) {
+  const site = await getSite((await params).host);
   const photo = site.photos.about;
   return (
     <>

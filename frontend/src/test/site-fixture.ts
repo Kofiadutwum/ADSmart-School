@@ -24,7 +24,11 @@ export function makeSite(overrides: Partial<SiteData> = {}): SiteData {
       whatsapp_link: "https://wa.me/233545875881",
       email: "school@example.com",
       map_query: "Kronom, Kumasi, Ghana",
+      logo: null,
+      base_url: "http://adsmart.localhost:3000",
+      levels_offered: ["creche", "nursery", "kg", "lower_primary", "upper_primary", "jhs"],
     },
+    brand: { light: {}, dark: {} },
     is_public: false,
     content: {
       hero_headline: "Bright beginnings, from Crèche to JHS",

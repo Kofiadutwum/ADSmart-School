@@ -17,3 +17,17 @@ export const LEVELS: { code: LevelCode; name: string; shortName: string; categor
   { code: "upper_primary", name: "Upper Primary (Basic 4–6)", shortName: "Basic 4–6", category: "primary" },
   { code: "jhs", name: "Junior High School (JHS 1–3)", shortName: "JHS", category: "jhs" },
 ];
+
+export type Level = (typeof LEVELS)[number];
+
+/** The levels a school teaches, in school order (amendment §7.1). */
+export function offeredLevels(codes: readonly string[]): Level[] {
+  return LEVELS.filter((level) => codes.includes(level.code));
+}
+
+export function levelsTitle(levels: Level[]): string {
+  if (levels.length === 0) return "Our levels";
+  const first = levels[0];
+  const last = levels[levels.length - 1];
+  return first === last ? first.name : `From ${first.shortName} to ${last.shortName}`;
+}

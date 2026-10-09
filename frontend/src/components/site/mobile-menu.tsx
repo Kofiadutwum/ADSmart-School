@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { ButtonLink } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
+import { publicPath } from "@/lib/hosts";
 import { isActive, NAV_ITEMS } from "./nav";
 import { ThemeToggle } from "./theme-toggle";
 
@@ -14,7 +15,7 @@ type Props = { schoolName: string; portalUrl?: string; className?: string };
 
 export function MobileMenu({ schoolName, portalUrl, className }: Props) {
   const [open, setOpen] = useState(false);
-  const pathname = usePathname();
+  const pathname = publicPath(usePathname());
   const close = () => setOpen(false);
 
   return (

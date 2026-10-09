@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { LEVEL_CODES } from "@/lib/enquiry-schema";
 import { EnquiryForm } from "./enquiry-form";
 
 type Reply = { ok: boolean; status: number; json: () => Promise<unknown> };
@@ -33,7 +34,7 @@ describe("EnquiryForm", () => {
   it("shows field errors and focuses the summary when submitted empty", async () => {
     mockApi();
     const user = userEvent.setup();
-    render(<EnquiryForm schoolPhone="054 587 5881" />);
+    render(<EnquiryForm schoolName="AD Smart School" schoolPhone="054 587 5881" levels={LEVEL_CODES} />);
 
     await user.click(screen.getByRole("button", { name: "Send enquiry" }));
 
@@ -46,7 +47,7 @@ describe("EnquiryForm", () => {
   it("sends a valid enquiry and confirms it", async () => {
     const fetchMock = mockApi();
     const user = userEvent.setup();
-    render(<EnquiryForm schoolPhone="054 587 5881" />);
+    render(<EnquiryForm schoolName="AD Smart School" schoolPhone="054 587 5881" levels={LEVEL_CODES} />);
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 
     await fillValidForm(user);
@@ -69,7 +70,7 @@ describe("EnquiryForm", () => {
       reply: json(400, { code: "validation_error", message: "Check", fields: { phone: ["Enter a Ghana mobile number, e.g. 024 123 4567."] } }),
     });
     const user = userEvent.setup();
-    render(<EnquiryForm schoolPhone="054 587 5881" />);
+    render(<EnquiryForm schoolName="AD Smart School" schoolPhone="054 587 5881" levels={LEVEL_CODES} />);
 
     await fillValidForm(user);
     await user.click(screen.getByRole("button", { name: "Send enquiry" }));
@@ -80,8 +81,15 @@ describe("EnquiryForm", () => {
 
   it("shows a helpful message when the form token cannot be loaded", async () => {
     mockApi({ token: null });
-    render(<EnquiryForm schoolPhone="054 587 5881" />);
+    render(<EnquiryForm schoolName="AD Smart School" schoolPhone="054 587 5881" levels={LEVEL_CODES} />);
 
     expect(await screen.findByRole("alert")).toHaveTextContent("054 587 5881");
+  });
+
+  it("offers only the levels the school teaches", () => {
+    render(<EnquiryForm schoolName="Bright Future Academy" schoolPhone="020 123 4567" levels={["kg", "jhs"]} />);
+    const options = screen.getAllByRole("option").map((option) => option.textContent);
+    expect(options).toEqual(["Choose a level", "Kindergarten (KG1–KG2)", "Junior High School (JHS 1–3)"]);
+    expect(screen.getByText(/Bright Future Academy may use these details/)).toBeInTheDocument();
   });
 });

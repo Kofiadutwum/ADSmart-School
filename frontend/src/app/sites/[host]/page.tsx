@@ -9,10 +9,13 @@ import { Container } from "@/components/ui/container";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { contentOf, getNewsList, getSite } from "@/lib/api";
 
+type Props = { params: Promise<{ host: string }> };
+
 export const revalidate = 300;
 
-export default async function HomePage() {
-  const [site, news] = await Promise.all([getSite(), getNewsList(3)]);
+export default async function HomePage({ params }: Props) {
+  const { host } = await params;
+  const [site, news] = await Promise.all([getSite(host), getNewsList(host, 3)]);
   return (
     <>
       <Hero site={site} />

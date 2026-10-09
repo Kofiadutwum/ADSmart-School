@@ -4,16 +4,22 @@ import { PageHero } from "@/components/site/page-hero";
 import { Container } from "@/components/ui/container";
 import { RichText } from "@/components/ui/rich-text";
 import { contentOf, getSite } from "@/lib/api";
-import { LEVELS } from "@/lib/levels";
+import { offeredLevels } from "@/lib/levels";
+
+type Props = { params: Promise<{ host: string }> };
 
 export const revalidate = 300;
-export const metadata: Metadata = {
-  title: "Admissions",
-  description: "How to join AD Smart School in Kronom, Kumasi: steps, documents, ages and an online enquiry form.",
-};
 
-export default async function AdmissionsPage() {
-  const site = await getSite();
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { school } = await getSite((await params).host);
+  return {
+    title: "Admissions",
+    description: `How to join ${school.name} in ${school.town}: steps, documents, ages and an online enquiry form.`,
+  };
+}
+
+export default async function AdmissionsPage({ params }: Props) {
+  const site = await getSite((await params).host);
   const { school } = site;
   return (
     <>
@@ -43,7 +49,7 @@ export default async function AdmissionsPage() {
                 </tr>
               </thead>
               <tbody>
-                {LEVELS.map((level) => (
+                {offeredLevels(school.levels_offered).map((level) => (
                   <tr key={level.code} className="border-b border-line last:border-0">
                     <th scope="row" className="p-4 font-medium">{level.name}</th>
                     <td className="p-4 text-ink-muted">{contentOf(site, `level_${level.code}_ages`)}</td>
@@ -66,7 +72,7 @@ export default async function AdmissionsPage() {
               .
             </p>
           </div>
-          <EnquiryForm schoolPhone={school.phone_display} />
+          <EnquiryForm schoolName={school.name} schoolPhone={school.phone_display} levels={school.levels_offered} />
         </Container>
       </section>
     </>

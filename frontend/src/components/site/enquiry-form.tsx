@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ApiRequestError, getJson, postJson } from "@/lib/client-api";
 import { todayInAccra } from "@/lib/dates";
 import { buildEnquirySchema, EMPTY_ENQUIRY, toPayload, type EnquiryValues } from "@/lib/enquiry-schema";
-import { LEVELS } from "@/lib/levels";
+import { offeredLevels } from "@/lib/levels";
 import { Field, inputClasses } from "./field";
 
 const LABELS: Record<keyof EnquiryValues, string> = {
@@ -26,7 +26,9 @@ const LABELS: Record<keyof EnquiryValues, string> = {
 
 const isField = (name: string): name is keyof EnquiryValues => name in EMPTY_ENQUIRY;
 
-export function EnquiryForm({ schoolPhone }: { schoolPhone: string }) {
+type Props = { schoolName: string; schoolPhone: string; levels: readonly string[] };
+
+export function EnquiryForm({ schoolName, schoolPhone, levels }: Props) {
   const today = useMemo(() => todayInAccra(), []);
   const schema = useMemo(() => buildEnquirySchema(today), [today]);
   const {
@@ -206,7 +208,7 @@ export function EnquiryForm({ schoolPhone }: { schoolPhone: string }) {
           {(props) => (
             <select {...props} {...register("level_wanted")} className={inputClasses}>
               <option value="">Choose a level</option>
-              {LEVELS.map((level) => (
+              {offeredLevels(levels).map((level) => (
                 <option key={level.code} value={level.code}>
                   {level.name}
                 </option>
@@ -248,7 +250,7 @@ export function EnquiryForm({ schoolPhone }: { schoolPhone: string }) {
             className="mt-1 size-6 shrink-0 accent-[var(--btn-primary)]"
           />
           <label htmlFor="enquiry-data_consent">
-            I agree that AD Smart School may use these details to reply to my enquiry, as described in the{" "}
+            I agree that {schoolName} may use these details to reply to my enquiry, as described in the{" "}
             <Link href="/privacy" className="link">
               privacy notice
             </Link>

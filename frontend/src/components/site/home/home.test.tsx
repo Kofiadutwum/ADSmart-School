@@ -41,6 +41,13 @@ describe("LevelsSection", () => {
     expect(screen.getAllByText("Early Years")).toHaveLength(3);
     expect(screen.getByRole("link", { name: /More about JHS/ })).toHaveAttribute("href", "/levels#jhs");
   });
+
+  it("shows only the levels the school teaches", () => {
+    const site = makeSite();
+    render(<LevelsSection site={{ ...site, school: { ...site.school, levels_offered: ["kg", "lower_primary"] } }} />);
+    expect(screen.getAllByRole("article")).toHaveLength(2);
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("The levels we teach");
+  });
 });
 
 describe("CardRail", () => {

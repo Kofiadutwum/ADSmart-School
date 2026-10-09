@@ -17,25 +17,35 @@ afterEach(() => {
 });
 
 describe("server API client", () => {
-  it("calls Django directly and revalidates every five minutes", async () => {
+  it("asks Django for one school's content and revalidates every five minutes", async () => {
     vi.stubEnv("DJANGO_ORIGIN", "http://django.test");
     const fetchMock = stubFetch(200, []);
 
-    await getNewsList(3);
+    await getNewsList("adsmart.localhost", 3);
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://django.test/api/public/news?limit=3",
+      "http://django.test/api/public/sites/adsmart.localhost/news?limit=3",
       expect.objectContaining({ next: { revalidate: 300 } }),
     );
   });
 
   it("returns null for a missing news post", async () => {
     stubFetch(404, { code: "not_found" });
-    expect(await getNewsPost("nope")).toBeNull();
+    expect(await getNewsPost("adsmart.localhost", "nope")).toBeNull();
   });
 
-  it("fails loudly when the site content cannot be loaded", async () => {
-    stubFetch(503, { code: "not_configured" });
-    await expect(getSite()).rejects.toThrow("503");
+  it("shows the not-found page for an unknown school", async () => {
+    stubFetch(404, { code: "not_found" });
+    await expect(getSite("nobody.localhost")).rejects.toThrow("NEXT_NOT_FOUND");
+  });
+
+  it("sends visitors of a suspended school to the unavailable page", async () => {
+    stubFetch(503, { code: "suspended" });
+    await expect(getSite("adsmart.localhost")).rejects.toThrow("NEXT_REDIRECT /unavailable");
+  });
+
+  it("fails loudly on other errors", async () => {
+    stubFetch(500, { code: "error" });
+    await expect(getSite("adsmart.localhost")).rejects.toThrow("500");
   });
 });

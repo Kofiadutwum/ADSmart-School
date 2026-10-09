@@ -6,14 +6,17 @@ import { PageHero } from "@/components/site/page-hero";
 import { Container } from "@/components/ui/container";
 import { contentOf, getSite } from "@/lib/api";
 
-export const revalidate = 300;
-export const metadata: Metadata = {
-  title: "Contact",
-  description: "Call, message, email or visit AD Smart School in Kronom, Kumasi.",
-};
+type Props = { params: Promise<{ host: string }> };
 
-export default async function ContactPage() {
-  const site = await getSite();
+export const revalidate = 300;
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { school } = await getSite((await params).host);
+  return { title: "Contact", description: `Call, message, email or visit ${school.name} in ${school.town}.` };
+}
+
+export default async function ContactPage({ params }: Props) {
+  const site = await getSite((await params).host);
   const { school } = site;
   const place = [school.address, school.town, school.region].filter(Boolean).join(", ");
   const cards: { title: string; Icon: LucideIcon; body: ReactNode }[] = [

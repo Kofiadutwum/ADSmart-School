@@ -1,3 +1,5 @@
+import type { LevelCode } from "./levels";
+
 /** Shapes returned by the Django public API (backend Tasks 7–8). */
 
 export type ImageData = { src: string; srcset: string; width: number; height: number; alt: string };
@@ -7,8 +9,8 @@ export type Photo = ImageData & { caption: string; is_placeholder: boolean };
 export type SchoolInfo = {
   name: string;
   motto: string;
-  founded_year: number;
-  years_since_founding: number;
+  founded_year: number | null;
+  years_since_founding: number | null;
   address: string;
   town: string;
   region: string;
@@ -18,6 +20,10 @@ export type SchoolInfo = {
   whatsapp_link: string;
   email: string;
   map_query: string;
+  logo: ImageData | null;
+  /** The school's primary address, e.g. https://adsmart.schoolsite.com */
+  base_url: string;
+  levels_offered: LevelCode[];
 };
 
 export type Fact = { label: string; value: string };
@@ -26,8 +32,12 @@ export type FeatureIcon = "message" | "phone" | "care" | "shield";
 
 export type Feature = { key: string; title: string; text: string; icon: FeatureIcon };
 
+/** CSS variables replacing the platform palette for one school (amendment §7.2). */
+export type BrandTokens = { light: Record<string, string>; dark: Record<string, string> };
+
 export type SiteData = {
   school: SchoolInfo;
+  brand: BrandTokens;
   is_public: boolean;
   content: Record<string, string>;
   facts: Fact[];

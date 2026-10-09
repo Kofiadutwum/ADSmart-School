@@ -10,6 +10,9 @@ vi.mock("next/link", () => ({
 
 vi.mock("next/navigation", () => ({
   usePathname: vi.fn(() => "/"),
+  redirect: vi.fn((url: string) => {
+    throw new Error(`NEXT_REDIRECT ${url}`);
+  }),
   notFound: vi.fn(() => {
     throw new Error("NEXT_NOT_FOUND");
   }),

@@ -5,19 +5,21 @@ import { PageHero } from "@/components/site/page-hero";
 import { Container } from "@/components/ui/container";
 import { ResponsiveImage } from "@/components/ui/responsive-image";
 import { RichText } from "@/components/ui/rich-text";
-import { getNewsList, getNewsPost } from "@/lib/api";
+import { getNewsPost } from "@/lib/api";
 import { formatDate } from "@/lib/dates";
 
-type Props = { params: Promise<{ slug: string }> };
+type Props = { params: Promise<{ host: string; slug: string }> };
 
 export const revalidate = 300;
 
+// Built on first visit per school, like every school page (see the [host] layout).
 export async function generateStaticParams() {
-  return (await getNewsList(50)).map((post) => ({ slug: post.slug }));
+  return [];
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const post = await getNewsPost((await params).slug);
+  const { host, slug } = await params;
+  const post = await getNewsPost(host, slug);
   if (!post) return { title: "News" };
   return {
     title: post.title,
@@ -33,7 +35,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function NewsArticlePage({ params }: Props) {
-  const post = await getNewsPost((await params).slug);
+  const { host, slug } = await params;
+  const post = await getNewsPost(host, slug);
   if (!post) notFound();
   return (
     <article>

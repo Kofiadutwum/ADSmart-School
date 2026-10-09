@@ -2,12 +2,12 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { usePathname } from "next/navigation";
 import { describe, expect, it, vi } from "vitest";
-import type { SchoolInfo } from "@/lib/types";
+import { makeSite } from "@/test/site-fixture";
 import { Header } from "./header";
 import { MobileMenu } from "./mobile-menu";
 import { isActive } from "./nav";
 import { OfflineBar } from "./offline-bar";
-import { schoolJsonLd } from "./school-json-ld";
+import { SchoolJsonLd, schoolJsonLd } from "./school-json-ld";
 import { ThemeToggle } from "./theme-toggle";
 
 describe("OfflineBar", () => {
@@ -88,18 +88,23 @@ describe("MobileMenu", () => {
 });
 
 describe("schoolJsonLd", () => {
-  it("describes the school for search engines", () => {
-    const school = {
-      name: "AD Smart School", founded_year: 2001, phone: "+233545875881", email: "a@b.c",
-      town: "Kronom, Kumasi", region: "Ashanti Region",
-    } as SchoolInfo;
+  it("describes the school for search engines at its own address", () => {
+    const { school } = makeSite();
 
-    expect(schoolJsonLd(school, "https://example.test")).toMatchObject({
+    expect(schoolJsonLd(school)).toMatchObject({
       "@type": "School",
       name: "AD Smart School",
+      url: "http://adsmart.localhost:3000",
       foundingDate: "2001",
       telephone: "+233545875881",
       address: { addressLocality: "Kronom, Kumasi", addressCountry: "GH" },
     });
+    expect(schoolJsonLd({ ...school, founded_year: null })).not.toHaveProperty("foundingDate");
+  });
+
+  it("cannot be broken out of by a school's name", () => {
+    const { school } = makeSite();
+    const { container } = render(<SchoolJsonLd school={{ ...school, name: "</script><script>alert(1)" }} />);
+    expect(container.querySelector("script")?.innerHTML).toContain("\\u003c/script>");
   });
 });
