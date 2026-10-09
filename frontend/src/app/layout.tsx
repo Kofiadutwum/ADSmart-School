@@ -5,8 +5,10 @@ import { BOOT_SCRIPT } from "@/lib/boot-script";
 import { THEME_COLORS } from "@/lib/theme";
 import "./globals.css";
 
+// Only "latin" is preloaded; latin-ext (Ɛ/ɛ, Ɔ/ɔ) stays in the font CSS and downloads on demand
+// through unicode-range, so it never competes with the hero image (spec §8.3, §6.6).
 const poppins = Poppins({
-  subsets: ["latin", "latin-ext"],
+  subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   display: "swap",
   variable: "--font-poppins",

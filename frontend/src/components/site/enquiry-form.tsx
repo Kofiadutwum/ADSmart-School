@@ -40,12 +40,14 @@ export function EnquiryForm({ schoolPhone }: { schoolPhone: string }) {
     defaultValues: EMPTY_ENQUIRY,
     mode: "onBlur",
     reValidateMode: "onChange",
+    shouldFocusError: false, // the error summary takes focus instead (spec §8.7)
   });
 
   const [token, setToken] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [focusRequest, setFocusRequest] = useState(0);
+  const handledFocusRequest = useRef(0);
   const summaryRef = useRef<HTMLDivElement>(null);
   const successRef = useRef<HTMLHeadingElement>(null);
   const offline = `We couldn't reach the school's website. Please check your connection, or call us on ${schoolPhone}.`;
@@ -81,10 +83,14 @@ export function EnquiryForm({ schoolPhone }: { schoolPhone: string }) {
     if (sentTo) successRef.current?.focus();
   }, [sentTo]);
 
-  // Focus the error summary after it has rendered (spec §8.7).
+  // Focus the error summary on the first commit where it exists (spec §8.7). The form's
+  // error state can land a render after the request, so this runs after every commit.
   useEffect(() => {
-    if (focusRequest > 0) summaryRef.current?.focus();
-  }, [focusRequest]);
+    if (focusRequest > handledFocusRequest.current && summaryRef.current) {
+      handledFocusRequest.current = focusRequest;
+      summaryRef.current.focus();
+    }
+  });
   const focusSummary = () => setFocusRequest((count) => count + 1);
 
   // Ask before leaving a half-filled form (spec §10).

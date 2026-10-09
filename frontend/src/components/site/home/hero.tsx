@@ -14,7 +14,8 @@ export function Hero({ site }: { site: SiteData }) {
       {photo ? (
         <ResponsiveImage
           image={photo}
-          sizes="100vw"
+          // Under the scrim and glass the photo is a backdrop, so phones take the 480w rendition.
+          sizes="(max-width: 640px) 60vw, 100vw"
           priority
           className="absolute inset-0 -z-20 size-full object-cover"
         />

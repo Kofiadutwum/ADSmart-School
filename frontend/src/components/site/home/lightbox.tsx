@@ -9,17 +9,25 @@ import { edgeSafeDrag } from "@/lib/edge-drag";
 import type { Photo } from "@/lib/types";
 import { useSwipeDown } from "@/lib/use-swipe-down";
 
-type Props = { photos: Photo[]; index: number | null; onClose: () => void };
+type Props = { photos: Photo[]; index: number | null; onClose: () => void; restoreFocus?: () => void };
 
 const ROUND_BUTTON =
   "press inline-flex size-12 cursor-pointer items-center justify-center rounded-full bg-white/10 hover:bg-white/20";
 
-export function Lightbox({ photos, index, onClose }: Props) {
+export function Lightbox({ photos, index, onClose, restoreFocus }: Props) {
   return (
     <Dialog.Root open={index !== null} onOpenChange={(open) => !open && onClose()}>
       <Dialog.Portal>
         <Dialog.Overlay className="animate-fade-in fixed inset-0 z-50 bg-black/90" />
-        <Dialog.Content aria-describedby={undefined} className="on-dark fixed inset-0 z-50 flex flex-col text-white outline-none">
+        <Dialog.Content
+          aria-describedby={undefined}
+          className="on-dark fixed inset-0 z-50 flex flex-col text-white outline-none"
+          onCloseAutoFocus={(event) => {
+            if (!restoreFocus) return;
+            event.preventDefault();
+            restoreFocus();
+          }}
+        >
           <Dialog.Title className="sr-only">Photo viewer</Dialog.Title>
           {index !== null && <LightboxBody photos={photos} startIndex={index} onClose={onClose} />}
         </Dialog.Content>

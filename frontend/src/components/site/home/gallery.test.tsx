@@ -8,6 +8,12 @@ import { Lightbox } from "./lightbox";
 const photos = [photo(1), photo(2), photo(3)];
 
 describe("Gallery", () => {
+  it("waits until it is near the screen before loading photos", () => {
+    render(<Gallery photos={photos} />);
+    expect(screen.queryAllByRole("img")).toHaveLength(0);
+    expect(screen.getByRole("button", { name: "Open photo: Caption 1" })).toBeInTheDocument();
+  });
+
   it("opens the photo viewer and closes it with the close button", async () => {
     const user = userEvent.setup();
     render(<Gallery photos={photos} />);
@@ -18,6 +24,18 @@ describe("Gallery", () => {
 
     await user.click(screen.getByRole("button", { name: "Close photo viewer" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("returns focus to the photo that opened the viewer", async () => {
+    const user = userEvent.setup();
+    render(<Gallery photos={photos} />);
+    const opener = screen.getByRole("button", { name: "Open photo: Caption 3" });
+
+    await user.click(opener);
+    (document.activeElement as HTMLElement | null)?.blur(); // as when the carousel swallows focus
+    await user.keyboard("{Escape}");
+
+    expect(opener).toHaveFocus();
   });
 });
 
