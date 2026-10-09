@@ -1,4 +1,6 @@
-# Plan 2: Sign-in and Security Implementation Plan
+# Plan 3: Sign-in and Security Implementation Plan
+
+> **Status: to be revised before execution.** Written before the multi-school amendment (`docs/superpowers/specs/2026-10-09-multi-school-platform-design.md`). Accounts, lockouts, sessions and SMS must become per-school and platform staff added (amendment §3.3, §4, §8). Task 0 (development PostgreSQL) moved to Plan 2.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

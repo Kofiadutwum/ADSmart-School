@@ -6,6 +6,7 @@
 | Status | Draft for owner review |
 | Source | *School Management System: System Structure, Functional Specification, Flowcharts and Pseudocode*, v5, 2 October 2026 (cited below as **SMS spec §n**) |
 | Scope of this document | The public school website, and Phase 1 of SMS spec §38 |
+| Amended by | `2026-10-09-multi-school-platform-design.md`: one platform, many schools. Where they disagree, the amendment wins |
 
 ---
 
