@@ -1,12 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { BrandStyle } from "@/components/site/brand-style";
-import { Footer } from "@/components/site/footer";
-import { Header } from "@/components/site/header";
-import { OfflineBar } from "@/components/site/offline-bar";
-import { PreviewRibbon } from "@/components/site/preview-ribbon";
-import { SchoolJsonLd } from "@/components/site/school-json-ld";
-import { SkipLink } from "@/components/site/skip-link";
 import { contentOf, getSite } from "@/lib/api";
 
 type Params = { params: Promise<{ host: string }> };
@@ -30,21 +24,13 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   };
 }
 
+/** Every page at a school's address wears that school's colours. */
 export default async function SiteLayout({ children, params }: Params & { children: ReactNode }) {
   const site = await getSite((await params).host);
-  const portalUrl = process.env.NEXT_PUBLIC_PORTAL_URL || undefined;
   return (
     <>
       <BrandStyle brand={site.brand} />
-      <SkipLink />
-      <Header schoolName={site.school.name} logo={site.school.logo} portalUrl={portalUrl} />
-      <OfflineBar />
-      <main id="main" tabIndex={-1} className="outline-none">
-        {children}
-      </main>
-      <Footer site={site} />
-      {!site.is_public && <PreviewRibbon />}
-      <SchoolJsonLd school={site.school} />
+      {children}
     </>
   );
 }

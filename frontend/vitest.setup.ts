@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { afterEach, vi } from "vitest";
 
 vi.mock("next/link", () => ({
@@ -8,15 +9,20 @@ vi.mock("next/link", () => ({
     createElement("a", { href, ...rest }, children),
 }));
 
-vi.mock("next/navigation", () => ({
-  usePathname: vi.fn(() => "/"),
-  redirect: vi.fn((url: string) => {
-    throw new Error(`NEXT_REDIRECT ${url}`);
-  }),
-  notFound: vi.fn(() => {
-    throw new Error("NEXT_NOT_FOUND");
-  }),
-}));
+vi.mock("next/navigation", () => {
+  const router = { replace: vi.fn(), push: vi.fn(), refresh: vi.fn(), back: vi.fn(), forward: vi.fn(), prefetch: vi.fn() };
+  return {
+    usePathname: vi.fn(() => "/"),
+    useRouter: vi.fn(() => router), // one stable router, as in Next.js
+    useSearchParams: vi.fn(() => new URLSearchParams()),
+    redirect: vi.fn((url: string) => {
+      throw new Error(`NEXT_REDIRECT ${url}`);
+    }),
+    notFound: vi.fn(() => {
+      throw new Error("NEXT_NOT_FOUND");
+    }),
+  };
+});
 
 function mediaQueryList(query: string): MediaQueryList {
   return {
@@ -56,4 +62,10 @@ afterEach(() => {
   document.documentElement.removeAttribute("data-lite");
   document.documentElement.style.colorScheme = "";
   vi.mocked(window.matchMedia).mockImplementation(mediaQueryList);
+  vi.unstubAllGlobals();
+  vi.clearAllMocks();
+  vi.mocked(usePathname).mockImplementation(() => "/");
+  vi.mocked(useSearchParams).mockImplementation(
+    () => new URLSearchParams() as unknown as ReturnType<typeof useSearchParams>,
+  );
 });

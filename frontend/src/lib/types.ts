@@ -70,3 +70,30 @@ export type PlatformSchool = { name: string; town: string; region: string; url: 
 
 /** GET /api/public/platform (amendment §6). */
 export type PlatformData = { name: string; email: string; url: string; is_public: boolean; schools: PlatformSchool[] };
+
+export type AccountKind = "staff" | "parent" | "student" | "platform";
+
+/** GET /api/auth/me. `school` is null for platform staff. */
+export type Me = {
+  id: number;
+  kind: AccountKind;
+  username: string;
+  display_name: string;
+  roles: string[];
+  must_change_password: boolean;
+  has_authenticator: boolean;
+  school: { name: string; slug: string } | null;
+};
+
+export type SignInResult =
+  | { status: "signed_in"; user: Me }
+  | { status: "second_factor"; totp_ready: boolean; sms_available: boolean };
+
+export type SessionInfo = {
+  id: number;
+  device: string;
+  ip_address: string | null;
+  signed_in_at: string;
+  last_seen: string;
+  current: boolean;
+};
