@@ -14,6 +14,7 @@ from django.http import Http404
 from apps.accounts import roles
 from apps.accounts.identifiers import normalise_identifier
 from apps.accounts.models import TotpDevice, User
+from apps.accounts.sessions import start_session
 from apps.audit.models import AuditLog
 from apps.audit.services import client_ip, record
 from apps.core.exceptions import ApiError
@@ -157,6 +158,7 @@ def pending_user(request) -> User:
 def complete_login(request, user: User, *, remember: bool) -> None:
     request.session.pop(PENDING_KEY, None)
     login(request, user)
+    start_session(request, user, remember=remember)
     record(AuditLog.Action.SIGN_IN, actor=user, entity=user, request=request)
 
 

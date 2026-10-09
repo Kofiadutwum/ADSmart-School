@@ -7,6 +7,7 @@ SCHOOL_FROM_PATH = "school from the host in the path (tests/website/test_public_
 SCHOOL_FROM_HOST = "school from the address used (tests/website/test_enquiries.py)"
 PLATFORM_ONLY = "platform host only (tests/website/test_platform.py)"
 NO_SCHOOL_DATA = "no school data"
+OWN_SESSIONS = "the signed-in user's own sessions (tests/accounts/test_sessions.py)"
 
 CLASSIFIED = {
     "api/health": NO_SCHOOL_DATA,
@@ -22,6 +23,9 @@ CLASSIFIED = {
     "api/auth/login": "accounts of the address used only (tests/accounts/test_sign_in.py)",
     "api/auth/logout": NO_SCHOOL_DATA,
     "api/auth/me": "the signed-in user only (tests/accounts/test_sessions.py)",
+    "api/auth/sessions": OWN_SESSIONS,
+    "api/auth/sessions/<int:pk>": OWN_SESSIONS,
+    "api/auth/password": "the signed-in user only (tests/accounts/test_sessions.py)",
 }
 
 
