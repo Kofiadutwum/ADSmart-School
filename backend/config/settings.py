@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     "apps.core",
     "apps.school",
     "apps.consent",
+    "apps.website",
 ]
 
 MIDDLEWARE = [
