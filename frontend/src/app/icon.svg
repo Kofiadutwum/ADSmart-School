@@ -1,10 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="355 370 505 460">
-  <polygon points="367,512 440,388 508,512" fill="#0A12A0"/>
-  <polygon points="451,383 600,383 518,507" fill="#F0AD1C"/>
-  <polygon points="527,512 607,392 697,512" fill="#C4601F"/>
-  <polygon points="614,383 765,383 708,507" fill="#F0AD1C"/>
-  <polygon points="716,512 774,388 849,512" fill="#0A76B8"/>
-  <polygon points="369,522 512,522 599,806" fill="#8806A8"/>
-  <polygon points="522,522 700,522 608,816" fill="#8806A8"/>
-  <polygon points="710,522 848,522 618,806" fill="#8806A8"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="7" fill="#0f1a9e"/>
+  <path d="M16 6 5 13h3v12h6v-6h4v6h6V13h3z" fill="#ffffff"/>
+  <circle cx="16" cy="13.5" r="2" fill="#f0ad1c"/>
 </svg>

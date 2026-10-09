@@ -7,6 +7,7 @@ describe("BrandLink", () => {
     render(<BrandLink name="AD Smart School" />);
     const link = screen.getByRole("link", { name: "AD Smart School" });
     expect(link).toHaveAttribute("href", "/");
-    expect(link.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    // Without a logo the mark is a monogram, hidden so the name is read once.
+    expect(link.querySelector("[aria-hidden='true']")).toHaveTextContent("AS");
   });
 });

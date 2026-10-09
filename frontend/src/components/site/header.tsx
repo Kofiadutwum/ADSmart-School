@@ -7,6 +7,7 @@ import { BrandLink } from "@/components/brand/brand-link";
 import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { cn } from "@/lib/cn";
+import type { ImageData } from "@/lib/types";
 import { publicPath } from "@/lib/hosts";
 import { MobileMenu } from "./mobile-menu";
 import { isActive, NAV_ITEMS } from "./nav";
@@ -19,9 +20,9 @@ function subscribeToScroll(callback: () => void) {
 const isScrolled = () => window.scrollY > 8;
 const serverScrolled = () => false;
 
-type Props = { schoolName: string; portalUrl?: string };
+type Props = { schoolName: string; logo?: ImageData | null; portalUrl?: string };
 
-export function Header({ schoolName, portalUrl }: Props) {
+export function Header({ schoolName, logo, portalUrl }: Props) {
   const pathname = publicPath(usePathname());
   const scrolled = useSyncExternalStore(subscribeToScroll, isScrolled, serverScrolled);
 
@@ -33,7 +34,7 @@ export function Header({ schoolName, portalUrl }: Props) {
       )}
     >
       <Container className="flex h-18 items-center justify-between gap-3">
-        <BrandLink name={schoolName} />
+        <BrandLink name={schoolName} logo={logo} />
         <nav aria-label="Main" className="hidden lg:block">
           <ul className="flex items-center gap-1">
             {NAV_ITEMS.map((item) => {

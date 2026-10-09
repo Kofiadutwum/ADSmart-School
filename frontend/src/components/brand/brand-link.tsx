@@ -5,16 +5,20 @@ import Link from "next/link";
 import { useCallback, useEffect } from "react";
 import { cn } from "@/lib/cn";
 import { springs } from "@/lib/motion";
-import { LogoMark } from "./logo-mark";
+import type { ImageData } from "@/lib/types";
+import { SchoolMark } from "./school-mark";
 
-export function BrandLink({ name, className }: { name: string; className?: string }) {
-  const [gemRef, animate] = useAnimate<SVGGElement>();
+type Props = { name: string; logo?: ImageData | null; className?: string };
+
+export function BrandLink({ name, logo = null, className }: Props) {
+  const [tileRef, animate] = useAnimate<HTMLSpanElement>();
   const reduceMotion = useReducedMotion();
 
+  // The logo tile swings from its top edge (spec §8.6), whatever the school's logo is.
   const swing = useCallback(() => {
-    if (reduceMotion || !gemRef.current) return;
-    animate(gemRef.current, { rotate: [9, 0] }, springs.swing);
-  }, [animate, gemRef, reduceMotion]);
+    if (reduceMotion || !tileRef.current) return;
+    animate(tileRef.current, { rotate: [-7, 0] }, springs.swing);
+  }, [animate, tileRef, reduceMotion]);
 
   useEffect(() => {
     swing();
@@ -27,8 +31,8 @@ export function BrandLink({ name, className }: { name: string; className?: strin
       onMouseEnter={swing}
       onFocus={swing}
     >
-      <span className="logo-tile">
-        <LogoMark gemRef={gemRef} className="h-8 w-auto sm:h-9" />
+      <span ref={tileRef} className="logo-tile origin-top">
+        <SchoolMark name={name} logo={logo} />
       </span>
       <span className="text-base leading-tight font-semibold sm:text-lg">{name}</span>
     </Link>

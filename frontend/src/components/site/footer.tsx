@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LogoMark } from "@/components/brand/logo-mark";
+import { SchoolMark } from "@/components/brand/school-mark";
 import { Container } from "@/components/ui/container";
 import { contentOf } from "@/lib/api";
 import type { SiteData } from "@/lib/types";
@@ -14,7 +14,7 @@ export function Footer({ site }: { site: SiteData }) {
         <div>
           <div className="flex items-center gap-3">
             <span className="logo-tile">
-              <LogoMark className="h-9 w-auto" />
+              <SchoolMark name={school.name} logo={school.logo} />
             </span>
             <span className="text-lg font-semibold">{school.name}</span>
           </div>

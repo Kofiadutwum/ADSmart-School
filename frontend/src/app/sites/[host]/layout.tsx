@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { BrandStyle } from "@/components/site/brand-style";
 import { Footer } from "@/components/site/footer";
 import { Header } from "@/components/site/header";
 import { OfflineBar } from "@/components/site/offline-bar";
@@ -34,8 +35,9 @@ export default async function SiteLayout({ children, params }: Params & { childr
   const portalUrl = process.env.NEXT_PUBLIC_PORTAL_URL || undefined;
   return (
     <>
+      <BrandStyle brand={site.brand} />
       <SkipLink />
-      <Header schoolName={site.school.name} portalUrl={portalUrl} />
+      <Header schoolName={site.school.name} logo={site.school.logo} portalUrl={portalUrl} />
       <OfflineBar />
       <main id="main" tabIndex={-1} className="outline-none">
         {children}
