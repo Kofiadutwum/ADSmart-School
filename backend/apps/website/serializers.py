@@ -4,7 +4,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from apps.core.phones import normalise_gh_phone
-from apps.website.models import Enquiry
+from apps.website.models import Enquiry, Lead
 
 MAX_CHILD_AGE_YEARS = 18
 MAX_VISIT_DAYS_AHEAD = 180
@@ -82,6 +82,54 @@ class EnquirySerializer(serializers.ModelSerializer):
         if value > today + timedelta(days=MAX_VISIT_DAYS_AHEAD):
             raise serializers.ValidationError("Choose a date within the next six months.")
         return value
+
+    def validate_data_consent(self, value: bool) -> bool:
+        if value is not True:
+            raise serializers.ValidationError(
+                "Please agree so we can use these details to reply to you."
+            )
+        return value
+
+
+def _required_text(value: str, message: str) -> str:
+    if len(value.strip()) < 2:
+        raise serializers.ValidationError(message)
+    return value.strip()
+
+
+class LeadSerializer(serializers.ModelSerializer):
+    data_consent = serializers.BooleanField()
+
+    class Meta:
+        model = Lead
+        fields = [
+            "school_name",
+            "contact_name",
+            "phone",
+            "email",
+            "town",
+            "message",
+            "data_consent",
+        ]
+        extra_kwargs = {
+            "email": {"required": False, "allow_blank": True},
+            "message": {"required": False, "allow_blank": True},
+        }
+
+    def validate_school_name(self, value: str) -> str:
+        return _required_text(value, "Enter the school's name.")
+
+    def validate_contact_name(self, value: str) -> str:
+        return _required_text(value, "Enter your full name.")
+
+    def validate_town(self, value: str) -> str:
+        return _required_text(value, "Enter the school's town.")
+
+    def validate_phone(self, value: str) -> str:
+        try:
+            return normalise_gh_phone(value, mobile_only=True)
+        except ValueError as exc:
+            raise serializers.ValidationError(str(exc)) from exc
 
     def validate_data_consent(self, value: bool) -> bool:
         if value is not True:

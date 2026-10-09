@@ -17,4 +17,11 @@ urlpatterns = [
     ),
     path("enquiries/form-token", views.EnquiryFormTokenView.as_view(), name="enquiry-token"),
     path("enquiries", views.EnquiryCreateView.as_view(), name="enquiry-create"),
+    path("platform", views.PlatformView.as_view(), name="public-platform"),
+    path(
+        "platform/privacy-notice",
+        views.PlatformPrivacyNoticeView.as_view(),
+        name="public-platform-privacy-notice",
+    ),
+    path("platform/leads", views.LeadCreateView.as_view(), name="lead-create"),
 ]

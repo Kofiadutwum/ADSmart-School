@@ -7,15 +7,16 @@ from rest_framework.views import APIView
 
 from apps.consent.models import PrivacyNotice
 from apps.core.exceptions import ApiError
-from apps.school.hosts import request_school, school_for_host
+from apps.school.hosts import PLATFORM, request_school, resolve_host, school_for_host
 from apps.website.enquiries import (
     check_form_token,
     issue_form_token,
     notify_school,
     phone_limit_reached,
 )
-from apps.website.models import Enquiry, NewsPost
-from apps.website.serializers import EnquirySerializer
+from apps.website.models import Enquiry, Lead, NewsPost
+from apps.website.platform import lead_limit_reached, notify_platform, platform_payload
+from apps.website.serializers import EnquirySerializer, LeadSerializer
 from apps.website.services import build_site_payload, news_summary
 
 DEFAULT_NEWS_LIMIT = 20
@@ -53,20 +54,28 @@ class NewsDetailView(PublicView):
         return Response({**news_summary(post), "body": post.body})
 
 
+def _notice_response(notice: PrivacyNotice | None) -> Response:
+    if notice is None:
+        raise NotFound("No privacy notice has been published yet.")
+    return Response(
+        {
+            "version": notice.version,
+            "title": notice.title,
+            "body": notice.body,
+            "effective_from": notice.effective_from.isoformat(),
+            "is_draft": notice.is_draft,
+        }
+    )
+
+
 class PrivacyNoticeView(PublicView):
     def get(self, request, host):
-        notice = PrivacyNotice.current(school_for_host(host))
-        if notice is None:
-            raise NotFound("No privacy notice has been published yet.")
-        return Response(
-            {
-                "version": notice.version,
-                "title": notice.title,
-                "body": notice.body,
-                "effective_from": notice.effective_from.isoformat(),
-                "is_draft": notice.is_draft,
-            }
-        )
+        return _notice_response(PrivacyNotice.current(school_for_host(host)))
+
+
+class PlatformPrivacyNoticeView(PublicView):
+    def get(self, request):
+        return _notice_response(PrivacyNotice.current(None))
 
 
 class EnquiryIpThrottle(AnonRateThrottle):
@@ -102,4 +111,34 @@ class EnquiryCreateView(PublicView):
             )
         enquiry = Enquiry.objects.create(school=school, **serializer.validated_data)
         notify_school(enquiry)
+        return Response({"status": "received"}, status=201)
+
+
+class PlatformView(PublicView):
+    def get(self, request):
+        return Response(platform_payload())
+
+
+class LeadIpThrottle(AnonRateThrottle):
+    scope = "lead_ip"
+
+
+class LeadCreateView(PublicView):
+    throttle_classes = [LeadIpThrottle]
+
+    def post(self, request):
+        site = resolve_host(request.get_host())
+        if site is None or site.kind != PLATFORM:
+            raise NotFound("Requests to join are taken on the platform's own website.")
+        if request.data.get("website"):  # honeypot: pretend success, keep nothing
+            return Response({"status": "received"}, status=201)
+        check_form_token(str(request.data.get("form_token", "")))
+        serializer = LeadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        if lead_limit_reached(serializer.validated_data["phone"]):
+            raise ApiError(
+                "too_many_requests", "We already have your request and will call you soon.", 429
+            )
+        lead = Lead.objects.create(**serializer.validated_data)
+        notify_platform(lead)
         return Response({"status": "received"}, status=201)

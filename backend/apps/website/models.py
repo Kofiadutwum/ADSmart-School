@@ -169,3 +169,30 @@ class Enquiry(SchoolOwned):
 
     def __str__(self) -> str:
         return f"{self.child_name} ({self.get_level_wanted_display()})"
+
+
+class Lead(models.Model):
+    """A "Get your school online" request from the platform site (amendment §6)."""
+
+    class Status(models.TextChoices):
+        NEW = "new", "New"
+        CONTACTED = "contacted", "Contacted"
+        ONBOARDED = "onboarded", "Onboarded"
+        CLOSED = "closed", "Closed"
+
+    school_name = models.CharField(max_length=120)
+    contact_name = models.CharField(max_length=120)
+    phone = models.CharField(max_length=16)
+    email = models.EmailField(blank=True)
+    town = models.CharField(max_length=80)
+    message = models.TextField(max_length=1000, blank=True)
+    data_consent = models.BooleanField()
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.NEW)
+    staff_notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.school_name} ({self.town})"
