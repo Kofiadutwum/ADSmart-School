@@ -12,6 +12,15 @@ Website and school management system for AD Smart School, Kronom, Kumasi (Crèch
 
 ## First-time setup (Windows, Git Bash)
 
+Start the development database once per session and leave it running (no system install: it
+runs from npm):
+
+```bash
+cd tools/postgres && npm install && npm start
+```
+
+Then, in another terminal:
+
 ```bash
 cd backend
 py -3.14 -m venv .venv

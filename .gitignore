@@ -8,6 +8,9 @@ backend/e2e.sqlite3
 backend/media/
 backend/e2e-media/
 backend/staticfiles/
+tools/postgres/node_modules/
+tools/postgres/.pgdata/
+tools/postgres/server.log
 .pytest_cache/
 .ruff_cache/
 

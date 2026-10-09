@@ -1,0 +1,12 @@
+{
+  "name": "adss-dev-postgres",
+  "private": true,
+  "type": "module",
+  "description": "Development PostgreSQL without a system install (spec §13).",
+  "scripts": {
+    "start": "node start.mjs"
+  },
+  "dependencies": {
+    "embedded-postgres": "18.4.0-beta.17"
+  }
+}

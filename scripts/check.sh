@@ -6,6 +6,13 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PY="$ROOT/backend/.venv/Scripts/python"
 [ -x "$PY" ] || PY="$ROOT/backend/.venv/bin/python"
 
+echo "== Database"
+PG_LOG="$ROOT/tools/postgres/server.log"
+if ! "$PY" -c "import socket; socket.create_connection(('127.0.0.1', 5433), 1)" 2>/dev/null; then
+  [ -d "$ROOT/tools/postgres/node_modules" ] || (cd "$ROOT/tools/postgres" && npm install --silent)
+  (cd "$ROOT/tools/postgres" && nohup node start.mjs > "$PG_LOG" 2>&1 &)
+  for _ in $(seq 60); do grep -q "PostgreSQL ready" "$PG_LOG" 2>/dev/null && break; sleep 1; done
+fi
 echo "== Backend: lint"
 (cd "$ROOT/backend" && "$PY" -m ruff check . && "$PY" -m ruff format --check .)
 echo "== Backend: tests"

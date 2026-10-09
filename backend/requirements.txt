@@ -4,3 +4,4 @@ django-environ==0.14.0
 phonenumbers==9.0.41
 Pillow==12.3.0
 tzdata==2026.5
+psycopg[binary]==3.3.6
