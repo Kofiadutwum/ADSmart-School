@@ -13,4 +13,6 @@ urlpatterns = [
     path("second-factor/confirm", views.SecondFactorConfirmView.as_view()),
     path("second-factor/sms", views.SecondFactorSmsView.as_view()),
     path("second-factor/verify", views.SecondFactorVerifyView.as_view()),
+    path("parent/request-code", views.ParentRequestCodeView.as_view()),
+    path("parent/set-password", views.ParentSetPasswordView.as_view()),
 ]

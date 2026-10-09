@@ -10,6 +10,7 @@ from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from rest_framework import serializers
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
 from apps.accounts.models import SmsCode, TotpDevice, User, UserSession
@@ -36,7 +37,9 @@ from apps.accounts.sms_codes import check_code, consume, send_code, sms_failed_m
 from apps.audit.models import AuditLog
 from apps.audit.services import record
 from apps.core.exceptions import ApiError
+from apps.core.phones import normalise_gh_phone
 from apps.notifications.models import SmsMessage
+from apps.school.hosts import request_school
 
 PASSWORD_MAX = 256
 
@@ -231,3 +234,74 @@ class SecondFactorVerifyView(OpenView):
         if not ok:
             reject_code(request)
         return Response(finish_second_factor(request, user))
+
+
+class SmsCodeAddressThrottle(AnonRateThrottle):
+    scope = "sms_code_ip"
+
+
+class PhoneField(serializers.CharField):
+    def to_internal_value(self, data):
+        try:
+            return normalise_gh_phone(super().to_internal_value(data))
+        except ValueError as exc:
+            raise serializers.ValidationError(str(exc)) from exc
+
+
+class RequestCodeSerializer(serializers.Serializer):
+    phone = PhoneField(max_length=20)
+
+
+class SetPasswordSerializer(RequestCodeSerializer):
+    code = serializers.RegexField(
+        r"^\d{6}$", error_messages={"invalid": "Enter the 6-digit code from the SMS."}
+    )
+    password = serializers.CharField(max_length=PASSWORD_MAX, trim_whitespace=False)
+    remember = serializers.BooleanField(default=False)
+
+
+CODE_SENT = "If this number is registered, a code has been sent."
+BAD_CODE = "That code is wrong or has expired. Request a new code."
+
+
+def active_parent(school, phone: str) -> User | None:
+    return User.objects.filter(
+        school=school, kind=User.Kind.PARENT, login=phone, is_active=True
+    ).first()
+
+
+class ParentRequestCodeView(OpenView):
+    throttle_classes = [SmsCodeAddressThrottle]
+
+    def post(self, request):
+        school = request_school(request)
+        phone = validated(RequestCodeSerializer, request)["phone"]
+        user = active_parent(school, phone)
+        if user is not None:
+            send_code(user, SmsCode.Purpose.ACTIVATION, phone)  # outcome not revealed (§5.2)
+        return Response({"message": CODE_SENT})
+
+
+class ParentSetPasswordView(OpenView):
+    def post(self, request):
+        school = request_school(request)
+        data = validated(SetPasswordSerializer, request)
+        # Checked before the lookup, so a weak password says nothing about the number.
+        check_new_password(data["password"], field="password")
+        user = active_parent(school, data["phone"])
+        row = check_code(user, SmsCode.Purpose.ACTIVATION, data["code"]) if user else None
+        if row is None:
+            raise ApiError("invalid_code", BAD_CODE, 400)
+        check_new_password(data["password"], user, field="password")
+        if not consume(row):
+            raise ApiError("invalid_code", BAD_CODE, 400)
+
+        first_time = user.activated_at is None
+        user.set_password(data["password"])
+        user.activated_at = user.activated_at or timezone.now()
+        user.save()
+        end_other_sessions(user, keep_key=None)
+        action = AuditLog.Action.ACCOUNT_ACTIVATED if first_time else AuditLog.Action.PASSWORD_RESET
+        record(action, actor=user, entity=user, request=request)
+        complete_login(request, user, remember=data["remember"])
+        return Response({"status": "signed_in", "user": me_payload(user)})

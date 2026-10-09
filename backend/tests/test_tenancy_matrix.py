@@ -31,6 +31,8 @@ CLASSIFIED = {
     "api/auth/second-factor/confirm": PENDING_USER,
     "api/auth/second-factor/sms": PENDING_USER,
     "api/auth/second-factor/verify": PENDING_USER,
+    "api/auth/parent/request-code": SCHOOL_FROM_HOST,
+    "api/auth/parent/set-password": SCHOOL_FROM_HOST,
 }
 
 
