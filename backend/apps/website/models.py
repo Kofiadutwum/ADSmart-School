@@ -132,3 +132,42 @@ class NewsPost(ImageRenditionsMixin):
 
     def __str__(self) -> str:
         return self.title
+
+
+class Enquiry(models.Model):
+    """An admissions enquiry from the public website (spec §6.4)."""
+
+    class Level(models.TextChoices):
+        CRECHE = "creche", "Crèche"
+        NURSERY = "nursery", "Nursery"
+        KG = "kg", "Kindergarten (KG)"
+        LOWER_PRIMARY = "lower_primary", "Lower Primary (Basic 1–3)"
+        UPPER_PRIMARY = "upper_primary", "Upper Primary (Basic 4–6)"
+        JHS = "jhs", "Junior High School (JHS)"
+
+    class Status(models.TextChoices):
+        NEW = "new", "New"
+        CONTACTED = "contacted", "Contacted"
+        VISITED = "visited", "Visited"
+        ENROLLED = "enrolled", "Enrolled"
+        CLOSED = "closed", "Closed"
+
+    parent_name = models.CharField(max_length=120)
+    phone = models.CharField(max_length=16)
+    email = models.EmailField(blank=True)
+    child_name = models.CharField(max_length=120)
+    child_date_of_birth = models.DateField()
+    level_wanted = models.CharField(max_length=20, choices=Level.choices)
+    preferred_visit_date = models.DateField(null=True, blank=True)
+    message = models.TextField(max_length=1000, blank=True)
+    data_consent = models.BooleanField()
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.NEW)
+    staff_notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name_plural = "enquiries"
+
+    def __str__(self) -> str:
+        return f"{self.child_name} ({self.get_level_wanted_display()})"

@@ -119,6 +119,8 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "apps.core.exceptions.api_exception_handler",
     # Reverse proxies in front of Django: Next.js in development (1); Caddy + Next.js later (2).
     "NUM_PROXIES": env.int("DJANGO_NUM_PROXIES", default=1),
+    # Generous per-IP limits: many Ghanaian mobile users share one public IP (carrier NAT).
+    "DEFAULT_THROTTLE_RATES": {"enquiry_ip": "30/hour", "enquiry_token": "60/hour"},
 }
 
 LOGGING = {

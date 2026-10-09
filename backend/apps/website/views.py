@@ -2,10 +2,19 @@ from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import NotFound
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
 from apps.consent.models import PrivacyNotice
-from apps.website.models import NewsPost
+from apps.core.exceptions import ApiError
+from apps.website.enquiries import (
+    check_form_token,
+    issue_form_token,
+    notify_school,
+    phone_limit_reached,
+)
+from apps.website.models import Enquiry, NewsPost
+from apps.website.serializers import EnquirySerializer
 from apps.website.services import build_site_payload, news_summary
 
 DEFAULT_NEWS_LIMIT = 20
@@ -54,3 +63,38 @@ class PrivacyNoticeView(PublicView):
                 "is_draft": notice.is_draft,
             }
         )
+
+
+class EnquiryIpThrottle(AnonRateThrottle):
+    scope = "enquiry_ip"
+
+
+class EnquiryTokenThrottle(AnonRateThrottle):
+    scope = "enquiry_token"
+
+
+class EnquiryFormTokenView(PublicView):
+    throttle_classes = [EnquiryTokenThrottle]
+
+    def get(self, request):
+        return Response({"token": issue_form_token()})
+
+
+class EnquiryCreateView(PublicView):
+    throttle_classes = [EnquiryIpThrottle]
+
+    def post(self, request):
+        if request.data.get("website"):  # honeypot: pretend success, keep nothing
+            return Response({"status": "received"}, status=201)
+        check_form_token(str(request.data.get("form_token", "")))
+        serializer = EnquirySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        if phone_limit_reached(serializer.validated_data["phone"]):
+            raise ApiError(
+                "too_many_enquiries",
+                "We already have your recent enquiries and will call you soon.",
+                429,
+            )
+        enquiry = Enquiry.objects.create(**serializer.validated_data)
+        notify_school(enquiry)
+        return Response({"status": "received"}, status=201)

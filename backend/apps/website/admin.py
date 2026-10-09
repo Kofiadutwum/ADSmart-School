@@ -1,6 +1,14 @@
 from django.contrib import admin
 
-from apps.website.models import ContentBlock, Fact, FeatureBlock, NewsPost, PhotoSlot, SiteSettings
+from apps.website.models import (
+    ContentBlock,
+    Enquiry,
+    Fact,
+    FeatureBlock,
+    NewsPost,
+    PhotoSlot,
+    SiteSettings,
+)
 
 
 @admin.register(ContentBlock)
@@ -25,3 +33,9 @@ class NewsPostAdmin(admin.ModelAdmin):
 admin.site.register(SiteSettings)
 admin.site.register(Fact)
 admin.site.register(FeatureBlock)
+
+
+@admin.register(Enquiry)
+class EnquiryAdmin(admin.ModelAdmin):
+    list_display = ["child_name", "level_wanted", "parent_name", "phone", "status", "created_at"]
+    list_filter = ["status", "level_wanted"]
