@@ -64,7 +64,7 @@ This cycle is done when:
 
 ### 2.1 Repository layout
 
-One git repository, `C:\Dev\ad-smart-school\` (outside OneDrive; see §13). This spec is drafted under `Codes/ad-smart-school/` and moves with the repository.
+One git repository, `C:\Dev\ad-smart-school\` (outside OneDrive; see §13).
 
 ```
 ad-smart-school/
@@ -623,7 +623,7 @@ Behaviour is test-driven: the test is written before the code.
 - **Prerequisites the owner installs once:** PostgreSQL (exact steps go in the implementation plan). Python 3.14 (`py` launcher), Node 24 and git are already present.
 - **Project-local tooling:** a Python virtual environment with pinned requirements; npm for the frontend.
 - **Running locally:** two commands start the system. Django serves on `:8000`; Next.js serves on `:3000` and proxies `/api`.
-- **OneDrive:** the working folder `Codes/` is inside OneDrive. OneDrive on Windows cannot exclude sub-folders by pattern, and syncing `node_modules/`, `.venv/` and `.next/` (tens of thousands of files) causes slowness and file-lock errors during installs and builds. **The repository therefore moves to `C:\Dev\ad-smart-school\`** (outside OneDrive) before any code is written, unless the owner chooses otherwise. Off-machine backup comes from git (a private GitHub repository) rather than OneDrive.
+- **OneDrive:** the working folder `Codes/` is inside OneDrive. OneDrive on Windows cannot exclude sub-folders by pattern, and syncing `node_modules/`, `.venv/` and `.next/` (tens of thousands of files) causes slowness and file-lock errors during installs and builds. **The repository therefore lives at `C:\Dev\ad-smart-school\`**, outside OneDrive (moved there on 9 October 2026, at the owner's request). Off-machine backup comes from git (a private GitHub repository) rather than OneDrive. The source photos stay in `Codes/` and are copied into the repository.
 - **Repository contents:** the 14 `Codes/` images are copied into the project as placeholder photo-slot images, and the logo (provided by the owner) as the brand asset. An SVG trace of the logo is made for crisp rendering, with the PNG kept as source.
 - **Deploy readiness:** production settings, the Caddy configuration, process definitions for Next.js and gunicorn, `.env.example`, backup configuration, and a step-by-step deploy guide in `docs/`.
 
