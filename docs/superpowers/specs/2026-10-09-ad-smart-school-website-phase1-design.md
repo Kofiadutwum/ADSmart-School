@@ -112,7 +112,7 @@ Development stores files on local disk. Production uses the host's disk or S3-co
 |---|---|
 | Backend | Python 3.14; current stable Django release supporting 3.14 (exact version pinned in the implementation plan); Django REST Framework; PostgreSQL |
 | Backend libraries | `argon2-cffi` (password hashing), `django-otp` (authenticator and backup codes), `django-axes` (lockouts), `phonenumbers` (Ghana number validation and +233 normalisation), `Pillow` (images) |
-| Frontend | Next.js (App Router) + TypeScript; Tailwind CSS; shadcn/ui (Radix primitives); TanStack Query; React Hook Form + Zod; Motion for React (lazy-loaded); Embla Carousel; Lucide icons; `next/font` with self-hosted Outfit and Work Sans |
+| Frontend | Next.js (App Router) + TypeScript; Tailwind CSS; shadcn/ui (Radix primitives); TanStack Query; React Hook Form + Zod; Motion for React (lazy-loaded); Embla Carousel; Lucide icons; `next/font` with self-hosted Poppins |
 | Tests | pytest, pytest-django, factory_boy; Vitest + React Testing Library; Playwright + `@axe-core/playwright`; Lighthouse CI |
 
 ### 2.5 Production shape (host-agnostic)
