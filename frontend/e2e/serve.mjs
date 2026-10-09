@@ -20,9 +20,11 @@ const djangoEnv = {
   DJANGO_MEDIA_ROOT: path.join(backend, "e2e-media"),
   DJANGO_DEBUG: "true",
   DJANGO_SECRET_KEY: "e2e-only-secret-key-0123456789abcdefghijklmnopqrstuvwxyz",
-  DJANGO_ALLOWED_HOSTS: "127.0.0.1,localhost",
+  PLATFORM_DOMAIN: "localhost",
+  PLATFORM_EMAIL: "hello@schoolsite.test",
+  SITE_URL_TEMPLATE: "http://{host}:3100",
 };
-const nextEnv = { ...process.env, DJANGO_ORIGIN: DJANGO, SITE_URL: "http://127.0.0.1:3100" };
+const nextEnv = { ...process.env, DJANGO_ORIGIN: DJANGO, PLATFORM_DOMAIN: "localhost" };
 
 function run(command, args, options) {
   return new Promise((resolve, reject) => {
@@ -38,6 +40,14 @@ fs.rmSync(djangoEnv.DJANGO_MEDIA_ROOT, { recursive: true, force: true });
 await run(python, ["manage.py", "migrate", "--noinput"], { cwd: backend, env: djangoEnv });
 await run(python, ["manage.py", "createcachetable"], { cwd: backend, env: djangoEnv });
 await run(python, ["manage.py", "seed_website"], { cwd: backend, env: djangoEnv });
+// A second school, so every test also proves the schools stay apart. No shell: names keep their spaces.
+await run(
+  python,
+  ["manage.py", "create_school", "--slug", "brightfuture", "--name", "Bright Future Academy", "--town", "Ejisu",
+   "--region", "Ashanti Region", "--phone", "0201234567", "--email", "office@brightfuture.test",
+   "--levels", "kg,lower_primary,upper_primary"],
+  { cwd: backend, env: djangoEnv, shell: false },
+);
 
 const django = spawn(python, ["manage.py", "runserver", "127.0.0.1:8100", "--noreload"], {
   cwd: backend,

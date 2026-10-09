@@ -10,6 +10,8 @@ describe("SchoolMark", () => {
   it("shows the uploaded logo, or the school's initials", () => {
     const { container, rerender } = render(<SchoolMark name="AD Smart School" logo={LOGO} />);
     expect(container.querySelector("img")).toHaveAttribute("src", LOGO.src);
+    // The logo must not compete with the hero photo, the largest paint (Phase 1 spec §6.6).
+    expect(container.querySelector("img")).toHaveAttribute("fetchpriority", "low");
 
     rerender(<SchoolMark name="Bright Future Academy" logo={null} />);
     expect(screen.getByText("BF")).toBeInTheDocument();

@@ -43,10 +43,24 @@ backend/.venv/Scripts/python backend/manage.py runserver 127.0.0.1:8000
 npm --prefix frontend run dev
 ```
 
-Open http://localhost:3000. Website content can be edited at http://127.0.0.1:8000/django-admin/
+Open http://adsmart.localhost:3000 (AD Smart School) or http://localhost:3000 (the platform site). Website content can be edited at http://127.0.0.1:8000/django-admin/
 (development only; create a login with `manage.py createsuperuser`).
 
 `npm run build` pre-renders pages from the API, so the backend must be running while it builds.
+
+## One platform, many schools
+
+- **Addresses in development:** `http://localhost:3000` is the platform site; each school is at
+  `http://<slug>.localhost:3000` (AD Smart School: `http://adsmart.localhost:3000`). Chrome, Edge
+  and Firefox resolve `*.localhost` on their own.
+- **Seed the first school:** `cd backend && .venv/Scripts/python manage.py seed_website`
+  (AD Smart School, with its logo, plus the platform's draft privacy notice).
+- **Add a school:** `.venv/Scripts/python manage.py create_school --slug brightfuture
+  --name "Bright Future Academy" --town Ejisu --region "Ashanti Region" --phone 0201234567
+  --email office@brightfuture.example --levels kg,lower_primary,upper_primary`.
+  Its placeholder site is live at once, in preview, until the school completes its go-live checks.
+- **Platform settings** (`backend/.env`): `PLATFORM_NAME`, `PLATFORM_DOMAIN`, `PLATFORM_EMAIL`,
+  `SITE_URL_TEMPLATE`. The frontend needs the same `PLATFORM_DOMAIN` in `frontend/.env.local`.
 
 ## Checks
 
