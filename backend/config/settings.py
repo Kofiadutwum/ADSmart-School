@@ -113,6 +113,7 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
+    "EXCEPTION_HANDLER": "apps.core.exceptions.api_exception_handler",
     # Reverse proxies in front of Django: Next.js in development (1); Caddy + Next.js later (2).
     "NUM_PROXIES": env.int("DJANGO_NUM_PROXIES", default=1),
 }
