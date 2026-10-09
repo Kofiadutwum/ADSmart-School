@@ -19,3 +19,16 @@ export function formatDate(iso: string): string {
 export function todayInAccra(now: Date = new Date()): string {
   return ISO_DAY.format(now);
 }
+
+const DISPLAY_TIME = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: "Africa/Accra",
+});
+
+export function formatDateTime(iso: string): string {
+  return DISPLAY_TIME.format(new Date(iso));
+}
