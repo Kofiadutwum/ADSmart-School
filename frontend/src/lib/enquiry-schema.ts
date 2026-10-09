@@ -3,8 +3,8 @@ import { z } from "zod";
 /** Same codes as the backend's Enquiry.Level. */
 export const LEVEL_CODES = ["creche", "nursery", "kg", "lower_primary", "upper_primary", "jhs"] as const;
 
-const GH_MOBILE = /^(?:\+?233|0)[25]\d{8}$/;
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export const GH_MOBILE = /^(?:\+?233|0)[25]\d{8}$/;
+export const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 function yearsBefore(isoDay: string, years: number): string {

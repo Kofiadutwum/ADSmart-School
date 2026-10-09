@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import type { NewsPost, NewsSummary, PrivacyNotice, SiteData } from "./types";
+import type { NewsPost, NewsSummary, PlatformData, PrivacyNotice, SiteData } from "./types";
 
 /** Public pages are rebuilt at most every five minutes (ISR). */
 export const REVALIDATE_SECONDS = 300;
@@ -42,4 +42,14 @@ export async function getPrivacyNotice(host: string): Promise<PrivacyNotice | nu
 
 export function contentOf(site: SiteData, key: string, fallback = ""): string {
   return site.content[key] ?? fallback;
+}
+
+export async function getPlatform(): Promise<PlatformData> {
+  const platform = await fetchJson<PlatformData>("/api/public/platform");
+  if (!platform) throw new Error("Website API is missing /api/public/platform");
+  return platform;
+}
+
+export async function getPlatformPrivacyNotice(): Promise<PrivacyNotice | null> {
+  return fetchJson<PrivacyNotice>("/api/public/platform/privacy-notice");
 }

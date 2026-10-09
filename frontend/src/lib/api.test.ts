@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getNewsList, getNewsPost, getSite } from "./api";
+import { getNewsList, getNewsPost, getPlatform, getSite } from "./api";
 
 function stubFetch(status: number, body: unknown) {
   const fetchMock = vi.fn().mockResolvedValue({
@@ -47,5 +47,13 @@ describe("server API client", () => {
   it("fails loudly on other errors", async () => {
     stubFetch(500, { code: "error" });
     await expect(getSite("adsmart.localhost")).rejects.toThrow("500");
+  });
+
+  it("reads the platform's details", async () => {
+    vi.stubEnv("DJANGO_ORIGIN", "http://django.test");
+    const fetchMock = stubFetch(200, { name: "SchoolSite" });
+
+    expect((await getPlatform()).name).toBe("SchoolSite");
+    expect(fetchMock).toHaveBeenCalledWith("http://django.test/api/public/platform", expect.anything());
   });
 });

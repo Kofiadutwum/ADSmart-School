@@ -65,3 +65,8 @@ export type PrivacyNotice = {
 };
 
 export type ApiErrorBody = { code: string; message: string; fields: Record<string, string[]> };
+
+export type PlatformSchool = { name: string; town: string; region: string; url: string };
+
+/** GET /api/public/platform (amendment §6). */
+export type PlatformData = { name: string; email: string; url: string; is_public: boolean; schools: PlatformSchool[] };
