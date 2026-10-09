@@ -1,0 +1,32 @@
+# Python
+backend/.venv/
+__pycache__/
+*.pyc
+backend/.env
+backend/db.sqlite3
+backend/e2e.sqlite3
+backend/media/
+backend/e2e-media/
+backend/staticfiles/
+.pytest_cache/
+.ruff_cache/
+
+# Node / Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env*.local
+frontend/test-results/
+frontend/playwright-report/
+frontend/.lighthouseci/
+frontend/next-env.d.ts
+*.tsbuildinfo
+
+# Plan execution scratch space
+.superpowers/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
