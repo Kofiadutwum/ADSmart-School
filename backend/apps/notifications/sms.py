@@ -7,6 +7,7 @@ from django.utils import timezone
 from django.utils.module_loading import import_string
 
 from apps.notifications.models import SmsMessage
+from apps.people.demo import is_demo_only_phone
 
 
 class Purpose:
@@ -22,7 +23,10 @@ def send_sms(
 ) -> SmsMessage:
     message = SmsMessage(school=school, to=to, purpose=purpose, body=redacted_body or body)
     limit = LIMITS.get(purpose)
-    if limit and _sent_recently(to, purpose, limit[1]) >= limit[0]:
+    if is_demo_only_phone(to):
+        # Demo numbers are made up and may belong to real people (Phase 1 spec §9).
+        message.status, message.error = SmsMessage.Status.REFUSED, "demo_recipient"
+    elif limit and _sent_recently(to, purpose, limit[1]) >= limit[0]:
         message.status, message.error = SmsMessage.Status.REFUSED, "rate_limited"
     else:
         try:

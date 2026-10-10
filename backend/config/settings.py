@@ -7,6 +7,7 @@ variables; backend/.env.example lists them all.
 from pathlib import Path
 
 import environ
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -141,6 +142,11 @@ DEFAULT_FROM_EMAIL = env(
 # SMS (Phase 1 spec §3.7). Development logs codes to the console (and SMS_FILE_PATH, if set).
 SMS_BACKEND = env("SMS_BACKEND", default="apps.notifications.backends.ConsoleBackend")
 SMS_FILE_PATH = env("SMS_FILE_PATH", default="")
+
+# Phase 1 spec §9: seed_demo adds one sign-in per role for trying the system. Development only.
+DEMO_LOGINS_ENABLED = env.bool("DEMO_LOGINS_ENABLED", default=False)
+if DEMO_LOGINS_ENABLED and not DEBUG:
+    raise ImproperlyConfigured("DEMO_LOGINS_ENABLED is for development only (Phase 1 spec §9).")
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.SessionAuthentication"],
