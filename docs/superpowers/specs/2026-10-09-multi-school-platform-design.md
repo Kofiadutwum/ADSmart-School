@@ -13,6 +13,8 @@
 
 The system is no longer one school's website. It is **one platform that many schools join**. Each school gets its own website, portal and records, kept entirely apart from every other school. **AD Smart School is the first school on the platform** and keeps all of its current content.
 
+> **Owner decision, 2026-10-10:** the platform itself is named **ADsmartschool** and takes the owner's logo, email (kofiadutwumjnr881@gmail.com, which also receives new-school leads) and phone (054 587 5881). The seeded first school becomes **Sample School** at `sample.localhost`, with no logo and placeholder contact details, so the platform has a school website to show and test. Where this spec says "AD Smart School" for the seeded school, read "Sample School".
+
 There are two levels of administration:
 
 - **Platform admins** (the owner's team) add schools, set them up, suspend them, connect their domains and help them when they are stuck.

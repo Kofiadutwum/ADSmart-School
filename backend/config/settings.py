@@ -1,4 +1,4 @@
-"""Settings for the AD Smart School backend.
+"""Settings for the ADsmartschool backend.
 
 Every value that differs between environments comes from environment
 variables; backend/.env.example lists them all.
@@ -22,9 +22,10 @@ DEBUG = env.bool("DJANGO_DEBUG", default=False)
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["*"])
 USE_X_FORWARDED_HOST = True
 
-PLATFORM_NAME = env("PLATFORM_NAME", default="SchoolSite")
+PLATFORM_NAME = env("PLATFORM_NAME", default="ADsmartschool")
 PLATFORM_DOMAIN = env("PLATFORM_DOMAIN", default="localhost")
-PLATFORM_EMAIL = env("PLATFORM_EMAIL", default="")
+PLATFORM_EMAIL = env("PLATFORM_EMAIL", default="kofiadutwumjnr881@gmail.com")
+PLATFORM_PHONE = env("PLATFORM_PHONE", default="+233545875881")
 # How a school's address is written in links: development "http://{host}:3000",
 # production "https://{host}".
 SITE_URL_TEMPLATE = env("SITE_URL_TEMPLATE", default="http://{host}:3000")
@@ -136,9 +137,7 @@ MAILERS = {
         ),
     }
 }
-DEFAULT_FROM_EMAIL = env(
-    "DJANGO_DEFAULT_FROM_EMAIL", default="AD Smart School <no-reply@localhost>"
-)
+DEFAULT_FROM_EMAIL = env("DJANGO_DEFAULT_FROM_EMAIL", default="ADsmartschool <no-reply@localhost>")
 
 # SMS (Phase 1 spec §3.7). Development logs codes to the console (and SMS_FILE_PATH, if set).
 SMS_BACKEND = env("SMS_BACKEND", default="apps.notifications.backends.ConsoleBackend")

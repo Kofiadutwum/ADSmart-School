@@ -36,6 +36,7 @@ def test_the_platform_lists_only_live_schools(api, ready_site, other_school, set
     body = api.get("/api/public/platform").json()
 
     assert body["name"] == "SchoolSite" and body["email"] == "hello@schoolsite.test"
+    assert body["phone"] == "+233244000000" and body["phone_display"] == "024 400 0000"
     assert body["url"] == "https://localhost"
     assert body["schools"] == [
         {

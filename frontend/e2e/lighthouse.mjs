@@ -11,7 +11,7 @@ import lighthouse from "lighthouse";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const BASE = "http://localhost:3100"; // Node cannot resolve *.localhost on Windows; Chromium can
-const SCHOOL = "http://adsmart.localhost:3100";
+const SCHOOL = "http://sample.localhost:3100";
 const PAGES = [`${SCHOOL}/`, `${SCHOOL}/admissions`, `${SCHOOL}/?lite=1`, `${BASE}/`];
 const REQUIRED = { performance: 0.9, accessibility: 0.9, "best-practices": 0.9 };
 const ADVISORY = { seo: 0.9 }; // preview pages are deliberately noindex until launch (Plan 5)

@@ -10,13 +10,15 @@ from apps.website.services import is_site_public
 pytestmark = pytest.mark.django_db
 
 
-def test_seed_creates_ad_smart_school_with_its_logo_and_a_preview_site():
+def test_seed_creates_the_sample_school_with_a_preview_site():
     created = seed_website()
 
-    school = School.objects.get(slug="adsmart")
+    school = School.objects.get(slug="sample")
     assert created > 0
-    assert school.phone == "+233545875881" and school.founded_year == 2001
-    assert school.renditions, "the logo has renditions"
+    assert school.name == "Sample School" and school.founded_year == 2001
+    # The owner's logo, email and number belong to the platform now, not the sample school.
+    assert not school.logo and school.email == "office@sampleschool.example"
+    assert school.phone == "+233200000000" and school.whatsapp == ""
     hero_subline = ContentBlock.objects.get(school=school, key="hero_subline")
     assert hero_subline.text == "Kronom, Kumasi · Since 2001"
     assert PhotoSlot.objects.for_school(school).count() == 14

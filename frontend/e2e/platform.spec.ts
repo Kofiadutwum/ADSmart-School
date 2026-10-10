@@ -42,7 +42,7 @@ test("each school has its own site and only its own levels", async ({ page }) =>
 });
 
 test("a school's address never shows another school's pages", async ({ page }) => {
-  const response = await page.goto(`${BRIGHT_FUTURE}/sites/adsmart.localhost/about`);
+  const response = await page.goto(`${BRIGHT_FUTURE}/sites/sample.localhost/about`);
   expect(response?.status()).toBe(404);
 });
 

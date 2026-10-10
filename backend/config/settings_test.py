@@ -11,6 +11,7 @@ CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"
 PLATFORM_NAME = "SchoolSite"
 PLATFORM_DOMAIN = "localhost"
 PLATFORM_EMAIL = "hello@schoolsite.test"
+PLATFORM_PHONE = "+233244000000"
 SITE_URL_TEMPLATE = "http://{host}:3000"
 ALLOWED_HOSTS = ["*"]
 SMS_BACKEND = "apps.notifications.backends.MemoryBackend"

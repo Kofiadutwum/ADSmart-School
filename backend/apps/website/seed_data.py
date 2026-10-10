@@ -10,28 +10,28 @@ from dataclasses import dataclass
 
 from apps.school.models import LEVEL_CODES
 
-# The platform's first school (amendment §1).
+# A sample school, so the platform has a school website to show and test. Its contact details
+# are placeholders: the owner's logo, email and number belong to the platform (2026-10-10).
 FIRST_SCHOOL = {
-    "slug": "adsmart",
-    "name": "AD Smart School",
+    "slug": "sample",
+    "name": "Sample School",
     "motto": "",
     "founded_year": 2001,
     "address": "",
     "town": "Kronom, Kumasi",
     "region": "Ashanti Region",
     "ghana_post_gps": "",
-    "phone": "+233545875881",
-    "whatsapp": "+233545875881",
-    "email": "kofiadutwumjnr881@gmail.com",
+    "phone": "+233200000000",
+    "whatsapp": "",
+    "email": "office@sampleschool.example",
     "map_query": "Kronom, Kumasi, Ghana",
 }
-FIRST_SCHOOL_LOGO = "ad-smart-school-logo.png"
 FIRST_SCHOOL_NEWS = [
     {
         "slug": "welcome-to-our-new-website",
         "title": "Welcome to our new website",
         "summary": "School news, key dates and admissions information, together in one place.",
-        "body": "We are building a new website and school system for AD Smart School.\n\n"
+        "body": "We are building a new website and school system for Sample School.\n\n"
         "Soon you will find school news, key dates and admissions information here, and "
         "parents will be able to follow their children's progress online.",
     },

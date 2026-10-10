@@ -1,6 +1,7 @@
-# AD Smart School
+# ADsmartschool
 
-Website and school management system for AD Smart School, Kronom, Kumasi (Crèche to JHS).
+Websites and school systems for schools in Ghana: one platform that many schools join, each with its own
+website, portal and records. The seeded Sample School shows what a school gets.
 
 - Design spec: `docs/superpowers/specs/2026-10-09-ad-smart-school-website-phase1-design.md`
 - Plans: `docs/superpowers/plans/`
@@ -43,7 +44,7 @@ backend/.venv/Scripts/python backend/manage.py runserver 127.0.0.1:8000
 npm --prefix frontend run dev
 ```
 
-Open http://adsmart.localhost:3000 (AD Smart School) or http://localhost:3000 (the platform site). Website content can be edited at http://127.0.0.1:8000/django-admin/
+Open http://sample.localhost:3000 (Sample School) or http://localhost:3000 (the platform site). Website content can be edited at http://127.0.0.1:8000/django-admin/
 (development only; create a login with `manage.py createsuperuser`).
 
 `npm run build` pre-renders pages from the API, so the backend must be running while it builds.
@@ -51,10 +52,10 @@ Open http://adsmart.localhost:3000 (AD Smart School) or http://localhost:3000 (t
 ## One platform, many schools
 
 - **Addresses in development:** `http://localhost:3000` is the platform site; each school is at
-  `http://<slug>.localhost:3000` (AD Smart School: `http://adsmart.localhost:3000`). Chrome, Edge
+  `http://<slug>.localhost:3000` (Sample School: `http://sample.localhost:3000`). Chrome, Edge
   and Firefox resolve `*.localhost` on their own.
 - **Seed the first school:** `cd backend && .venv/Scripts/python manage.py seed_website`
-  (AD Smart School, with its logo, plus the platform's draft privacy notice).
+  (Sample School, plus the platform's draft privacy notice).
 - **The platform admin area:** `http://admin.localhost:3000`. Sign in with a platform account
   (`manage.py create_user --kind platform --username yourname --name "Your Name" --email you@example.com`),
   then confirm with the code sent to your email or phone. There you can:
@@ -74,12 +75,12 @@ Open http://adsmart.localhost:3000 (AD Smart School) or http://localhost:3000 (t
 ## Accounts and sign-in
 
 Everyone signs in at their own address. A school's staff, parents and pupils use that school's
-address (for example `adsmart.localhost:3000/sign-in`); your team uses the admin address
+address (for example `sample.localhost:3000/sign-in`); your team uses the admin address
 (`admin.localhost:3000`). An account belongs to one school, so the same username at two schools is
 two different people.
 
 - Create a school's first Administrator (you will be asked for a password):
-  `cd backend && .venv/Scripts/python manage.py create_user --kind staff --school adsmart --username admin --name "Your Name" --role Administrator --phone 024xxxxxxx`
+  `cd backend && .venv/Scripts/python manage.py create_user --kind staff --school sample --username admin --name "Your Name" --role Administrator --phone 024xxxxxxx`
 - Add someone to your team: `manage.py create_user --kind platform --username yourname --name "Your Name" --email you@example.com`
 - Administrators, Head Teachers, Accountants, Proprietors and everyone on your team confirm each
   sign-in with a 6-digit code. They choose to get it by SMS to their mobile number or by email to
@@ -97,11 +98,11 @@ A school with no pupils yet can be filled with a realistic demo school: a school
 calendar, classes, about 250 pupils with their families, and staff for every role. Every demo
 person is marked DEMO, and demo phone numbers are never texted.
 
-- Fill a school: `cd backend && .venv/Scripts/python manage.py seed_demo --school adsmart`
+- Fill a school: `cd backend && .venv/Scripts/python manage.py seed_demo --school sample`
 - Try every role (development only): set `DEMO_LOGINS_ENABLED=true` in `backend/.env` before
   seeding. The command then prints one sign-in per role and their shared password. Settings
   refuse this flag unless `DJANGO_DEBUG` is on.
-- See what would be removed: `.venv/Scripts/python manage.py purge_demo --school adsmart`, then
+- See what would be removed: `.venv/Scripts/python manage.py purge_demo --school sample`, then
   add `--yes` to remove it. Real records stay, and nothing is removed while a real record still
   points at a demo one.
 - Public holidays: the calendar marks the holidays with fixed rules. Add Eid and any newly

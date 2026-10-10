@@ -3,9 +3,9 @@ import { expectNoAccessibilityViolations } from "./axe";
 
 const PAGES: [string, RegExp][] = [
   ["/", /Bright beginnings/],
-  ["/about", /About AD Smart School/],
+  ["/about", /About Sample School/],
   ["/levels", /From Crèche to JHS/],
-  ["/admissions", /Join AD Smart School/],
+  ["/admissions", /Join Sample School/],
   ["/news", /School news/],
   ["/news/welcome-to-our-new-website", /Welcome to our new website/],
   ["/contact", /Get in touch/],

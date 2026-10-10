@@ -93,13 +93,11 @@ def create_school(**fields) -> School:
 
 
 def seed_first_school() -> int:
-    """AD Smart School, the platform's first school, with its logo and welcome news."""
+    """Sample School, the platform's sample school, with its welcome news."""
     created = 0
     school = School.objects.filter(slug=seed_data.FIRST_SCHOOL["slug"]).first()
     if school is None:
         school = create_school(**seed_data.FIRST_SCHOOL)
-        with open(SEED_DIR / "brand" / seed_data.FIRST_SCHOOL_LOGO, "rb") as handle:
-            school.logo.save(seed_data.FIRST_SCHOOL_LOGO, File(handle))
         created += 1
     created += provision_school(school)
     for post in seed_data.FIRST_SCHOOL_NEWS:

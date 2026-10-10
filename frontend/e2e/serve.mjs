@@ -51,15 +51,15 @@ await run(
    "--levels", "kg,lower_primary,upper_primary"],
   { cwd: backend, env: djangoEnv, shell: false },
 );
-// Test accounts at AD Smart School and on the platform team. No shell: names keep their spaces.
+// Test accounts at Sample School and on the platform team. No shell: names keep their spaces.
 const createUser = (...args) =>
   run(python, ["manage.py", "create_user", ...args], { cwd: backend, env: djangoEnv, shell: false });
 for (const [project, username] of Object.entries(accounts.staff)) {
-  await createUser("--kind", "staff", "--school", "adsmart", "--username", username, "--name", `Esi Admin ${project}`,
+  await createUser("--kind", "staff", "--school", "sample", "--username", username, "--name", `Esi Admin ${project}`,
     "--role", "Administrator", "--password", accounts.password, "--phone", accounts.phones.staff[project]);
 }
 for (const [project, phone] of Object.entries(accounts.parents)) {
-  await createUser("--kind", "parent", "--school", "adsmart", "--username", phone, "--name", `Ama Mensah ${project}`);
+  await createUser("--kind", "parent", "--school", "sample", "--username", phone, "--name", `Ama Mensah ${project}`);
 }
 for (const [project, username] of Object.entries(accounts.platform)) {
   await createUser("--kind", "platform", "--username", username, "--name", `Kojo Ops ${project}`,

@@ -69,7 +69,15 @@ export type ApiErrorBody = { code: string; message: string; fields: Record<strin
 export type PlatformSchool = { name: string; town: string; region: string; url: string };
 
 /** GET /api/public/platform (amendment §6). */
-export type PlatformData = { name: string; email: string; url: string; is_public: boolean; schools: PlatformSchool[] };
+export type PlatformData = {
+  name: string;
+  email: string;
+  phone: string;
+  phone_display: string;
+  url: string;
+  is_public: boolean;
+  schools: PlatformSchool[];
+};
 
 export type AccountKind = "staff" | "parent" | "student" | "platform";
 

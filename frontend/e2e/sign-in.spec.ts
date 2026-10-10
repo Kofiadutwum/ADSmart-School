@@ -18,7 +18,7 @@ const formAlert = (page: Page) => page.getByRole("main").getByRole("alert");
 
 test("each school's sign-in page names that school and is accessible in light and dark", async ({ page }) => {
   await openHydrated(page, "/sign-in");
-  await expect(page.getByText("For parents, pupils and staff of AD Smart School.")).toBeVisible();
+  await expect(page.getByText("For parents, pupils and staff of Sample School.")).toBeVisible();
   await expectAccessibleInBothThemes(page);
   await openHydrated(page, `${OTHER_SCHOOL}/sign-in`);
   await expect(page.getByText("For parents, pupils and staff of Bright Future Academy.")).toBeVisible();

@@ -5,7 +5,7 @@ export default defineConfig({
   timeout: 45_000,
   fullyParallel: false,
   workers: 1,
-  use: { baseURL: "http://adsmart.localhost:3100", trace: "retain-on-failure" },
+  use: { baseURL: "http://sample.localhost:3100", trace: "retain-on-failure" },
   projects: [
     { name: "phone", use: { ...devices["Pixel 7"], viewport: { width: 375, height: 812 } } },
     { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },

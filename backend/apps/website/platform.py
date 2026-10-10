@@ -20,9 +20,12 @@ MAX_LEADS_PER_PHONE_PER_DAY = 3
 def platform_payload() -> dict:
     notice = PrivacyNotice.current(None)
     schools = School.objects.exclude(status=School.Status.SUSPENDED)
+    phone = settings.PLATFORM_PHONE
     return {
         "name": settings.PLATFORM_NAME,
         "email": settings.PLATFORM_EMAIL,
+        "phone": phone,
+        "phone_display": format_gh_local(phone) if phone else "",
         "url": settings.SITE_URL_TEMPLATE.format(host=settings.PLATFORM_DOMAIN),
         "is_public": notice is not None and not notice.is_draft,
         "schools": [

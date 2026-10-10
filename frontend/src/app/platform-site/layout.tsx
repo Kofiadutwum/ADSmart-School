@@ -6,6 +6,7 @@ import { OfflineBar } from "@/components/site/offline-bar";
 import { PreviewRibbon } from "@/components/site/preview-ribbon";
 import { SkipLink } from "@/components/site/skip-link";
 import { getPlatform } from "@/lib/api";
+import { PLATFORM_ICON } from "@/lib/platform-brand";
 
 export async function generateMetadata(): Promise<Metadata> {
   const platform = await getPlatform();
@@ -14,6 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: { default: `${platform.name} · School websites for Ghana`, template: `%s · ${platform.name}` },
     description: "A website and school system made for schools in Ghana: quick on any phone, simple for staff and clear for parents.",
     applicationName: platform.name,
+    icons: { icon: PLATFORM_ICON, apple: PLATFORM_ICON },
     robots: platform.is_public ? { index: true, follow: true } : { index: false, follow: false },
   };
 }
@@ -28,7 +30,7 @@ export default async function PlatformLayout({ children }: { children: ReactNode
       <main id="main" tabIndex={-1} className="outline-none">
         {children}
       </main>
-      <PlatformFooter name={platform.name} email={platform.email} />
+      <PlatformFooter name={platform.name} email={platform.email} phone={platform.phone} phoneDisplay={platform.phone_display} />
       {!platform.is_public && <PreviewRibbon />}
     </>
   );

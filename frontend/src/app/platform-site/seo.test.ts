@@ -6,7 +6,7 @@ import { GET as sitemap } from "./sitemap.xml/route";
 
 vi.mock("@/lib/api", () => ({ getPlatform: vi.fn() }));
 
-const PLATFORM: PlatformData = { name: "SchoolSite", email: "", url: "https://schoolsite.test", is_public: false, schools: [] };
+const PLATFORM: PlatformData = { name: "SchoolSite", email: "", phone: "", phone_display: "", url: "https://schoolsite.test", is_public: false, schools: [] };
 
 describe("platform robots.txt and sitemap.xml", () => {
   it("keep search engines out until the platform is public", async () => {

@@ -16,7 +16,7 @@ test("the platform team adds a school, and its Administrator signs in", async ({
   await signIn(page, null, accounts.platform_admins[project], accounts.password);
   await confirmWithTextedCode(page, e164(accounts.phones.platform_admins[project]));
   await expect(page.getByRole("heading", { name: "Schools" })).toBeVisible();
-  await expect(page.getByRole("link", { name: /AD Smart School/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Sample School/ })).toBeVisible();
   await expectAccessibleInBothThemes(page);
 
   await page.getByRole("link", { name: "Add a school" }).click();
