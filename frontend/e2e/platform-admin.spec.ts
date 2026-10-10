@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import accounts from "./accounts.json";
-import { ADMIN, expectAccessibleInBothThemes, openHydrated, setUpAuthenticator, signIn } from "./helpers";
+import { ADMIN, confirmWithTextedCode, e164, expectAccessibleInBothThemes, openHydrated, signIn } from "./helpers";
 
 type Project = keyof typeof accounts.platform_admins;
 const ADMIN_MOBILE: Record<Project, string> = { phone: "024 555 0101", desktop: "024 555 0102" };
@@ -14,7 +14,7 @@ test("the platform team adds a school, and its Administrator signs in", async ({
   await page.goto(`${ADMIN}/`);
   await expect(page).toHaveURL(`${ADMIN}/sign-in?next=%2Fschools`);
   await signIn(page, null, accounts.platform_admins[project], accounts.password);
-  await setUpAuthenticator(page);
+  await confirmWithTextedCode(page, e164(accounts.phones.platform_admins[project]));
   await expect(page.getByRole("heading", { name: "Schools" })).toBeVisible();
   await expect(page.getByRole("link", { name: /AD Smart School/ })).toBeVisible();
   await expectAccessibleInBothThemes(page);
@@ -39,7 +39,7 @@ test("the platform team adds a school, and its Administrator signs in", async ({
 
   await openHydrated(page, `${site}/sign-in`);
   await signIn(page, "Staff", "head", password);
-  await setUpAuthenticator(page);
+  await confirmWithTextedCode(page, e164(ADMIN_MOBILE[project]));
   await expect(page.getByRole("heading", { name: "Your account" })).toBeVisible();
   await expect(page.getByText(/choose your own password/i)).toBeVisible();
   await page.getByLabel(/current password/i).fill(password);

@@ -233,6 +233,11 @@ The site is reachable at once, in preview, until the school passes its go-live c
 - **SMS sender:** one platform sender name at launch. Every message names the school, e.g. "AD Smart School: your code is 123456".
 - **"Couldn't send" message:** the §10 SMS-failure text shows the school's own phone number.
 - **SMS log:** each school sees its own messages. Platform admins see counts and failures per school, never message bodies.
+- **Second factor (owner decision, 2026-10-10; replaces Phase 1 spec §5.3):**
+  - After the password, the person chooses to receive a 6-digit code by SMS to their registered mobile number, or by email to their registered address.
+  - There is no authenticator app and there are no backup codes.
+  - Codes are hashed, last 10 minutes, allow 5 attempts, work once, and at most 5 are sent an hour. Wrong codes count toward the sign-in lockout.
+  - Every account that needs the second factor must have a mobile number or an email address.
 
 ---
 

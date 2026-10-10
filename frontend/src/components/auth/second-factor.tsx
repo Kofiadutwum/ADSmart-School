@@ -6,22 +6,17 @@ import { Button } from "@/components/ui/button";
 import { FormAlert } from "@/components/ui/form-alert";
 import { ApiRequestError, errorMessage, postJson } from "@/lib/client-api";
 
-export type SecondFactorStart = { totp_ready: boolean; sms_available: boolean };
+/** Where a code can go, masked by the server: "k•••@gmail.com", "024 ••• 4567". */
+export type SecondFactorStart = { email: string | null; phone: string | null };
 type Props = SecondFactorStart & { onDone: () => void; onRestart: () => void };
-type Method = "totp" | "sms" | "backup";
-type Setup = { secret: string; otpauth_url: string; qr_image: string };
+type Channel = "email" | "sms";
 
-const HEADINGS: Record<Method, string> = {
-  totp: "Enter the code from your authenticator app",
-  sms: "Enter the code we sent by SMS",
-  backup: "Enter a backup code",
-};
-
-/** The second sign-in step for senior school staff and the platform team (spec §5.3, amendment §4). */
-export function SecondFactor({ totp_ready, sms_available, onDone, onRestart }: Props) {
-  const [method, setMethod] = useState<Method>("totp");
-  const [setup, setSetup] = useState<Setup | null>(null);
-  const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
+/**
+ * The second sign-in step for senior school staff and the platform team: a 6-digit code sent to
+ * the email address or mobile number on their account (owner decision, 2026-10-10).
+ */
+export function SecondFactor({ email, phone, onDone, onRestart }: Props) {
+  const [sentTo, setSentTo] = useState<Channel | null>(null);
   const [code, setCode] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -29,195 +24,139 @@ export function SecondFactor({ totp_ready, sms_available, onDone, onRestart }: P
   const [expired, setExpired] = useState(false);
   const [busy, setBusy] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const settingUp = method === "totp" && !totp_ready;
-
-  // First sign-in: fetch a new key and QR code. State is only set when the request settles.
-  useEffect(() => {
-    if (!settingUp || setup) return;
-    let cancelled = false;
-    postJson<Setup>("/api/auth/second-factor/setup").then(
-      (data) => {
-        if (!cancelled) setSetup(data);
-      },
-      (caught: unknown) => {
-        if (cancelled) return;
-        setError(errorMessage(caught));
-        setAttempt((count) => count + 1);
-      },
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [settingUp, setup]);
+  const targets: Record<Channel, string | null> = { email, sms: phone };
+  const channels = (["email", "sms"] as const).filter((channel) => targets[channel]);
 
   // Each new step's heading takes focus so screen readers announce it.
   useEffect(() => {
     headingRef.current?.focus();
-  }, [method, backupCodes]);
+  }, [sentTo]);
 
-  function fail(message: string) {
-    setError(message);
+  function fail(caught: unknown) {
+    setError(errorMessage(caught));
     setAttempt((count) => count + 1);
+    if (caught instanceof ApiRequestError && caught.body?.code === "second_factor_expired") setExpired(true);
   }
 
-  function choose(next: Method) {
-    setMethod(next);
-    setCode("");
-    setError(null);
-    setNotice(null);
+  function label(channel: Channel) {
+    return channel === "email" ? `Email the code to ${email}` : `Text the code to ${phone}`;
   }
 
-  async function sendSms() {
-    choose("sms");
+  async function send(channel: Channel) {
+    setBusy(true);
     try {
-      await postJson("/api/auth/second-factor/sms");
-      setNotice("We've sent a code to your phone. It expires in 10 minutes.");
+      await postJson(`/api/auth/second-factor/${channel}`);
+      setSentTo(channel);
+      setCode("");
+      setError(null);
+      setNotice(`We've sent a 6-digit code to ${targets[channel]}. It expires in 10 minutes.`);
     } catch (caught) {
-      fail(errorMessage(caught));
+      fail(caught);
+    } finally {
+      setBusy(false);
     }
   }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const value = code.replace(/\s/g, "");
-    if (!value) return fail("Enter the code.");
+    if (!value) {
+      setError("Enter the code.");
+      setAttempt((count) => count + 1);
+      return;
+    }
     setBusy(true);
     try {
-      if (settingUp) {
-        const result = await postJson<{ backup_codes: string[] }>("/api/auth/second-factor/confirm", { code: value });
-        setBackupCodes(result.backup_codes);
-      } else {
-        await postJson("/api/auth/second-factor/verify", { method, code: value });
-        onDone();
-      }
+      await postJson("/api/auth/second-factor/verify", { code: value });
+      onDone();
     } catch (caught) {
-      fail(errorMessage(caught));
-      if (caught instanceof ApiRequestError && caught.body?.code === "second_factor_expired") setExpired(true);
+      fail(caught);
     } finally {
       setBusy(false);
     }
   }
 
-  if (backupCodes) {
+  if (expired) {
     return (
       <div className="space-y-5">
-        <h2 ref={headingRef} tabIndex={-1} className="text-xl font-semibold outline-none">
-          Save your backup codes
-        </h2>
-        <p>
-          If you lose your phone, each code lets you sign in once. Print them or write them down and keep them
-          somewhere safe. They won&apos;t be shown again.
-        </p>
-        <ul aria-label="Backup codes" className="grid grid-cols-2 gap-2 font-mono text-lg">
-          {backupCodes.map((item) => (
-            <li key={item} className="rounded-control bg-ink/5 px-3 py-2 text-center">
-              {item}
-            </li>
-          ))}
-        </ul>
-        <div className="flex flex-wrap gap-3">
-          <Button variant="outline" onClick={() => window.print()}>
-            Print codes
-          </Button>
-          <Button onClick={onDone}>I&apos;ve saved them, continue</Button>
-        </div>
+        <FormAlert message={error} focusKey={attempt} />
+        <Button size="lg" className="w-full" onClick={onRestart}>
+          Sign in again
+        </Button>
       </div>
     );
   }
 
+  if (!sentTo) {
+    return (
+      <div className="space-y-5">
+        <div>
+          <h2 ref={headingRef} tabIndex={-1} className="text-xl font-semibold outline-none">
+            Confirm it&apos;s you
+          </h2>
+          <p className="mt-1 text-sm text-ink-muted">
+            Your role needs a second step at sign-in, to keep pupils&apos; records safe. We&apos;ll send you a
+            6-digit code.
+          </p>
+        </div>
+        <FormAlert message={error} focusKey={attempt} />
+        {channels.length === 0 ? (
+          <p role="alert" className="rounded-control border border-danger bg-danger/10 p-4">
+            There&apos;s no email address or mobile number on your account, so we can&apos;t send you a code. Ask
+            whoever manages your account to add one.
+          </p>
+        ) : (
+          channels.map((channel) => (
+            <Button key={channel} size="lg" className="w-full" disabled={busy} onClick={() => send(channel)}>
+              {label(channel)}
+            </Button>
+          ))
+        )}
+      </div>
+    );
+  }
+
+  const other = channels.find((channel) => channel !== sentTo);
   return (
     <div className="space-y-5">
       <div>
         <h2 ref={headingRef} tabIndex={-1} className="text-xl font-semibold outline-none">
-          {settingUp ? "Set up your authenticator app" : HEADINGS[method]}
+          Enter your code
         </h2>
-        <p className="mt-1 text-sm text-ink-muted">
-          Your role needs a second step at sign-in, to keep pupils&apos; records safe.
-        </p>
+        {notice && (
+          <p role="status" className="mt-1 text-sm">
+            {notice}
+          </p>
+        )}
       </div>
-
-      {settingUp && (
-        <ol className="list-decimal space-y-3 pl-5">
-          <li>Install Google Authenticator or Microsoft Authenticator on your phone.</li>
-          <li>
-            Scan this QR code with the app.
-            {setup ? (
-              // eslint-disable-next-line @next/next/no-img-element -- a data: URI, nothing to optimise
-              <img
-                src={setup.qr_image}
-                alt="QR code for your authenticator app"
-                width={176}
-                height={176}
-                className="mt-3 rounded-control bg-white p-2"
-              />
-            ) : (
-              <span aria-hidden className="mt-3 block size-44 animate-pulse rounded-control bg-ink/10" />
-            )}
-            {setup && (
-              <span className="mt-2 block text-sm">
-                Can&apos;t scan it? Type this key into the app instead:{" "}
-                <code data-testid="manual-key" className="font-mono font-semibold break-all">
-                  {setup.secret}
-                </code>
-              </span>
-            )}
-          </li>
-          <li>Enter the 6-digit code the app shows.</li>
-        </ol>
-      )}
-
-      {notice && (
-        <p role="status" className="text-sm">
-          {notice}
-        </p>
-      )}
-
       <form noValidate onSubmit={onSubmit} className="space-y-5">
         <FormAlert message={error} focusKey={attempt} />
-        <Field id="second-factor-code" label={method === "backup" ? "Backup code" : "6-digit code"} required>
+        <Field id="second-factor-code" label="6-digit code" required>
           {(props) => (
             <input
               {...props}
               value={code}
               onChange={(event) => setCode(event.target.value)}
-              inputMode={method === "backup" ? "text" : "numeric"}
+              inputMode="numeric"
               autoComplete="one-time-code"
-              autoCapitalize="none"
-              spellCheck={false}
               className={inputClasses}
             />
           )}
         </Field>
-        {expired ? (
-          <Button size="lg" className="w-full" onClick={onRestart}>
-            Sign in again
-          </Button>
-        ) : (
-          <Button type="submit" size="lg" className="w-full" disabled={busy}>
-            {busy ? "Checking…" : "Continue"}
-          </Button>
-        )}
+        <Button type="submit" size="lg" className="w-full" disabled={busy}>
+          {busy ? "Checking…" : "Continue"}
+        </Button>
       </form>
-
-      {!expired && (
-        <div className="flex flex-col items-start text-sm">
-          {method !== "totp" && (
-            <button type="button" onClick={() => choose("totp")} className="link min-h-11 cursor-pointer">
-              {totp_ready ? "Use my authenticator app" : "Set up an authenticator app"}
-            </button>
-          )}
-          {sms_available && (
-            <button type="button" onClick={sendSms} className="link min-h-11 cursor-pointer">
-              {method === "sms" ? "Send a new code" : "Text me a code instead"}
-            </button>
-          )}
-          {totp_ready && method !== "backup" && (
-            <button type="button" onClick={() => choose("backup")} className="link min-h-11 cursor-pointer">
-              Use a backup code
-            </button>
-          )}
-        </div>
-      )}
+      <div className="flex flex-col items-start text-sm">
+        <button type="button" onClick={() => send(sentTo)} className="link min-h-11 cursor-pointer">
+          Send a new code
+        </button>
+        {other && (
+          <button type="button" onClick={() => send(other)} className="link min-h-11 cursor-pointer">
+            {label(other)} instead
+          </button>
+        )}
+      </div>
     </div>
   );
 }

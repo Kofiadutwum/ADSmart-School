@@ -56,12 +56,12 @@ Open http://adsmart.localhost:3000 (AD Smart School) or http://localhost:3000 (t
 - **Seed the first school:** `cd backend && .venv/Scripts/python manage.py seed_website`
   (AD Smart School, with its logo, plus the platform's draft privacy notice).
 - **The platform admin area:** `http://admin.localhost:3000`. Sign in with a platform account
-  (`manage.py create_user --kind platform --username yourname --name "Your Name"`) and set up an
-  authenticator app. There you can:
-  - Add a school with its first Administrator. The one-time password is shown once; they change it
-    and set up their own authenticator app at first sign-in.
+  (`manage.py create_user --kind platform --username yourname --name "Your Name" --email you@example.com`),
+  then confirm with the code sent to your email or phone. There you can:
+  - Add a school with its first Administrator (mobile number, and email if they have one). The
+    one-time password is shown once for you to hand over; they change it at first sign-in.
   - Open a school's page for counts, the go-live list and its Administrators. You can reset an
-    Administrator's password or authenticator app; they are told by SMS.
+    Administrator's password; they are told by SMS.
   - Suspend or reactivate a school, with a reason.
   - Work through the "Get your school online" leads, and read the platform audit log.
 - **Adding a school from the command line** still works:
@@ -80,11 +80,13 @@ two different people.
 
 - Create a school's first Administrator (you will be asked for a password):
   `cd backend && .venv/Scripts/python manage.py create_user --kind staff --school adsmart --username admin --name "Your Name" --role Administrator --phone 024xxxxxxx`
-- Add someone to your team: `manage.py create_user --kind platform --username yourname --name "Your Name"`
-- At their first sign-in, Administrators, Head Teachers, Accountants, Proprietors and everyone on
-  your team set up an authenticator app (Google or Microsoft Authenticator) and save 10 backup codes.
-- If someone loses their phone: `manage.py reset_second_factor admin --school adsmart`
-  (leave out `--school` for your team).
+- Add someone to your team: `manage.py create_user --kind platform --username yourname --name "Your Name" --email you@example.com`
+- Administrators, Head Teachers, Accountants, Proprietors and everyone on your team confirm each
+  sign-in with a 6-digit code. They choose to get it by SMS to their mobile number or by email to
+  their address, so their account needs at least one of the two (`--phone`, `--email`). A code lasts
+  10 minutes and works once.
+- In development, texted codes are printed in the Django log, and so are emails. Before launch, set
+  `DJANGO_EMAIL_BACKEND` (and the email server details) and the SMS provider, so codes really arrive.
 - Parents are created awaiting activation. They choose "First time, or forgot your password?" on
   their school's sign-in page and get a code by SMS in the school's name. In development the code is
   printed in the Django log.

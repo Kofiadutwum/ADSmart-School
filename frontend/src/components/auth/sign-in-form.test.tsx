@@ -93,14 +93,14 @@ describe("sign-in form", () => {
   });
 
   it("asks for the second step when the role needs one", async () => {
-    mockApi([["POST", "/api/auth/login", 200, { status: "second_factor", totp_ready: true, sms_available: true }]]);
+    mockApi([["POST", "/api/auth/login", 200, { status: "second_factor", email: "a•••@example.com", phone: "024 ••• 4567" }]]);
     const user = userEvent.setup();
     render(<SignInForm kinds={SCHOOL} />);
     await user.click(screen.getByRole("tab", { name: "Staff" }));
     await user.type(screen.getByLabelText(/username/i), "admin");
     await user.type(screen.getByLabelText(/^password/i), "correct horse battery");
     await user.click(screen.getByRole("button", { name: "Sign in" }));
-    expect(await screen.findByRole("heading", { name: /authenticator app/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /text me a code/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Confirm it's you" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Text the code to 024 ••• 4567" })).toBeInTheDocument();
   });
 });

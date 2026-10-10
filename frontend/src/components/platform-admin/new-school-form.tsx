@@ -11,13 +11,13 @@ import type { OneTimePassword, SchoolDetail } from "@/lib/types";
 
 type FieldName =
   | "name" | "slug" | "town" | "region" | "phone" | "email"
-  | "first_name" | "surname" | "username" | "admin_phone";
+  | "first_name" | "surname" | "username" | "admin_phone" | "admin_email";
 type Values = Record<FieldName, string>;
 type Result = { school: SchoolDetail; administrator: OneTimePassword };
 
 const EMPTY: Values = {
   name: "", slug: "", town: "", region: "", phone: "", email: "",
-  first_name: "", surname: "", username: "", admin_phone: "",
+  first_name: "", surname: "", username: "", admin_phone: "", admin_email: "",
 };
 const CHECK_FORM = "Please check the highlighted fields.";
 // The server names the Administrator's fields "administrator.<field>".
@@ -26,10 +26,12 @@ const SERVER_NAME: Partial<Record<FieldName, string>> = {
   surname: "administrator.surname",
   username: "administrator.username",
   admin_phone: "administrator.phone",
+  admin_email: "administrator.email",
 };
+const OPTIONAL: FieldName[] = ["admin_email"];
 const errorKey = (field: FieldName) => SERVER_NAME[field] ?? field;
 
-type InputOptions = { hint?: string; type?: "text" | "tel" | "email" };
+type InputOptions = { hint?: string; type?: "text" | "tel" | "email"; optional?: boolean };
 
 /** Add a school with its placeholder site and first Administrator (amendment §5). */
 export function NewSchoolForm() {
@@ -72,18 +74,18 @@ export function NewSchoolForm() {
     event.preventDefault();
     const missing: Record<string, string> = {};
     for (const field of Object.keys(values) as FieldName[]) {
-      if (!values[field].trim()) missing[errorKey(field)] = "Fill this in.";
+      if (!values[field].trim() && !OPTIONAL.includes(field)) missing[errorKey(field)] = "Fill this in.";
     }
     if (levels.length === 0) missing.levels_offered = "Choose at least one level.";
     if (Object.keys(missing).length > 0) return fail(CHECK_FORM, missing);
     setBusy(true);
     try {
-      const { first_name, surname, username, admin_phone, ...school } = values;
+      const { first_name, surname, username, admin_phone, admin_email, ...school } = values;
       setDone(
         await postJson<Result>("/api/platform/schools", {
           ...school,
           levels_offered: levels,
-          administrator: { first_name, surname, username, phone: admin_phone },
+          administrator: { first_name, surname, username, phone: admin_phone, email: admin_email },
         }),
       );
     } catch (caught) {
@@ -95,7 +97,7 @@ export function NewSchoolForm() {
 
   function input(field: FieldName, label: string, options: InputOptions = {}) {
     return (
-      <Field id={`new-${field}`} label={label} hint={options.hint} required error={errors[errorKey(field)]}>
+      <Field id={`new-${field}`} label={label} hint={options.hint} required={!options.optional} error={errors[errorKey(field)]}>
         {(props) => (
           <input
             {...props}
@@ -133,7 +135,7 @@ export function NewSchoolForm() {
         </p>
         <p className="text-sm text-ink-muted">
           Their username is <strong className="text-ink">{administrator.username}</strong>. At their first sign-in
-          they set up an authenticator app, then choose their own password.
+          they confirm it with a code sent to their phone or email, then choose their own password.
         </p>
         <ButtonLink href={`/schools/${school.slug}`}>Open the school&apos;s page</ButtonLink>
       </section>
@@ -194,7 +196,12 @@ export function NewSchoolForm() {
         {input("username", "Username", { hint: "They sign in with this, for example esi.owusu" })}
         {input("admin_phone", "Mobile number", {
           type: "tel",
-          hint: "For security messages, such as a password reset",
+          hint: "Sign-in codes and security messages come here",
+        })}
+        {input("admin_email", "Email", {
+          type: "email",
+          optional: true,
+          hint: "They can also get their sign-in codes by email",
         })}
       </fieldset>
 

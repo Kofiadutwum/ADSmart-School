@@ -12,7 +12,7 @@ const DETAIL = {
   counts: { pupils: 250, staff: 32, parents: 283, enquiries: 4 },
   administrators: [
     {
-      id: 7, name: "Esi Owusu", username: "esi.owusu", phone: "+233247654321", has_authenticator: true,
+      id: 7, name: "Esi Owusu", username: "esi.owusu", phone: "+233247654321", email: "esi@adsmart.example",
       must_change_password: false, last_sign_in: "2026-10-09T14:05:00Z", is_active: true,
     },
   ],

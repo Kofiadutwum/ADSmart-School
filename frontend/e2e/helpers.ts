@@ -1,8 +1,10 @@
+import fs from "node:fs";
+import path from "node:path";
 import { expect, type Page } from "@playwright/test";
 import { expectNoAccessibilityViolations } from "./axe";
-import { totp } from "./totp";
 
 export const ADMIN = "http://admin.localhost:3100";
+const OUTBOX = path.resolve(process.cwd(), "../backend/e2e-sms.jsonl");
 
 export async function expectAccessibleInBothThemes(page: Page) {
   for (const colorScheme of ["light", "dark"] as const) {
@@ -24,12 +26,25 @@ export async function signIn(page: Page, tab: string | null, username: string, p
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
 }
 
-/** First sign-in for a role that needs the second factor: set up the app, save the codes. */
-export async function setUpAuthenticator(page: Page) {
-  await expect(page.getByRole("heading", { name: "Set up your authenticator app" })).toBeVisible();
-  const secret = (await page.getByTestId("manual-key").textContent())?.trim() ?? "";
-  await page.getByLabel(/6-digit code/i).fill(totp(secret));
+/** 0244000001 → +233244000001. */
+export const e164 = (local: string) => `+233${local.replace(/\s/g, "").slice(1)}`;
+
+/** The newest code texted to a number, from the development SMS log. */
+export function lastCodeTo(number: string): string {
+  const messages = fs
+    .readFileSync(OUTBOX, "utf-8")
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line) as { to: string; body: string });
+  const message = messages.reverse().find((item) => item.to === number);
+  return message?.body.match(/\d{6}/)?.[0] ?? "";
+}
+
+/** The second sign-in step: have the code texted to the account's mobile, then type it in. */
+export async function confirmWithTextedCode(page: Page, number: string) {
+  await expect(page.getByRole("heading", { name: "Confirm it's you" })).toBeVisible();
+  await page.getByRole("button", { name: /text the code/i }).click();
+  await expect(page.getByText(/sent a 6-digit code/i)).toBeVisible();
+  await page.getByLabel(/6-digit code/i).fill(lastCodeTo(number));
   await page.getByRole("button", { name: "Continue" }).click();
-  await expect(page.getByRole("heading", { name: "Save your backup codes" })).toBeVisible();
-  await page.getByRole("button", { name: /saved them/i }).click();
 }

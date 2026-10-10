@@ -81,13 +81,12 @@ export type Me = {
   display_name: string;
   roles: string[];
   must_change_password: boolean;
-  has_authenticator: boolean;
   school: { name: string; slug: string } | null;
 };
 
 export type SignInResult =
   | { status: "signed_in"; user: Me }
-  | { status: "second_factor"; totp_ready: boolean; sms_available: boolean };
+  | { status: "second_factor"; email: string | null; phone: string | null };
 
 export type SessionInfo = {
   id: number;
@@ -118,7 +117,7 @@ export type Administrator = {
   name: string;
   username: string;
   phone: string;
-  has_authenticator: boolean;
+  email: string;
   must_change_password: boolean;
   last_sign_in: string | null;
   is_active: boolean;

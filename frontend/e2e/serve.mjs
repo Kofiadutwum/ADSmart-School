@@ -56,18 +56,18 @@ const createUser = (...args) =>
   run(python, ["manage.py", "create_user", ...args], { cwd: backend, env: djangoEnv, shell: false });
 for (const [project, username] of Object.entries(accounts.staff)) {
   await createUser("--kind", "staff", "--school", "adsmart", "--username", username, "--name", `Esi Admin ${project}`,
-    "--role", "Administrator", "--password", accounts.password);
+    "--role", "Administrator", "--password", accounts.password, "--phone", accounts.phones.staff[project]);
 }
 for (const [project, phone] of Object.entries(accounts.parents)) {
   await createUser("--kind", "parent", "--school", "adsmart", "--username", phone, "--name", `Ama Mensah ${project}`);
 }
 for (const [project, username] of Object.entries(accounts.platform)) {
   await createUser("--kind", "platform", "--username", username, "--name", `Kojo Ops ${project}`,
-    "--password", accounts.password);
+    "--password", accounts.password, "--phone", accounts.phones.platform[project]);
 }
 for (const [project, username] of Object.entries(accounts.platform_admins)) {
   await createUser("--kind", "platform", "--username", username, "--name", `Ama Boss ${project}`,
-    "--password", accounts.password);
+    "--password", accounts.password, "--phone", accounts.phones.platform_admins[project]);
 }
 
 const django = spawn(python, ["manage.py", "runserver", "127.0.0.1:8100", "--noreload"], {

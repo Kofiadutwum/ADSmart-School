@@ -21,6 +21,7 @@ async function fill(user: UserEvent) {
   await user.type(screen.getByLabelText(/^surname/i), "Owusu");
   await user.type(screen.getByLabelText(/^username/i), "esi.owusu");
   await user.type(screen.getByLabelText(/^mobile number/i), "024 765 4321");
+  await user.type(screen.getByLabelText(/^email/i), "esi@hope.example");
 }
 
 describe("add a school", () => {
@@ -73,7 +74,7 @@ describe("add a school", () => {
       phone: "020 111 2233",
       email: "office@hope.example",
       levels_offered: ["nursery", "kg", "lower_primary", "upper_primary", "jhs"],
-      administrator: { first_name: "Esi", surname: "Owusu", username: "esi.owusu", phone: "024 765 4321" },
+      administrator: { first_name: "Esi", surname: "Owusu", username: "esi.owusu", phone: "024 765 4321", email: "esi@hope.example" },
     });
   });
 

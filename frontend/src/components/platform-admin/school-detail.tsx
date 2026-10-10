@@ -153,20 +153,6 @@ function Administrators({ school, onChanged }: { school: SchoolDetail; onChanged
     }
   }
 
-  async function resetAuthenticator(admin: Administrator) {
-    if (!window.confirm(`Reset ${admin.name}'s authenticator app? They set up a new one at their next sign-in.`))
-      return;
-    try {
-      await postJson(`${base}/${admin.id}/reset-second-factor`);
-      setNotice(`${admin.name}'s authenticator app was reset. They set up a new one at their next sign-in.`);
-      setRevealed(null);
-      setError(null);
-      await onChanged();
-    } catch (caught) {
-      setError(errorMessage(caught));
-    }
-  }
-
   return (
     <section aria-labelledby="admins-heading" className="surface rounded-card p-6">
       <h2 id="admins-heading" className="text-xl font-semibold">
@@ -200,24 +186,21 @@ function Administrators({ school, onChanged }: { school: SchoolDetail; onChanged
                     </>
                   )}
                 </p>
+                {admin.email && (
+                  <p className="text-sm">
+                    <a href={`mailto:${admin.email}`} className="link">
+                      {admin.email}
+                    </a>
+                  </p>
+                )}
                 <p className="text-sm text-ink-muted">
-                  {admin.has_authenticator ? "Authenticator app set up" : "No authenticator app yet"} ·{" "}
-                  {admin.last_sign_in ? `last signed in ${formatDateTime(admin.last_sign_in)}` : "not signed in yet"}
+                  {admin.last_sign_in ? `Last signed in ${formatDateTime(admin.last_sign_in)}` : "Not signed in yet"}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" onClick={() => resetPassword(admin)} aria-label={`Reset password for ${admin.name}`}>
                   Reset password
                 </Button>
-                {admin.has_authenticator && (
-                  <Button
-                    variant="outline"
-                    onClick={() => resetAuthenticator(admin)}
-                    aria-label={`Reset authenticator app for ${admin.name}`}
-                  >
-                    Reset authenticator
-                  </Button>
-                )}
               </div>
             </div>
             {revealed?.id === admin.id && <OneTimePasswordNote password={revealed.password} />}
