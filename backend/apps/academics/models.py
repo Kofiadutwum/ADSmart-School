@@ -1,4 +1,5 @@
-"""The school year, its calendar, classes and subjects (Phase 1 spec §3.1), per school."""
+"""The school year, its calendar, classes, subjects and assignments, per school
+(Phase 1 spec §3.1)."""
 
 from django.db import models
 from django.db.models import F, Q
@@ -139,3 +140,61 @@ class Subject(SchoolOwned):
 
     def __str__(self):
         return self.name
+
+
+def _same_year(term: Term, school_class: SchoolClass) -> None:
+    if term.academic_year_id != school_class.academic_year_id:
+        raise ValueError("The term is not in this class's school year.")
+
+
+class ClassTeacherAssignment(SchoolOwned):
+    """One class teacher per class per term. Substitutes arrive later (SMS spec §14)."""
+
+    school_class = models.ForeignKey(
+        SchoolClass, on_delete=models.CASCADE, related_name="class_teachers"
+    )
+    staff = models.ForeignKey(
+        "people.Staff", on_delete=models.CASCADE, related_name="class_teacher_of"
+    )
+    term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name="+")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["school_class", "term"], name="academics_one_class_teacher"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.staff}, class teacher of {self.school_class}"
+
+    def save(self, *args, **kwargs):
+        self.school_id = same_school(self.school_class, self.staff, self.term)
+        _same_year(self.term, self.school_class)
+        super().save(*args, **kwargs)
+
+
+class TeachingAssignment(SchoolOwned):
+    """Who teaches what to which class; it decides which classes a teacher may see (§4.2)."""
+
+    staff = models.ForeignKey("people.Staff", on_delete=models.CASCADE, related_name="teaching")
+    school_class = models.ForeignKey(SchoolClass, on_delete=models.CASCADE, related_name="teaching")
+    subject = models.ForeignKey(Subject, on_delete=models.PROTECT, related_name="+")
+    term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name="+")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["staff", "school_class", "subject", "term"], name="academics_one_teaching"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.staff}: {self.subject}, {self.school_class}"
+
+    def save(self, *args, **kwargs):
+        self.school_id = same_school(self.staff, self.school_class, self.subject, self.term)
+        _same_year(self.term, self.school_class)
+        if self.school_class.band not in self.subject.bands:
+            raise ValueError(f"{self.subject} is not taught in {self.school_class}.")
+        super().save(*args, **kwargs)
