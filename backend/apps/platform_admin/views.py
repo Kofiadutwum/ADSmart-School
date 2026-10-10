@@ -1,17 +1,23 @@
 """The platform admin API (amendment §5): schools, their Administrators, leads and the audit
 log. Platform staff see counts and setup details, never pupils', parents' or staff records."""
 
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
+from rest_framework import serializers
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts import roles
+from apps.accounts.identifiers import normalise_identifier
 from apps.accounts.models import User
 from apps.accounts.signin import has_authenticator
+from apps.accounts.views import validated
+from apps.core.phones import normalise_gh_phone
 from apps.people.models import Parent, Staff, Student
+from apps.platform_admin import services
 from apps.platform_admin.permissions import IsPlatformStaff
-from apps.school.models import School
+from apps.school.models import LEVEL_CODES, School
 from apps.website.models import Enquiry
 from apps.website.services import publication_blockers
 
@@ -72,6 +78,42 @@ def school_detail(school: School) -> dict:
     }
 
 
+def _one_time(user: User, password: str) -> dict:
+    return {"username": user.login, "one_time_password": password}
+
+
+class AdministratorSerializer(serializers.Serializer):
+    first_name = serializers.CharField(max_length=60)
+    surname = serializers.CharField(max_length=60)
+    username = serializers.CharField(max_length=150)
+    phone = serializers.CharField(max_length=20)
+
+    def validate_username(self, value):
+        try:
+            return normalise_identifier(User.Kind.STAFF, value)
+        except ValueError as exc:
+            raise serializers.ValidationError(str(exc)) from exc
+
+    def validate_phone(self, value):
+        try:
+            return normalise_gh_phone(value)
+        except ValueError as exc:
+            raise serializers.ValidationError(str(exc)) from exc
+
+
+class NewSchoolSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=120)
+    slug = serializers.CharField(max_length=30)
+    town = serializers.CharField(max_length=80)
+    region = serializers.CharField(max_length=80)
+    phone = serializers.CharField(max_length=20)
+    email = serializers.EmailField()
+    levels_offered = serializers.ListField(
+        child=serializers.ChoiceField(choices=LEVEL_CODES), allow_empty=False
+    )
+    administrator = AdministratorSerializer()
+
+
 class SchoolsView(PlatformStaffView):
     def get(self, request):
         schools = School.objects.all()
@@ -85,7 +127,28 @@ class SchoolsView(PlatformStaffView):
             schools = schools.filter(status=status)
         return Response([school_row(school) for school in schools])
 
+    def post(self, request):
+        data = validated(NewSchoolSerializer, request)
+        try:
+            school, user, password = services.open_school(**data, by=request.user, request=request)
+        except DjangoValidationError as exc:  # the School model's own checks (slug, phone, …)
+            raise serializers.ValidationError(exc.message_dict) from exc
+        body = {"school": school_detail(school), "administrator": _one_time(user, password)}
+        return Response(body, status=201)
+
 
 class SchoolDetailView(PlatformStaffView):
     def get(self, request, slug):
         return Response(school_detail(get_object_or_404(School, slug=slug)))
+
+
+class AdministratorsView(PlatformStaffView):
+    def post(self, request, slug):
+        school = get_object_or_404(School, slug=slug)
+        data = validated(AdministratorSerializer, request)
+        if User.objects.filter(school=school, login=data["username"]).exists():
+            raise serializers.ValidationError(
+                {"username": ["That username is already used at this school."]}
+            )
+        user, password = services.add_administrator(school, **data, by=request.user)
+        return Response(_one_time(user, password), status=201)

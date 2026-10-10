@@ -36,6 +36,7 @@ CLASSIFIED = {
     "api/auth/parent/set-password": SCHOOL_FROM_HOST,
     "api/platform/schools": PLATFORM_STAFF,
     "api/platform/schools/<slug:slug>": PLATFORM_STAFF,
+    "api/platform/schools/<slug:slug>/administrators": PLATFORM_STAFF,
 }
 
 
