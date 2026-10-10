@@ -55,10 +55,19 @@ Open http://adsmart.localhost:3000 (AD Smart School) or http://localhost:3000 (t
   and Firefox resolve `*.localhost` on their own.
 - **Seed the first school:** `cd backend && .venv/Scripts/python manage.py seed_website`
   (AD Smart School, with its logo, plus the platform's draft privacy notice).
-- **Add a school:** `.venv/Scripts/python manage.py create_school --slug brightfuture
-  --name "Bright Future Academy" --town Ejisu --region "Ashanti Region" --phone 0201234567
-  --email office@brightfuture.example --levels kg,lower_primary,upper_primary`.
-  Its placeholder site is live at once, in preview, until the school completes its go-live checks.
+- **The platform admin area:** `http://admin.localhost:3000`. Sign in with a platform account
+  (`manage.py create_user --kind platform --username yourname --name "Your Name"`) and set up an
+  authenticator app. There you can:
+  - Add a school with its first Administrator. The one-time password is shown once; they change it
+    and set up their own authenticator app at first sign-in.
+  - Open a school's page for counts, the go-live list and its Administrators. You can reset an
+    Administrator's password or authenticator app; they are told by SMS.
+  - Suspend or reactivate a school, with a reason.
+  - Work through the "Get your school online" leads, and read the platform audit log.
+- **Adding a school from the command line** still works:
+  `.venv/Scripts/python manage.py create_school --slug brightfuture --name "Bright Future Academy"
+  --town Ejisu --region "Ashanti Region" --phone 0201234567 --email office@brightfuture.example
+  --levels kg,lower_primary,upper_primary`.
 - **Platform settings** (`backend/.env`): `PLATFORM_NAME`, `PLATFORM_DOMAIN`, `PLATFORM_EMAIL`,
   `SITE_URL_TEMPLATE`. The frontend needs the same `PLATFORM_DOMAIN` in `frontend/.env.local`.
 

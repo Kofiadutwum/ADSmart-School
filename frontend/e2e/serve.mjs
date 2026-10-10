@@ -65,6 +65,10 @@ for (const [project, username] of Object.entries(accounts.platform)) {
   await createUser("--kind", "platform", "--username", username, "--name", `Kojo Ops ${project}`,
     "--password", accounts.password);
 }
+for (const [project, username] of Object.entries(accounts.platform_admins)) {
+  await createUser("--kind", "platform", "--username", username, "--name", `Ama Boss ${project}`,
+    "--password", accounts.password);
+}
 
 const django = spawn(python, ["manage.py", "runserver", "127.0.0.1:8100", "--noreload"], {
   cwd: backend,

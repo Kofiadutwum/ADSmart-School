@@ -1,6 +1,19 @@
 {
   "password": "e2e only passphrase 2026",
-  "staff": { "phone": "e2e-admin-phone", "desktop": "e2e-admin-desktop" },
-  "parents": { "phone": "0241234561", "desktop": "0241234562" },
-  "platform": { "phone": "e2e-ops-phone", "desktop": "e2e-ops-desktop" }
+  "staff": {
+    "phone": "e2e-admin-phone",
+    "desktop": "e2e-admin-desktop"
+  },
+  "parents": {
+    "phone": "0241234561",
+    "desktop": "0241234562"
+  },
+  "platform": {
+    "phone": "e2e-ops-phone",
+    "desktop": "e2e-ops-desktop"
+  },
+  "platform_admins": {
+    "phone": "e2e-boss-phone",
+    "desktop": "e2e-boss-desktop"
+  }
 }
