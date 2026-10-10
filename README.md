@@ -80,6 +80,22 @@ two different people.
   their school's sign-in page and get a code by SMS in the school's name. In development the code is
   printed in the Django log.
 
+## Demo school
+
+A school with no pupils yet can be filled with a realistic demo school: a school year with its
+calendar, classes, about 250 pupils with their families, and staff for every role. Every demo
+person is marked DEMO, and demo phone numbers are never texted.
+
+- Fill a school: `cd backend && .venv/Scripts/python manage.py seed_demo --school adsmart`
+- Try every role (development only): set `DEMO_LOGINS_ENABLED=true` in `backend/.env` before
+  seeding. The command then prints one sign-in per role and their shared password. Settings
+  refuse this flag unless `DJANGO_DEBUG` is on.
+- See what would be removed: `.venv/Scripts/python manage.py purge_demo --school adsmart`, then
+  add `--yes` to remove it. Real records stay, and nothing is removed while a real record still
+  points at a demo one.
+- Public holidays: the calendar marks the holidays with fixed rules. Add Eid and any newly
+  gazetted days yourself.
+
 ## Checks
 
 ```bash
