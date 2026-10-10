@@ -42,6 +42,9 @@ CLASSIFIED = {
     "api/platform/schools/<slug:slug>/administrators/<int:pk>/reset-second-factor": (
         PLATFORM_STAFF
     ),
+    "api/platform/leads": PLATFORM_STAFF,
+    "api/platform/leads/<int:pk>": PLATFORM_STAFF,
+    "api/platform/audit": PLATFORM_STAFF,
 }
 
 

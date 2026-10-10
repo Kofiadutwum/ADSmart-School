@@ -13,12 +13,14 @@ from apps.accounts.identifiers import normalise_identifier
 from apps.accounts.models import User
 from apps.accounts.signin import has_authenticator
 from apps.accounts.views import validated
+from apps.audit.models import AuditLog
+from apps.audit.services import record
 from apps.core.phones import normalise_gh_phone
 from apps.people.models import Parent, Staff, Student
 from apps.platform_admin import services
 from apps.platform_admin.permissions import IsPlatformStaff
 from apps.school.models import LEVEL_CODES, School
-from apps.website.models import Enquiry
+from apps.website.models import Enquiry, Lead
 from apps.website.services import publication_blockers
 
 
@@ -192,3 +194,74 @@ class ResetSecondFactorView(PlatformStaffView):
         user = _administrator(slug, pk)
         services.reset_administrator_second_factor(user, by=request.user, request=request)
         return Response(status=204)
+
+
+def lead_row(lead: Lead) -> dict:
+    return {
+        "id": lead.pk,
+        "school_name": lead.school_name,
+        "contact_name": lead.contact_name,
+        "phone": lead.phone,
+        "email": lead.email,
+        "town": lead.town,
+        "message": lead.message,
+        "status": lead.status,
+        "staff_notes": lead.staff_notes,
+        "created_at": lead.created_at,
+    }
+
+
+class LeadUpdateSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=Lead.Status.choices)
+    staff_notes = serializers.CharField(max_length=2000, allow_blank=True, default="")
+
+
+class LeadsView(PlatformStaffView):
+    def get(self, request):
+        leads = Lead.objects.order_by("-created_at", "-id")
+        return Response([lead_row(lead) for lead in leads])
+
+
+class LeadDetailView(PlatformStaffView):
+    def patch(self, request, pk):
+        lead = get_object_or_404(Lead, pk=pk)
+        data = validated(LeadUpdateSerializer, request)
+        old = {"status": lead.status}
+        lead.status, lead.staff_notes = data["status"], data["staff_notes"]
+        lead.save(update_fields=["status", "staff_notes"])
+        record(
+            AuditLog.Action.UPDATED,
+            actor=request.user,
+            entity=lead,
+            old=old,
+            new={"status": lead.status},
+            request=request,
+        )
+        return Response(lead_row(lead))
+
+
+AUDIT_LIMIT = 200  # shortcut: the latest entries only; add paging once the log grows
+
+
+class AuditView(PlatformStaffView):
+    """Platform events, plus everything platform staff did in any school (amendment §4)."""
+
+    def get(self, request):
+        entries = AuditLog.objects.filter(
+            Q(school__isnull=True) | Q(actor__kind=User.Kind.PLATFORM)
+        ).select_related("school")[:AUDIT_LIMIT]
+        return Response(
+            [
+                {
+                    "id": entry.pk,
+                    "created_at": entry.created_at,
+                    "actor_name": entry.actor_name,
+                    "action": entry.action,
+                    "entity_type": entry.entity_type,
+                    "entity_id": entry.entity_id,
+                    "school": entry.school.name if entry.school_id else None,
+                    "reason": entry.reason,
+                }
+                for entry in entries
+            ]
+        )
