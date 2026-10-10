@@ -205,3 +205,13 @@ def test_reset_second_factor_command(api, admin):
     assert not BackupCode.objects.filter(user=admin).exists()
     assert AuditLog.objects.filter(action="SECOND_FACTOR_RESET").count() == 1
     assert sign_in(api, "admin").json()["totp_ready"] is False
+
+
+def test_wrong_codes_count_towards_the_account_lockout(api, admin):
+    with_authenticator(admin)
+    sign_in(api, "admin")
+    for _ in range(5):
+        verify(api, "totp", WRONG)
+    response = sign_in(api, "admin")
+    assert response.status_code == 429 and response.json()["code"] == "locked_out"
+    assert AuditLog.objects.filter(action="LOCKED_OUT").count() == 1

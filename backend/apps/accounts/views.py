@@ -185,7 +185,7 @@ class SecondFactorConfirmView(OpenView):
         code = validated(CodeSerializer, request)["code"]
         device = TotpDevice.objects.filter(user=user, confirmed_at__isnull=True).first()
         if device is None or not verify_totp(device, code):
-            reject_code(request)
+            reject_code(request, user)
         device.confirmed_at = timezone.now()
         device.save(update_fields=["confirmed_at"])
         codes = issue_backup_codes(user)
@@ -232,7 +232,7 @@ class SecondFactorVerifyView(OpenView):
             if ok:
                 record(AuditLog.Action.BACKUP_CODE_USED, actor=user, entity=user, request=request)
         if not ok:
-            reject_code(request)
+            reject_code(request, user)
         return Response(finish_second_factor(request, user))
 
 

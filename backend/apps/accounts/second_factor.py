@@ -14,7 +14,7 @@ from django.utils.crypto import salted_hmac
 
 from apps.accounts.models import BackupCode, TotpDevice, User
 from apps.accounts.sessions import end_other_sessions
-from apps.accounts.signin import PENDING_KEY, complete_login, me_payload
+from apps.accounts.signin import PENDING_KEY, complete_login, count_wrong_code, me_payload
 from apps.audit.models import AuditLog
 from apps.audit.services import record
 from apps.core.exceptions import ApiError
@@ -99,8 +99,9 @@ def reset_second_factor(user: User, *, by: User | None = None, request=None, rea
     )
 
 
-def reject_code(request):
+def reject_code(request, user: User):
     """Count a wrong code; the fifth ends the attempt (§5.5). Always raises."""
+    count_wrong_code(request, user)
     pending = request.session[PENDING_KEY]
     pending["failures"] = pending.get("failures", 0) + 1
     if pending["failures"] >= MAX_WRONG_CODES:

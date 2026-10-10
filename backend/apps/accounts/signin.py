@@ -60,6 +60,28 @@ def sign_in_site(request) -> Site:
     return site
 
 
+def _account_key(school_id, kind: str, identifier: str) -> str:
+    # Hashed: the identifier is raw user input, unsafe in a cache key.
+    account = hashlib.sha256(f"{school_id or 'platform'}:{kind}:{identifier}".encode()).hexdigest()
+    return f"signin:account:{account}"
+
+
+def _count_failure(request, account_key: str, *, user, school, attempt: dict) -> None:
+    """One more failure for the account and the address; the lockout is audited as it starts."""
+    account_count = _add_failure(account_key)
+    address_count = _add_failure(f"signin:address:{client_ip(request)}")
+    if account_count == MAX_FAILURES_PER_ACCOUNT or address_count == MAX_FAILURES_PER_ADDRESS:
+        record(AuditLog.Action.LOCKED_OUT, entity=user, new=attempt, request=request, school=school)
+
+
+def count_wrong_code(request, user: User) -> None:
+    """Wrong second-factor codes count towards the same lockouts as wrong passwords, so starting
+    sign-in again cannot buy unlimited guesses (Phase 1 spec §5.5)."""
+    key = _account_key(user.school_id, user.kind, user.login)
+    attempt = {"kind": user.kind, "identifier": user.login}
+    _count_failure(request, key, user=user, school=user.school, attempt=attempt)
+
+
 def check_password_sign_in(request, kind: str, raw_identifier: str, password: str) -> User:
     """The user whose password matches, or ApiError. Callers decide what happens next."""
     site = sign_in_site(request)
@@ -67,10 +89,7 @@ def check_password_sign_in(request, kind: str, raw_identifier: str, password: st
         identifier = normalise_identifier(kind, raw_identifier)
     except ValueError:
         identifier = (raw_identifier or "").strip().lower()[:150]
-    scope = site.school.pk if site.school else "platform"
-    # Hashed: the identifier is raw user input, unsafe in a cache key.
-    account = hashlib.sha256(f"{scope}:{kind}:{identifier}".encode()).hexdigest()
-    account_key = f"signin:account:{account}"
+    account_key = _account_key(site.school.pk if site.school else None, kind, identifier)
     address_key = f"signin:address:{client_ip(request)}"
     if (
         _failures(account_key) >= MAX_FAILURES_PER_ACCOUNT
@@ -99,16 +118,7 @@ def check_password_sign_in(request, kind: str, raw_identifier: str, password: st
             request=request,
             school=site.school,
         )
-        account_count = _add_failure(account_key)
-        address_count = _add_failure(address_key)
-        if account_count == MAX_FAILURES_PER_ACCOUNT or address_count == MAX_FAILURES_PER_ADDRESS:
-            record(
-                AuditLog.Action.LOCKED_OUT,
-                entity=user,
-                new=attempt,
-                request=request,
-                school=site.school,
-            )
+        _count_failure(request, account_key, user=user, school=site.school, attempt=attempt)
         raise ApiError("invalid_credentials", GENERIC_FAILURE, 400)
     if not user.is_active:
         record(
