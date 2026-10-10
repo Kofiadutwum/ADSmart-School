@@ -2,12 +2,16 @@
 
 import secrets
 
+from django.conf import settings
 from django.db import transaction
 
 from apps.accounts import roles
 from apps.accounts.models import User
+from apps.accounts.second_factor import reset_second_factor
+from apps.accounts.sessions import end_other_sessions
 from apps.audit.models import AuditLog
 from apps.audit.services import record
+from apps.notifications.sms import Purpose, send_sms
 from apps.people.services import create_staff
 from apps.school.models import School
 from apps.website.provisioning import create_school
@@ -58,3 +62,61 @@ def open_school(*, administrator: dict, by, request=None, **fields) -> tuple[Sch
     )
     user, password = add_administrator(school, **administrator, by=by)
     return school, user, password
+
+
+def set_status(school: School, status: str, *, reason: str, by, request=None) -> School:
+    """Suspending signs the school's users out at their next request and takes its website
+    offline (amendment §2, §3.3)."""
+    if not reason.strip():
+        raise ValueError("Give a reason.")
+    old = school.status
+    school.status = status
+    school.save(update_fields=["status"])
+    record(
+        AuditLog.Action.STATUS_CHANGED,
+        actor=by,
+        entity=school,
+        old={"status": old},
+        new={"status": status},
+        reason=reason,
+        request=request,
+    )
+    return school
+
+
+def _tell(user: User, text: str) -> None:
+    """Administrators hear about every reset platform support makes (amendment §4)."""
+    if user.phone:
+        send_sms(
+            user.phone,
+            f"{user.school.name}: {text}",
+            purpose=Purpose.ACCOUNT_NOTICE,
+            school=user.school,
+        )
+
+
+def reset_administrator_password(user: User, *, by, request=None) -> str:
+    password = _issue_password(user)
+    end_other_sessions(user, keep_key=None)
+    record(
+        AuditLog.Action.PASSWORD_RESET,
+        actor=by,
+        entity=user,
+        reason="Reset by platform support",
+        request=request,
+    )
+    _tell(
+        user,
+        f"{settings.PLATFORM_NAME} support has reset your sign-in password. "
+        "If you did not ask for this, contact them at once.",
+    )
+    return password
+
+
+def reset_administrator_second_factor(user: User, *, by, request=None) -> None:
+    reset_second_factor(user, by=by, request=request, reason="Reset by platform support")
+    _tell(
+        user,
+        f"{settings.PLATFORM_NAME} support has reset your authenticator app. "
+        "You will set up a new one at your next sign-in.",
+    )

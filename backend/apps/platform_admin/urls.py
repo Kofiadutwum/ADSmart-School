@@ -6,4 +6,13 @@ urlpatterns = [
     path("schools", views.SchoolsView.as_view()),
     path("schools/<slug:slug>", views.SchoolDetailView.as_view()),
     path("schools/<slug:slug>/administrators", views.AdministratorsView.as_view()),
+    path("schools/<slug:slug>/status", views.SchoolStatusView.as_view()),
+    path(
+        "schools/<slug:slug>/administrators/<int:pk>/reset-password",
+        views.ResetPasswordView.as_view(),
+    ),
+    path(
+        "schools/<slug:slug>/administrators/<int:pk>/reset-second-factor",
+        views.ResetSecondFactorView.as_view(),
+    ),
 ]

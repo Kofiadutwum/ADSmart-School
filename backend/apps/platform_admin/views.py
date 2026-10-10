@@ -152,3 +152,43 @@ class AdministratorsView(PlatformStaffView):
             )
         user, password = services.add_administrator(school, **data, by=request.user)
         return Response(_one_time(user, password), status=201)
+
+
+class StatusSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=School.Status.choices)
+    reason = serializers.CharField(max_length=500)
+
+
+class SchoolStatusView(PlatformStaffView):
+    def post(self, request, slug):
+        school = get_object_or_404(School, slug=slug)
+        data = validated(StatusSerializer, request)
+        services.set_status(
+            school, data["status"], reason=data["reason"], by=request.user, request=request
+        )
+        return Response(school_detail(school))
+
+
+def _administrator(slug: str, pk: int) -> User:
+    """Only a school's own Administrators can be reset by the platform team (amendment §4)."""
+    return get_object_or_404(
+        User,
+        pk=pk,
+        school__slug=slug,
+        kind=User.Kind.STAFF,
+        groups__name=roles.ADMINISTRATOR,
+    )
+
+
+class ResetPasswordView(PlatformStaffView):
+    def post(self, request, slug, pk):
+        user = _administrator(slug, pk)
+        password = services.reset_administrator_password(user, by=request.user, request=request)
+        return Response(_one_time(user, password))
+
+
+class ResetSecondFactorView(PlatformStaffView):
+    def post(self, request, slug, pk):
+        user = _administrator(slug, pk)
+        services.reset_administrator_second_factor(user, by=request.user, request=request)
+        return Response(status=204)

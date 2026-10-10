@@ -12,6 +12,7 @@ from apps.people.demo import is_demo_only_phone
 
 class Purpose:
     SIGN_IN_CODE = "sign_in_code"
+    ACCOUNT_NOTICE = "account_notice"  # telling someone their account was changed for them
 
 
 # Per-number limits by purpose (§5.5): (messages, window).
