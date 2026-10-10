@@ -185,3 +185,12 @@ def test_students_must_change_their_first_password_before_anything_else(api, mak
 )
 def test_describe_device(agent, expected):
     assert describe_device(agent) == expected
+
+
+def test_signing_in_as_someone_else_replaces_the_session(api, make_user):
+    make_user()
+    make_user("ama.boateng")
+    sign_in(api, "k.mensah")
+    assert sign_in(api, "ama.boateng").json()["status"] == "signed_in"
+    assert api.get("/api/auth/me").json()["username"] == "ama.boateng"
+    assert UserSession.objects.get().user.login == "ama.boateng"

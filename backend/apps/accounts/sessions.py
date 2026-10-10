@@ -45,6 +45,8 @@ def session_policy(user: User, remember: bool) -> tuple[int, int]:
 def start_session(request, user: User, *, remember: bool) -> UserSession:
     idle, maximum = session_policy(user, remember)
     request.session.set_expiry(idle)
+    if request.session.session_key is None:
+        request.session.save()  # login() flushed another user's session, leaving no key yet
     now = timezone.now()
     UserSession.objects.filter(user=user, expires_at__lte=now).delete()
     return UserSession.objects.create(

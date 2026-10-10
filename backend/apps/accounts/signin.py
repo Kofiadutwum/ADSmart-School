@@ -13,7 +13,7 @@ from django.http import Http404
 
 from apps.accounts import roles
 from apps.accounts.identifiers import normalise_identifier
-from apps.accounts.models import TotpDevice, User
+from apps.accounts.models import TotpDevice, User, UserSession
 from apps.accounts.sessions import start_session
 from apps.audit.models import AuditLog
 from apps.audit.services import client_ip, record
@@ -167,6 +167,8 @@ def pending_user(request) -> User:
 
 def complete_login(request, user: User, *, remember: bool) -> None:
     request.session.pop(PENDING_KEY, None)
+    # Any earlier sign-in on this browser ends here; login() replaces its session.
+    UserSession.objects.filter(session_key=request.session.session_key).delete()
     login(request, user)
     start_session(request, user, remember=remember)
     record(AuditLog.Action.SIGN_IN, actor=user, entity=user, request=request)
