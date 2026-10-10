@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "apps.consent",
     "apps.website",
     "apps.academics",
+    "apps.people",
 ]
 
 MIDDLEWARE = [

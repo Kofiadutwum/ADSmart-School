@@ -23,6 +23,6 @@ def normalise_identifier(kind: str, raw: str) -> str:
     if kind == "student":
         value = re.sub(r"[\s-]", "", value)
         if not STUDENT_ID.match(value):
-            raise ValueError("Enter the 7-digit Student ID, e.g. 26-0147-3.")
+            raise ValueError("Enter the 7-digit Student ID, e.g. 26-0147-1.")
         return value
     raise ValueError("Unknown account type.")

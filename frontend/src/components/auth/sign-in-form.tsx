@@ -17,7 +17,7 @@ type Tab = { label: string; identifier: string; hint?: string; inputMode: "tel" 
 
 const TABS: Record<AccountKind, Tab> = {
   parent: { label: "Parent", identifier: "Mobile number", hint: "The number the school has for you, e.g. 024 123 4567.", inputMode: "tel" },
-  student: { label: "Student", identifier: "Student ID", hint: "Your 7-digit Student ID, e.g. 26-0147-3.", inputMode: "numeric" },
+  student: { label: "Student", identifier: "Student ID", hint: "Your 7-digit Student ID, e.g. 26-0147-1.", inputMode: "numeric" },
   staff: { label: "Staff", identifier: "Username", inputMode: "text" },
   platform: { label: "Platform staff", identifier: "Username", inputMode: "text" },
 };
