@@ -97,3 +97,66 @@ export type SessionInfo = {
   last_seen: string;
   current: boolean;
 };
+
+export type SchoolStatus = "trial" | "active" | "suspended";
+
+/** GET /api/platform/schools (amendment §5). */
+export type SchoolRow = {
+  slug: string;
+  name: string;
+  town: string;
+  region: string;
+  status: SchoolStatus;
+  is_public: boolean;
+  to_do: number;
+  created_at: string;
+  url: string;
+};
+
+export type Administrator = {
+  id: number;
+  name: string;
+  username: string;
+  phone: string;
+  has_authenticator: boolean;
+  must_change_password: boolean;
+  last_sign_in: string | null;
+  is_active: boolean;
+};
+
+export type SchoolDetail = SchoolRow & {
+  phone: string;
+  email: string;
+  levels_offered: LevelCode[];
+  blockers: string[];
+  counts: { pupils: number; staff: number; parents: number; enquiries: number };
+  administrators: Administrator[];
+};
+
+export type OneTimePassword = { username: string; one_time_password: string };
+
+export type LeadStatus = "new" | "contacted" | "onboarded" | "closed";
+
+export type Lead = {
+  id: number;
+  school_name: string;
+  contact_name: string;
+  phone: string;
+  email: string;
+  town: string;
+  message: string;
+  status: LeadStatus;
+  staff_notes: string;
+  created_at: string;
+};
+
+export type AuditEntry = {
+  id: number;
+  created_at: string;
+  actor_name: string;
+  action: string;
+  entity_type: string;
+  entity_id: string;
+  school: string | null;
+  reason: string;
+};

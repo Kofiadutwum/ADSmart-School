@@ -46,7 +46,7 @@ export async function getJson<T>(path: string): Promise<T> {
   return handle<T>(await fetch(path, { headers: { Accept: "application/json" } }));
 }
 
-async function send<T>(method: "POST" | "DELETE", path: string, data?: unknown): Promise<T> {
+async function send<T>(method: "POST" | "PATCH" | "DELETE", path: string, data?: unknown): Promise<T> {
   return handle<T>(
     await fetch(path, {
       method,
@@ -62,4 +62,8 @@ export function postJson<T>(path: string, data?: unknown): Promise<T> {
 
 export function deleteJson<T>(path: string): Promise<T> {
   return send<T>("DELETE", path);
+}
+
+export function patchJson<T>(path: string, data: unknown): Promise<T> {
+  return send<T>("PATCH", path, data);
 }

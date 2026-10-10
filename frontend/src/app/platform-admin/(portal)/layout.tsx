@@ -3,11 +3,20 @@ import { AuthProvider } from "@/components/portal/auth-provider";
 import { PortalShell } from "@/components/portal/portal-shell";
 import { getPlatform } from "@/lib/api";
 
+const NAV = [
+  { href: "/schools", label: "Schools" },
+  { href: "/leads", label: "Leads" },
+  { href: "/audit", label: "Audit log" },
+  { href: "/account", label: "Account" },
+];
+
 export default async function PlatformPortalLayout({ children }: { children: ReactNode }) {
   const { name } = await getPlatform();
   return (
     <AuthProvider>
-      <PortalShell name={`${name} admin`}>{children}</PortalShell>
+      <PortalShell name={`${name} admin`} nav={NAV}>
+        {children}
+      </PortalShell>
     </AuthProvider>
   );
 }
