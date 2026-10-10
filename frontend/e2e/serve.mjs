@@ -12,6 +12,7 @@ const frontend = path.resolve(here, "..");
 const isWindows = process.platform === "win32";
 const python = path.join(backend, ".venv", isWindows ? "Scripts/python.exe" : "bin/python");
 const npm = isWindows ? "npm.cmd" : "npm";
+const accounts = JSON.parse(fs.readFileSync(path.join(here, "accounts.json"), "utf-8"));
 const DJANGO = "http://127.0.0.1:8100";
 
 const djangoEnv = {
@@ -23,6 +24,7 @@ const djangoEnv = {
   PLATFORM_DOMAIN: "localhost",
   PLATFORM_EMAIL: "hello@schoolsite.test",
   SITE_URL_TEMPLATE: "http://{host}:3100",
+  SMS_FILE_PATH: path.join(backend, "e2e-sms.jsonl"),
 };
 const nextEnv = { ...process.env, DJANGO_ORIGIN: DJANGO, PLATFORM_DOMAIN: "localhost" };
 
@@ -37,6 +39,7 @@ function run(command, args, options) {
 
 fs.rmSync(path.join(backend, "e2e.sqlite3"), { force: true });
 fs.rmSync(djangoEnv.DJANGO_MEDIA_ROOT, { recursive: true, force: true });
+fs.rmSync(djangoEnv.SMS_FILE_PATH, { force: true });
 await run(python, ["manage.py", "migrate", "--noinput"], { cwd: backend, env: djangoEnv });
 await run(python, ["manage.py", "createcachetable"], { cwd: backend, env: djangoEnv });
 await run(python, ["manage.py", "seed_website"], { cwd: backend, env: djangoEnv });
@@ -48,6 +51,20 @@ await run(
    "--levels", "kg,lower_primary,upper_primary"],
   { cwd: backend, env: djangoEnv, shell: false },
 );
+// Test accounts at AD Smart School and on the platform team. No shell: names keep their spaces.
+const createUser = (...args) =>
+  run(python, ["manage.py", "create_user", ...args], { cwd: backend, env: djangoEnv, shell: false });
+for (const [project, username] of Object.entries(accounts.staff)) {
+  await createUser("--kind", "staff", "--school", "adsmart", "--username", username, "--name", `Esi Admin ${project}`,
+    "--role", "Administrator", "--password", accounts.password);
+}
+for (const [project, phone] of Object.entries(accounts.parents)) {
+  await createUser("--kind", "parent", "--school", "adsmart", "--username", phone, "--name", `Ama Mensah ${project}`);
+}
+for (const [project, username] of Object.entries(accounts.platform)) {
+  await createUser("--kind", "platform", "--username", username, "--name", `Kojo Ops ${project}`,
+    "--password", accounts.password);
+}
 
 const django = spawn(python, ["manage.py", "runserver", "127.0.0.1:8100", "--noreload"], {
   cwd: backend,

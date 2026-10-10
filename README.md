@@ -62,6 +62,24 @@ Open http://adsmart.localhost:3000 (AD Smart School) or http://localhost:3000 (t
 - **Platform settings** (`backend/.env`): `PLATFORM_NAME`, `PLATFORM_DOMAIN`, `PLATFORM_EMAIL`,
   `SITE_URL_TEMPLATE`. The frontend needs the same `PLATFORM_DOMAIN` in `frontend/.env.local`.
 
+## Accounts and sign-in
+
+Everyone signs in at their own address. A school's staff, parents and pupils use that school's
+address (for example `adsmart.localhost:3000/sign-in`); your team uses the admin address
+(`admin.localhost:3000`). An account belongs to one school, so the same username at two schools is
+two different people.
+
+- Create a school's first Administrator (you will be asked for a password):
+  `cd backend && .venv/Scripts/python manage.py create_user --kind staff --school adsmart --username admin --name "Your Name" --role Administrator --phone 024xxxxxxx`
+- Add someone to your team: `manage.py create_user --kind platform --username yourname --name "Your Name"`
+- At their first sign-in, Administrators, Head Teachers, Accountants, Proprietors and everyone on
+  your team set up an authenticator app (Google or Microsoft Authenticator) and save 10 backup codes.
+- If someone loses their phone: `manage.py reset_second_factor admin --school adsmart`
+  (leave out `--school` for your team).
+- Parents are created awaiting activation. They choose "First time, or forgot your password?" on
+  their school's sign-in page and get a code by SMS in the school's name. In development the code is
+  printed in the Django log.
+
 ## Checks
 
 ```bash
