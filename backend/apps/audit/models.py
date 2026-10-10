@@ -38,6 +38,8 @@ class AuditLog(models.Model):
         STATUS_CHANGED = "STATUS_CHANGED", "Status changed"
         WEBSITE_LIVE = "WEBSITE_LIVE", "Website went live"
         VIEWED_RESTRICTED = "VIEWED_RESTRICTED", "Viewed a restricted record"
+        CONSENT_GIVEN = "CONSENT_GIVEN", "Consent given"
+        CONSENT_WITHDRAWN = "CONSENT_WITHDRAWN", "Consent withdrawn"
 
     # No database constraints: entries must outlive any user or school they mention.
     school = models.ForeignKey(
