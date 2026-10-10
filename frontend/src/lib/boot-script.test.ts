@@ -56,6 +56,30 @@ describe("BOOT_SCRIPT", () => {
     expect(document.documentElement.dataset.theme).toBe("dark");
   });
 
+  it("keeps following the device on every page while the choice is System", () => {
+    let onChange: ((event: { matches: boolean }) => void) | undefined;
+    vi.mocked(window.matchMedia).mockImplementation(
+      (query: string) =>
+        ({
+          matches: false,
+          media: query,
+          addEventListener: (_type: string, listener: (event: { matches: boolean }) => void) => {
+            if (query === "(prefers-color-scheme: dark)") onChange = listener;
+          },
+          removeEventListener() {},
+        }) as unknown as MediaQueryList,
+    );
+
+    new Function(BOOT_SCRIPT)();
+    expect(document.documentElement.dataset.theme).toBe("light");
+    onChange?.({ matches: true });
+    expect(document.documentElement.dataset.theme).toBe("dark");
+
+    localStorage.setItem(THEME_STORAGE_KEY, "dark"); // a stored choice wins over the device
+    onChange?.({ matches: false });
+    expect(document.documentElement.dataset.theme).toBe("dark");
+  });
+
   it("uses Lite mode when the browser cannot blur", () => {
     const supports = vi.spyOn(window.CSS, "supports").mockReturnValue(false);
 

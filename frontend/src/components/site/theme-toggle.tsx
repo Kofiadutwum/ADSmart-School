@@ -1,7 +1,7 @@
 "use client";
 
 import { Monitor, Moon, Sun } from "lucide-react";
-import { useEffect, useSyncExternalStore, type KeyboardEvent } from "react";
+import { useSyncExternalStore, type KeyboardEvent } from "react";
 import { cn } from "@/lib/cn";
 import {
   applyTheme,
@@ -34,15 +34,6 @@ const serverChoice = (): ThemeChoice => "system";
 
 export function ThemeToggle({ showLabels = false, className }: { showLabels?: boolean; className?: string }) {
   const choice = useSyncExternalStore(subscribeToChoice, readStoredChoice, serverChoice);
-
-  // While on System, follow the device if it switches theme.
-  useEffect(() => {
-    if (choice !== "system") return;
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const follow = () => applyTheme(resolveTheme("system", media.matches));
-    media.addEventListener("change", follow);
-    return () => media.removeEventListener("change", follow);
-  }, [choice]);
 
   function onKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
     const step = STEP[event.key];
