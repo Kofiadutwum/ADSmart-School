@@ -153,3 +153,11 @@ class SchoolOwned(models.Model):
 
     class Meta:
         abstract = True
+
+
+def same_school(*records) -> int:
+    """The one school these records belong to. Records of two schools are never linked."""
+    ids = {record.school_id for record in records}
+    if len(ids) != 1 or None in ids:
+        raise ValueError("Records from different schools cannot be linked.")
+    return ids.pop()
