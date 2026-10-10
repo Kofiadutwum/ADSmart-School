@@ -96,17 +96,38 @@ def test_create_user_command_makes_a_school_administrator(school):
         name="School Admin",
         role=["Administrator"],
         password=STRONG,
+        email="admin@adsmart.example",
     )
     user = User.objects.get(login="admin")
     assert user.school == school and user.kind == "staff" and user.display_name == "School Admin"
     assert user.check_password(STRONG)
-    assert roles.roles_of(user) == ["Administrator"]
+    assert roles.roles_of(user) == ["Administrator"] and user.email == "admin@adsmart.example"
 
 
 def test_create_user_command_makes_platform_staff(db):
-    call_command("create_user", kind="platform", username="ops", password=STRONG)
+    call_command(
+        "create_user", kind="platform", username="ops", password=STRONG, phone="0241112222"
+    )
     user = User.objects.get(username="platform:ops")
     assert user.school is None and roles.roles_of(user) == ["Platform Admin"]
+
+
+def test_accounts_that_need_a_code_must_have_somewhere_to_send_it(school):
+    with pytest.raises(CommandError, match="--phone or --email"):
+        call_command("create_user", kind="platform", username="ops", password=STRONG)
+    with pytest.raises(CommandError, match="--phone or --email"):
+        call_command(
+            "create_user",
+            kind="staff",
+            school="adsmart",
+            username="head",
+            role=["Head Teacher"],
+            password=STRONG,
+        )
+    with pytest.raises(CommandError, match="email"):
+        call_command(
+            "create_user", kind="platform", username="ops", password=STRONG, email="not-an-email"
+        )
 
 
 def test_create_user_command_needs_a_known_school_for_school_users(school):

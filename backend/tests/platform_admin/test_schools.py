@@ -49,7 +49,7 @@ def test_a_school_page_shows_counts_the_go_live_list_and_administrators_only(con
     assert "The site has not been marked live" in body["blockers"]
     [admin] = body["administrators"]
     assert admin["username"] == "k.mensah" and admin["phone"] == "+233241234567"
-    assert admin["has_authenticator"] is False and admin["last_sign_in"] is None
+    assert admin["email"] == "" and admin["last_sign_in"] is None
 
 
 def test_an_unknown_school_is_not_found(console):

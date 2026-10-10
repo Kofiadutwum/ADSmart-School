@@ -1,11 +1,14 @@
-"""Six-digit SMS codes (Phase 1 spec §5.2, §5.3): hashed, valid 10 minutes, 5 attempts, single
-use. Every message names the school it comes from (amendment §8)."""
+"""Six-digit codes sent by SMS or email (Phase 1 spec §5.2, §5.3): hashed, valid 10 minutes,
+5 attempts, single use, at most 5 an hour. Every message names the school it comes from
+(amendment §8)."""
 
 import hmac
+import logging
 import secrets
 from datetime import timedelta
 
 from django.conf import settings
+from django.core.mail import send_mail
 from django.db.models import F
 from django.utils import timezone
 from django.utils.crypto import salted_hmac
@@ -15,8 +18,11 @@ from apps.core.phones import format_gh_local
 from apps.notifications.models import SmsMessage
 from apps.notifications.sms import Purpose, send_sms
 
+logger = logging.getLogger(__name__)
+
 LIFETIME = timedelta(minutes=10)
 MAX_ATTEMPTS = 5
+MAX_PER_HOUR = 5  # codes per person, however they are sent
 TEXT = "{sender}: your code is {code}. It expires in 10 minutes. Never share it with anyone."
 
 
@@ -24,9 +30,22 @@ def _digest(code: str) -> str:
     return salted_hmac("accounts.sms-code", code, algorithm="sha256").hexdigest()
 
 
+def _sender(user: User) -> str:
+    return user.school.name if user.school else settings.PLATFORM_NAME
+
+
+def _replace_code(user: User, purpose: str, code: str) -> None:
+    """The newest code is the only one that works."""
+    now = timezone.now()
+    SmsCode.objects.filter(user=user, purpose=purpose, used_at__isnull=True).update(used_at=now)
+    SmsCode.objects.create(
+        user=user, purpose=purpose, code_hash=_digest(code), expires_at=now + LIFETIME
+    )
+
+
 def send_code(user: User, purpose: str, phone: str) -> SmsMessage:
     """Text a new code. Only once it is sent does it replace any earlier code."""
-    sender = user.school.name if user.school else settings.PLATFORM_NAME
+    sender = _sender(user)
     code = f"{secrets.randbelow(10**6):06d}"
     message = send_sms(
         phone,
@@ -36,12 +55,30 @@ def send_code(user: User, purpose: str, phone: str) -> SmsMessage:
         school=user.school,
     )
     if message.status == SmsMessage.Status.SENT:
-        now = timezone.now()
-        SmsCode.objects.filter(user=user, purpose=purpose, used_at__isnull=True).update(used_at=now)
-        SmsCode.objects.create(
-            user=user, purpose=purpose, code_hash=_digest(code), expires_at=now + LIFETIME
-        )
+        _replace_code(user, purpose, code)
     return message
+
+
+def email_code(user: User, purpose: str) -> str:
+    """Email a new code to the account's address: "sent", "limited" or "failed"."""
+    since = timezone.now() - timedelta(hours=1)
+    recent = SmsCode.objects.filter(user=user, purpose=purpose, created_at__gte=since).count()
+    if recent >= MAX_PER_HOUR:
+        return "limited"
+    sender = _sender(user)
+    code = f"{secrets.randbelow(10**6):06d}"
+    try:
+        send_mail(
+            f"{sender}: your sign-in code",
+            TEXT.format(sender=sender, code=code),
+            None,
+            [user.email],
+        )
+    except Exception:  # a mail server error is reported as "failed", never shown raw
+        logger.exception("Could not email a sign-in code")
+        return "failed"
+    _replace_code(user, purpose, code)
+    return "sent"
 
 
 def check_code(user: User, purpose: str, code: str) -> SmsCode | None:
@@ -75,4 +112,4 @@ def sms_failed_message(school) -> str:
             "We couldn't send the code. Try again, or call the school on "
             f"{format_gh_local(school.phone)}."
         )
-    return "We couldn't send the code. Try again in a few minutes, or use a backup code."
+    return "We couldn't send the code. Try again in a few minutes."

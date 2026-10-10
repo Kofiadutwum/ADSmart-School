@@ -7,7 +7,6 @@ from django.db import transaction
 
 from apps.accounts import roles
 from apps.accounts.models import User
-from apps.accounts.second_factor import reset_second_factor
 from apps.accounts.sessions import end_other_sessions
 from apps.audit.models import AuditLog
 from apps.audit.services import record
@@ -35,7 +34,7 @@ def _issue_password(user: User) -> str:
 
 @transaction.atomic
 def add_administrator(
-    school: School, *, first_name, surname, username, phone, by
+    school: School, *, first_name, surname, username, phone, by, email=""
 ) -> tuple[User, str]:
     staff = create_staff(
         school,
@@ -44,6 +43,7 @@ def add_administrator(
         surname=surname,
         roles_held=[roles.ADMINISTRATOR],
         phone=phone,
+        email=email,
         by=by,
     )
     return staff.user, _issue_password(staff.user)
@@ -111,12 +111,3 @@ def reset_administrator_password(user: User, *, by, request=None) -> str:
         "If you did not ask for this, contact them at once.",
     )
     return password
-
-
-def reset_administrator_second_factor(user: User, *, by, request=None) -> None:
-    reset_second_factor(user, by=by, request=request, reason="Reset by platform support")
-    _tell(
-        user,
-        f"{settings.PLATFORM_NAME} support has reset your authenticator app. "
-        "You will set up a new one at your next sign-in.",
-    )

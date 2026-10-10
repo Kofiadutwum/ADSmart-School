@@ -91,30 +91,8 @@ class UserSession(models.Model):
         return f"{self.user} since {self.created_at:%Y-%m-%d %H:%M}"
 
 
-class TotpDevice(models.Model):
-    """The authenticator app used as a second factor (Phase 1 spec §5.3)."""
-
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="totp_device")
-    # shortcut: stored as-is (as django-otp does); encrypt at rest if the database is ever shared
-    secret = models.CharField(max_length=64)
-    confirmed_at = models.DateTimeField(null=True, blank=True)
-    last_used_step = models.BigIntegerField(null=True, blank=True)
-
-    def __str__(self):
-        return f"Authenticator for {self.user}"
-
-
-class BackupCode(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="backup_codes")
-    code_hash = models.CharField(max_length=64)
-    used_at = models.DateTimeField(null=True, blank=True)
-
-    def __str__(self):
-        return f"Backup code for {self.user}"
-
-
 class SmsCode(models.Model):
-    """A 6-digit code sent by SMS: hashed, 10 minutes, 5 attempts, single use (§5.2)."""
+    """A 6-digit code sent by SMS or email: hashed, 10 minutes, 5 attempts, single use."""
 
     class Purpose(models.TextChoices):
         SIGN_IN = "sign_in", "Second factor"

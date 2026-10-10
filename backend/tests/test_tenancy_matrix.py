@@ -28,8 +28,7 @@ CLASSIFIED = {
     "api/auth/sessions": OWN_SESSIONS,
     "api/auth/sessions/<int:pk>": OWN_SESSIONS,
     "api/auth/password": "the signed-in user only (tests/accounts/test_sessions.py)",
-    "api/auth/second-factor/setup": PENDING_USER,
-    "api/auth/second-factor/confirm": PENDING_USER,
+    "api/auth/second-factor/email": PENDING_USER,
     "api/auth/second-factor/sms": PENDING_USER,
     "api/auth/second-factor/verify": PENDING_USER,
     "api/auth/parent/request-code": SCHOOL_FROM_HOST,
@@ -39,9 +38,6 @@ CLASSIFIED = {
     "api/platform/schools/<slug:slug>/administrators": PLATFORM_STAFF,
     "api/platform/schools/<slug:slug>/status": PLATFORM_STAFF,
     "api/platform/schools/<slug:slug>/administrators/<int:pk>/reset-password": PLATFORM_STAFF,
-    "api/platform/schools/<slug:slug>/administrators/<int:pk>/reset-second-factor": (
-        PLATFORM_STAFF
-    ),
     "api/platform/leads": PLATFORM_STAFF,
     "api/platform/leads/<int:pk>": PLATFORM_STAFF,
     "api/platform/audit": PLATFORM_STAFF,

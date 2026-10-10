@@ -4,6 +4,7 @@ from django.contrib.auth.models import Group
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
+from django.core.validators import validate_email
 from django.db import transaction
 
 from apps.accounts import roles
@@ -38,10 +39,11 @@ class Command(BaseCommand):
         parser.add_argument("--name", default="", help="Name shown on screens")
         parser.add_argument("--role", action="append", default=[], choices=roles.ALL_ROLES)
         parser.add_argument("--password", default=None, help="Omit to be asked for it")
-        parser.add_argument("--phone", default="", help="Staff mobile for SMS codes")
+        parser.add_argument("--phone", default="", help="Mobile for sign-in codes by SMS")
+        parser.add_argument("--email", default="", help="Address for sign-in codes by email")
 
     @transaction.atomic
-    def handle(self, *args, kind, school, username, name, role, password, phone, **options):
+    def handle(self, *args, kind, school, username, name, role, password, phone, email, **options):
         owner = None
         if kind == User.Kind.PLATFORM:
             if school:
@@ -59,10 +61,22 @@ class Command(BaseCommand):
             raise CommandError(str(exc)) from exc
         if kind == User.Kind.PARENT:
             phone = identifier
+        if email:
+            try:
+                validate_email(email)
+            except ValidationError as exc:
+                raise CommandError("Enter a valid email address.") from exc
+        needs_code = kind == User.Kind.PLATFORM or bool(set(role) & roles.SECOND_FACTOR_ROLES)
+        if needs_code and not (phone or email):
+            raise CommandError(
+                "This account confirms each sign-in with a code: give --phone or --email."
+            )
         if User.objects.filter(school=owner, login=identifier).exists():
             raise CommandError(f"A user called {identifier} already exists there.")
 
-        user = User(login=identifier, school=owner, kind=kind, display_name=name, phone=phone)
+        user = User(
+            login=identifier, school=owner, kind=kind, display_name=name, phone=phone, email=email
+        )
         user.must_change_password = kind == User.Kind.STUDENT
         if password is None and kind != User.Kind.PARENT:
             password = getpass("Password: ")

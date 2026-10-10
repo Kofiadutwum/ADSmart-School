@@ -11,10 +11,6 @@ urlpatterns = [
         "schools/<slug:slug>/administrators/<int:pk>/reset-password",
         views.ResetPasswordView.as_view(),
     ),
-    path(
-        "schools/<slug:slug>/administrators/<int:pk>/reset-second-factor",
-        views.ResetSecondFactorView.as_view(),
-    ),
     path("leads", views.LeadsView.as_view()),
     path("leads/<int:pk>", views.LeadDetailView.as_view()),
     path("audit", views.AuditView.as_view()),

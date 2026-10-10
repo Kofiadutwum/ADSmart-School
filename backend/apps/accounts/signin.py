@@ -13,11 +13,12 @@ from django.http import Http404
 
 from apps.accounts import roles
 from apps.accounts.identifiers import normalise_identifier
-from apps.accounts.models import TotpDevice, User, UserSession
+from apps.accounts.models import User, UserSession
 from apps.accounts.sessions import start_session
 from apps.audit.models import AuditLog
 from apps.audit.services import client_ip, record
 from apps.core.exceptions import ApiError
+from apps.core.phones import format_gh_local
 from apps.school.hosts import ADMIN, SCHOOL, UNAVAILABLE, Site, resolve_host
 
 WINDOW_SECONDS = 15 * 60
@@ -129,8 +130,20 @@ def check_password_sign_in(request, kind: str, raw_identifier: str, password: st
     return user
 
 
-def has_authenticator(user: User) -> bool:
-    return TotpDevice.objects.filter(user=user, confirmed_at__isnull=False).exists()
+def _masked_email(email: str) -> str | None:
+    """k•••@gmail.com: enough to recognise, not enough to harvest."""
+    if not email:
+        return None
+    name, _, domain = email.partition("@")
+    return f"{name[:1]}•••@{domain}"
+
+
+def _masked_phone(phone: str) -> str | None:
+    """024 ••• 4567."""
+    if not phone:
+        return None
+    first, *_, last = format_gh_local(phone).split()
+    return f"{first} ••• {last}"
 
 
 def start_second_factor(request, user: User, *, remember: bool) -> dict:
@@ -144,8 +157,8 @@ def start_second_factor(request, user: User, *, remember: bool) -> dict:
     }
     return {
         "status": "second_factor",
-        "totp_ready": has_authenticator(user),
-        "sms_available": bool(user.phone),
+        "email": _masked_email(user.email),
+        "phone": _masked_phone(user.phone),
     }
 
 
@@ -183,6 +196,5 @@ def me_payload(user: User) -> dict:
         "display_name": str(user),
         "roles": roles.roles_of(user),
         "must_change_password": user.must_change_password,
-        "has_authenticator": has_authenticator(user),
         "school": {"name": school.name, "slug": school.slug} if school else None,
     }

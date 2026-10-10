@@ -1,9 +1,7 @@
 import pytest
-from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.accounts import roles, signin
-from apps.accounts.models import TotpDevice
 from apps.audit.models import AuditLog
 from apps.school.models import School
 from tests.helpers import PASSWORD, sign_in
@@ -29,7 +27,7 @@ def test_staff_sign_in_and_me(api, make_user, school):
     me = api.get("/api/auth/me").json()
     assert me["username"] == "k.mensah" and me["display_name"] == "Kofi Mensah"
     assert me["roles"] == ["Teacher"] and me["kind"] == "staff"
-    assert me["must_change_password"] is False and me["has_authenticator"] is False
+    assert me["must_change_password"] is False
     assert me["school"] == {"name": "AD Smart School", "slug": "adsmart"}
     assert actions() == ["SIGN_IN"]
     assert AuditLog.objects.get().school == school
@@ -144,22 +142,8 @@ def test_thirty_failures_from_one_address_lock_that_address(api, make_user):
 def test_second_factor_roles_are_not_signed_in_by_password_alone(api, make_user):
     make_user(role=roles.ADMINISTRATOR, phone="+233241234567")
     response = sign_in(api, "k.mensah")
-    assert response.json() == {
-        "status": "second_factor",
-        "totp_ready": False,
-        "sms_available": True,
-    }
+    assert response.json() == {"status": "second_factor", "email": None, "phone": "024 ••• 4567"}
     assert api.get("/api/auth/me").json()["code"] == "not_authenticated"
-
-
-def test_second_factor_reports_a_ready_authenticator(api, make_user):
-    user = make_user(role=roles.PROPRIETOR)
-    TotpDevice.objects.create(user=user, secret="JBSWY3DPEHPK3PXP", confirmed_at=timezone.now())
-    assert sign_in(api, "k.mensah").json() == {
-        "status": "second_factor",
-        "totp_ready": True,
-        "sms_available": False,
-    }
 
 
 def test_sign_out(api, make_user):

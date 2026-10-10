@@ -112,7 +112,7 @@ def link_guardian(
 
 @transaction.atomic
 def create_staff(
-    school, *, username, first_name, surname, roles_held, by=None, phone="", **fields
+    school, *, username, first_name, surname, roles_held, by=None, phone="", email="", **fields
 ) -> Staff:
     unknown = set(roles_held) - STAFF_ROLES
     if unknown:
@@ -125,10 +125,17 @@ def create_staff(
         school=school,
         display_name=f"{first_name} {surname}",
         phone=phone,
+        email=email,
     )
     user.groups.set(Group.objects.filter(name__in=roles_held))
     staff = Staff.objects.create(
-        school=school, user=user, first_name=first_name, surname=surname, phone=phone, **fields
+        school=school,
+        user=user,
+        first_name=first_name,
+        surname=surname,
+        phone=phone,
+        email=email,
+        **fields,
     )
     record(
         AuditLog.Action.USER_CREATED,

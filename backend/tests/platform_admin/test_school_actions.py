@@ -1,8 +1,6 @@
 import pytest
-from django.utils import timezone
 from rest_framework.test import APIClient
 
-from apps.accounts.models import TotpDevice
 from apps.audit.models import AuditLog
 from apps.notifications.backends import MemoryBackend
 from tests.helpers import PASSWORD
@@ -53,16 +51,6 @@ def test_resetting_an_administrators_password(console, school, ops):
     )
     entry = AuditLog.objects.get(action="PASSWORD_RESET")
     assert entry.school == school and entry.actor == ops
-
-
-def test_resetting_an_administrators_authenticator(console, school):
-    admin = administrator_of(school)
-    TotpDevice.objects.create(user=admin, secret="JBSWY3DPEHPK3PXP", confirmed_at=timezone.now())
-    url = f"/api/platform/schools/adsmart/administrators/{admin.pk}/reset-second-factor"
-    assert console.post(url).status_code == 204
-    assert not TotpDevice.objects.filter(user=admin).exists()
-    assert "authenticator app" in MemoryBackend.outbox[-1]["body"]
-    assert AuditLog.objects.get(action="SECOND_FACTOR_RESET").school == school
 
 
 def test_only_a_schools_own_administrators_can_be_reset(console, school, other_school):

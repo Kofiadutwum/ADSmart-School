@@ -11,7 +11,6 @@ from rest_framework.views import APIView
 from apps.accounts import roles
 from apps.accounts.identifiers import normalise_identifier
 from apps.accounts.models import User
-from apps.accounts.signin import has_authenticator
 from apps.accounts.views import validated
 from apps.audit.models import AuditLog
 from apps.audit.services import record
@@ -53,7 +52,7 @@ def administrators(school: School) -> list[dict]:
             "name": str(user),
             "username": user.login,
             "phone": user.phone,
-            "has_authenticator": has_authenticator(user),
+            "email": user.email,
             "must_change_password": user.must_change_password,
             "last_sign_in": user.last_login,
             "is_active": user.is_active,
@@ -89,6 +88,7 @@ class AdministratorSerializer(serializers.Serializer):
     surname = serializers.CharField(max_length=60)
     username = serializers.CharField(max_length=150)
     phone = serializers.CharField(max_length=20)
+    email = serializers.EmailField(required=False, allow_blank=True, default="")
 
     def validate_username(self, value):
         try:
@@ -187,13 +187,6 @@ class ResetPasswordView(PlatformStaffView):
         user = _administrator(slug, pk)
         password = services.reset_administrator_password(user, by=request.user, request=request)
         return Response(_one_time(user, password))
-
-
-class ResetSecondFactorView(PlatformStaffView):
-    def post(self, request, slug, pk):
-        user = _administrator(slug, pk)
-        services.reset_administrator_second_factor(user, by=request.user, request=request)
-        return Response(status=204)
 
 
 def lead_row(lead: Lead) -> dict:

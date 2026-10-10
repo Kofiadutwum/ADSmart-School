@@ -22,6 +22,7 @@ NEW = {
         "surname": "Owusu",
         "username": "Esi.Owusu",
         "phone": "024 765 4321",
+        "email": "esi.owusu@brightfuture.example",
     },
 }
 
@@ -42,11 +43,12 @@ def test_opening_a_school_builds_its_site_and_first_administrator(api, console, 
     assert body["administrator"]["username"] == "esi.owusu" and len(password) == 14
     admin = User.objects.get(school=school, login="esi.owusu")
     assert admin.must_change_password and admin.check_password(password)
-    assert admin.phone == "+233247654321" and roles.roles_of(admin) == ["Administrator"]
+    assert admin.phone == "+233247654321" and admin.email == "esi.owusu@brightfuture.example"
+    assert roles.roles_of(admin) == ["Administrator"]
     by_ops = set(AuditLog.objects.filter(actor=ops).values_list("action", "school_id"))
     assert by_ops == {("CREATED", school.pk), ("USER_CREATED", school.pk)}
     signed_in = sign_in(api, "esi.owusu", password, HTTP_HOST="brightfuture.localhost")
-    assert signed_in.json()["status"] == "second_factor"  # Administrators set up the app first
+    assert signed_in.json()["status"] == "second_factor"  # Administrators confirm with a code
 
 
 def test_the_web_address_must_be_free_and_allowed(console, school):
