@@ -9,6 +9,7 @@ urlpatterns = [
     path("api/health", health, name="health"),
     path("api/public/", include("apps.website.urls")),
     path("api/auth/", include("apps.accounts.urls")),
+    path("api/platform/", include("apps.platform_admin.urls")),
 ]
 
 if settings.DEBUG:

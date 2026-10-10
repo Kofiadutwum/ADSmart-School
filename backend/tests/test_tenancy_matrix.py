@@ -8,6 +8,7 @@ SCHOOL_FROM_HOST = "school from the address used (tests/website/test_enquiries.p
 PLATFORM_ONLY = "platform host only (tests/website/test_platform.py)"
 NO_SCHOOL_DATA = "no school data"
 PENDING_USER = "the pending user at their own address (tests/accounts/test_second_factor.py)"
+PLATFORM_STAFF = "platform staff at the admin address only (tests/platform_admin/test_access.py)"
 OWN_SESSIONS = "the signed-in user's own sessions (tests/accounts/test_sessions.py)"
 
 CLASSIFIED = {
@@ -33,6 +34,8 @@ CLASSIFIED = {
     "api/auth/second-factor/verify": PENDING_USER,
     "api/auth/parent/request-code": SCHOOL_FROM_HOST,
     "api/auth/parent/set-password": SCHOOL_FROM_HOST,
+    "api/platform/schools": PLATFORM_STAFF,
+    "api/platform/schools/<slug:slug>": PLATFORM_STAFF,
 }
 
 

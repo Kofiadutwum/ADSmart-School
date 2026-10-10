@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "apps.website",
     "apps.academics",
     "apps.people",
+    "apps.platform_admin",
 ]
 
 MIDDLEWARE = [
