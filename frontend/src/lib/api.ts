@@ -8,10 +8,11 @@ function djangoOrigin(): string {
   return process.env.DJANGO_ORIGIN ?? "http://127.0.0.1:8000";
 }
 
-async function fetchJson<T>(path: string): Promise<T | null> {
+/** `tags`: Django can refresh these straight away (the platform website; business tools §5.7). */
+async function fetchJson<T>(path: string, tags?: string[]): Promise<T | null> {
   const response = await fetch(`${djangoOrigin()}${path}`, {
     headers: { Accept: "application/json" },
-    next: { revalidate: REVALIDATE_SECONDS },
+    next: { revalidate: REVALIDATE_SECONDS, ...(tags && { tags }) },
   });
   if (response.status === 404) return null;
   if (response.status === 503 && ((await response.json()) as { code?: string }).code === "suspended") {
@@ -44,12 +45,14 @@ export function contentOf(site: SiteData, key: string, fallback = ""): string {
   return site.content[key] ?? fallback;
 }
 
+const PLATFORM_TAGS = ["platform"];
+
 export async function getPlatform(): Promise<PlatformData> {
-  const platform = await fetchJson<PlatformData>("/api/public/platform");
+  const platform = await fetchJson<PlatformData>("/api/public/platform", PLATFORM_TAGS);
   if (!platform) throw new Error("Website API is missing /api/public/platform");
   return platform;
 }
 
 export async function getPlatformPrivacyNotice(): Promise<PrivacyNotice | null> {
-  return fetchJson<PrivacyNotice>("/api/public/platform/privacy-notice");
+  return fetchJson<PrivacyNotice>("/api/public/platform/privacy-notice", PLATFORM_TAGS);
 }

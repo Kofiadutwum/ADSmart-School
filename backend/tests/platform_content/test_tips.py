@@ -6,7 +6,6 @@ import time
 import pytest
 from django.core import mail, signing
 from django.utils import timezone
-from rest_framework.test import APIClient
 
 from apps.accounts import roles
 from apps.platform_content.models import TipSubscriber
@@ -19,11 +18,6 @@ SIGN_UP = "/api/public/platform/tips"
 CONFIRM = "/api/public/platform/tips/confirm"
 LEAVE = "/api/public/platform/tips/unsubscribe"
 CHECK_EMAIL = {"status": "check_email"}
-
-
-@pytest.fixture
-def visitor():
-    return APIClient(HTTP_HOST="localhost:3000")  # the platform's own website
 
 
 def form(**overrides) -> dict:

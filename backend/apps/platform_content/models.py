@@ -213,3 +213,20 @@ class PlatformSettings(models.Model):
     @classmethod
     def load(cls) -> PlatformSettings:
         return cls.objects.get_or_create(pk=1)[0]
+
+
+class PageVisit(models.Model):
+    """How many times a page of the owner's website was opened on a day (business tools spec
+    §4). Only the page and the day: no cookies, addresses or browser details."""
+
+    day = models.DateField()
+    path = models.CharField(max_length=200)
+    count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["day", "path"], name="one_count_per_page_per_day")
+        ]
+
+    def __str__(self):
+        return f"{self.day} {self.path}: {self.count}"

@@ -54,6 +54,9 @@ describe("server API client", () => {
     const fetchMock = stubFetch(200, { name: "SchoolSite" });
 
     expect((await getPlatform()).name).toBe("SchoolSite");
-    expect(fetchMock).toHaveBeenCalledWith("http://django.test/api/public/platform", expect.anything());
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://django.test/api/public/platform",
+      expect.objectContaining({ next: { revalidate: 300, tags: ["platform"] } }),
+    );
   });
 });

@@ -2,12 +2,12 @@
 
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import NotFound, ParseError
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
 from apps.core.exceptions import ApiError
-from apps.platform_content import articles, tips
+from apps.platform_content import articles, tips, visits
 from apps.platform_content.models import Article
 from apps.school.hosts import PLATFORM, resolve_host
 from apps.website.enquiries import check_form_token
@@ -103,3 +103,28 @@ class TipUnsubscribeView(PublicView):
         if not tips.unsubscribe(_token(request)):
             raise ApiError("invalid_link", "This link isn't valid.", 400)
         return Response({"status": "unsubscribed"})
+
+
+# Visit counts (§4)
+
+
+class VisitIpThrottle(AnonRateThrottle):
+    scope = "visit_ip"
+
+
+class VisitView(PublicView):
+    """Always answers 204: a visit that isn't counted is not an error for the visitor."""
+
+    throttle_classes = [VisitIpThrottle]
+
+    def post(self, request):
+        try:
+            data = request.data
+        except ParseError:
+            data = None
+        site = resolve_host(request.get_host())
+        path = visits.page_of(data.get("path")) if isinstance(data, dict) else None
+        robot = visits.is_robot(request.META.get("HTTP_USER_AGENT", ""))
+        if site is not None and site.kind == PLATFORM and path and not robot:
+            visits.count_visit(path)
+        return Response(status=204)

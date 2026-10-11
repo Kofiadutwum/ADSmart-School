@@ -17,6 +17,14 @@ def photo(name: str = "pupils.png", size=(1200, 800), fmt: str = "PNG") -> Simpl
 
 
 @pytest.fixture
+def visitor():
+    """A browser on the platform's own website."""
+    from rest_framework.test import APIClient
+
+    return APIClient(HTTP_HOST="localhost:3000")
+
+
+@pytest.fixture
 def content(db):
     """A Content member of the platform team, signed in at the admin address."""
     return signed_in(

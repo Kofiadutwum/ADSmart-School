@@ -169,6 +169,7 @@ REST_FRAMEWORK = {
         "enquiry_token": "60/hour",
         "lead_ip": "30/hour",
         "tips_ip": "30/hour",
+        "visit_ip": "600/hour",
         "sms_code_ip": "10/hour",
     },
 }

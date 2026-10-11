@@ -10,5 +10,7 @@ export default defineConfig({
     setupFiles: ["./vitest.setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
     css: false,
+    // Form tests type many fields with user-event; under a full parallel run 5 s is too tight.
+    testTimeout: 15_000,
   },
 });

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { PlatformFooter } from "@/components/platform/platform-footer";
 import { PlatformHeader } from "@/components/platform/platform-header";
+import { VisitBeacon } from "@/components/platform/visit-beacon";
 import { OfflineBar } from "@/components/site/offline-bar";
 import { PreviewRibbon } from "@/components/site/preview-ribbon";
 import { SkipLink } from "@/components/site/skip-link";
@@ -32,6 +33,7 @@ export default async function PlatformLayout({ children }: { children: ReactNode
       </main>
       <PlatformFooter name={platform.name} email={platform.email} phone={platform.phone} phoneDisplay={platform.phone_display} />
       {!platform.is_public && <PreviewRibbon />}
+      <VisitBeacon />
     </>
   );
 }

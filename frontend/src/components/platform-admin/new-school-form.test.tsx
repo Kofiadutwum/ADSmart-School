@@ -78,7 +78,7 @@ describe("add a school", () => {
     });
   });
 
-  it("shows the server's field errors, the Administrator's included", { timeout: 15_000 }, async () => {
+  it("shows the server's field errors, the Administrator's included", async () => {
     mockApi([
       [
         "POST",
