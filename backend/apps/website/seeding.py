@@ -4,6 +4,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from apps.consent.models import PrivacyNotice
+from apps.platform_content.starter_tips import seed_starter_tips
 from apps.website import seed_data
 from apps.website.provisioning import seed_first_school
 
@@ -22,4 +23,4 @@ def seed_platform() -> int:
 
 def seed_website() -> int:
     """Create what is missing; existing rows are never changed. Returns how many were made."""
-    return seed_first_school() + seed_platform()
+    return seed_first_school() + seed_platform() + seed_starter_tips()

@@ -9,7 +9,7 @@ from django.utils import timezone
 
 from apps.consent.models import PrivacyNotice
 from apps.core.phones import format_gh_local
-from apps.platform_content.public import gallery_payload
+from apps.platform_content.public import gallery_payload, latest_articles_payload
 from apps.school.models import School
 from apps.website.models import Lead
 from apps.website.services import is_site_public
@@ -30,6 +30,7 @@ def platform_payload() -> dict:
         "url": settings.SITE_URL_TEMPLATE.format(host=settings.PLATFORM_DOMAIN),
         "is_public": notice is not None and not notice.is_draft,
         "gallery": gallery_payload(),
+        "latest_articles": latest_articles_payload(),
         "schools": [
             {"name": s.name, "town": s.town, "region": s.region, "url": s.base_url()}
             for s in schools

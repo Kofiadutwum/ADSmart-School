@@ -47,6 +47,14 @@ CLASSIFIED = {
     "api/platform/website/gallery": PLATFORM_STAFF,
     "api/platform/website/gallery/order": PLATFORM_STAFF,
     "api/platform/website/gallery/<int:pk>": PLATFORM_STAFF,
+    "api/platform/website/articles": PLATFORM_STAFF,
+    "api/platform/website/articles/<int:pk>": PLATFORM_STAFF,
+    "api/platform/website/articles/<int:pk>/cover": PLATFORM_STAFF,
+    "api/platform/website/articles/<int:pk>/publish": PLATFORM_STAFF,
+    "api/platform/website/articles/<int:pk>/unpublish": PLATFORM_STAFF,
+    "api/platform/website/article-images": PLATFORM_STAFF,
+    "api/public/platform/articles": NO_SCHOOL_DATA,
+    "api/public/platform/articles/<slug:slug>": NO_SCHOOL_DATA,
 }
 
 

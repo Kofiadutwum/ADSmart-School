@@ -4,6 +4,8 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.db.models import Max
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from django.utils.text import slugify
 from rest_framework import serializers
 from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.response import Response
@@ -12,10 +14,12 @@ from rest_framework.views import APIView
 from apps.accounts import roles
 from apps.audit.models import AuditLog
 from apps.audit.services import record
+from apps.core.exceptions import ApiError
 from apps.core.images import image_payload
 from apps.platform_admin.permissions import PlatformRole
 from apps.platform_content import refresh
-from apps.platform_content.models import PEOPLE_PERMISSION, GalleryPhoto
+from apps.platform_content.articles import email_due_articles
+from apps.platform_content.models import PEOPLE_PERMISSION, Article, ArticleImage, GalleryPhoto
 from apps.platform_content.uploads import FormBoolean, delete_photo_files, validate_photo
 
 
@@ -172,3 +176,240 @@ class GalleryOrderView(ContentView):
         data = checked(OrderSerializer, request.data)
         reorder(GalleryPhoto, data["ids"], by=request.user, request=request)
         return Response([gallery_row(photo) for photo in GalleryPhoto.objects.all()])
+
+
+# Articles and tips (§5.3)
+
+
+def article_row(article: Article) -> dict:
+    return {
+        "id": article.pk,
+        "kind": article.kind,
+        "title": article.title,
+        "slug": article.slug,
+        "summary": article.summary,
+        "body": article.body,
+        "cover": image_payload(article.renditions, article.cover_alt),
+        "cover_alt": article.cover_alt,
+        "author_name": article.author_name,
+        "status": article.status,
+        "state": article.state,
+        "publish_at": article.publish_at,
+        "email_subscribers": article.email_subscribers,
+        "emailed_at": article.emailed_at,
+        "updated_at": article.updated_at,
+    }
+
+
+def unique_slug(title: str, *, exclude_pk=None) -> str:
+    base = slugify(title)[:160] or "article"
+    slug, number = base, 2
+    while Article.objects.filter(slug=slug).exclude(pk=exclude_pk).exists():
+        slug, number = f"{base}-{number}", number + 1
+    return slug
+
+
+class ArticleFieldsSerializer(serializers.Serializer):
+    kind = serializers.ChoiceField(choices=Article.Kind.choices)
+    title = serializers.CharField(max_length=160)
+    summary = serializers.CharField(max_length=240, required=False, allow_blank=True)
+    body = serializers.CharField(required=False, allow_blank=True, trim_whitespace=False)
+    author_name = serializers.CharField(max_length=80, required=False, allow_blank=True)
+    cover_alt = serializers.CharField(max_length=200, required=False, allow_blank=True)
+
+
+def _article(pk: int) -> Article:
+    return get_object_or_404(Article, pk=pk)
+
+
+def _is_live(article: Article) -> bool:
+    return article.status == Article.Status.PUBLISHED
+
+
+class ArticlesView(ContentView):
+    def get(self, request):
+        return Response([article_row(article) for article in Article.objects.all()])
+
+    @transaction.atomic
+    def post(self, request):
+        data = dict(checked(ArticleFieldsSerializer, request.data))
+        data.setdefault("author_name", str(request.user))
+        article = Article.objects.create(**data, slug=unique_slug(data["title"]))
+        record(
+            AuditLog.Action.CREATED,
+            actor=request.user,
+            entity=article,
+            new={"title": article.title},
+            request=request,
+        )
+        return Response(article_row(article), status=201)
+
+
+class ArticleView(ContentView):
+    def get(self, request, pk):
+        return Response(article_row(_article(pk)))
+
+    @transaction.atomic
+    def patch(self, request, pk):
+        article = _article(pk)
+        data = checked(ArticleFieldsSerializer, request.data, partial=True)
+        old, new = changed_fields(article, data)
+        if "title" in new and article.publish_at is None:  # never shared: the address follows
+            article.slug = unique_slug(article.title, exclude_pk=article.pk)
+        if new:
+            article.save()
+            record(
+                AuditLog.Action.UPDATED,
+                actor=request.user,
+                entity=article,
+                old=old,
+                new=new,
+                request=request,
+            )
+            if _is_live(article):
+                refresh.refresh_platform_site()
+        return Response(article_row(article))
+
+    @transaction.atomic
+    def delete(self, request, pk):
+        article = _article(pk)
+        if _is_live(article):
+            raise ApiError("still_published", "Unpublish it first.", 400)
+        record(
+            AuditLog.Action.DELETED,
+            actor=request.user,
+            entity=article,
+            old={"title": article.title},
+            request=request,
+        )
+        delete_photo_files(article.cover, article.renditions)
+        article.delete()
+        return Response(status=204)
+
+
+class CoverSerializer(serializers.Serializer):
+    image = serializers.FileField()
+    cover_alt = serializers.CharField(max_length=200)
+
+    def validate_image(self, value):
+        return validate_photo(value, max_mb=10)
+
+
+class ArticleCoverView(ContentView):
+    parser_classes = [MultiPartParser]
+
+    @transaction.atomic
+    def post(self, request, pk):
+        article = _article(pk)
+        data = checked(CoverSerializer, request.data)
+        delete_photo_files(article.cover, article.renditions)
+        article.cover, article.cover_alt = data["image"], data["cover_alt"]
+        article.save()
+        record(
+            AuditLog.Action.UPDATED,
+            actor=request.user,
+            entity=article,
+            new={"cover": article.cover.name},
+            request=request,
+        )
+        if _is_live(article):
+            refresh.refresh_platform_site()
+        return Response(article_row(article))
+
+    @transaction.atomic
+    def delete(self, request, pk):
+        article = _article(pk)
+        delete_photo_files(article.cover, article.renditions)
+        article.cover, article.cover_alt = "", ""
+        article.save()
+        record(
+            AuditLog.Action.UPDATED,
+            actor=request.user,
+            entity=article,
+            new={"cover": ""},
+            request=request,
+        )
+        if _is_live(article):
+            refresh.refresh_platform_site()
+        return Response(article_row(article))
+
+
+class PublishSerializer(serializers.Serializer):
+    publish_at = serializers.DateTimeField(required=False, allow_null=True)
+    email_subscribers = serializers.BooleanField(default=False)
+
+
+PUBLISH_NEEDS = {
+    "title": "Give it a title.",
+    "summary": "Write a short summary before publishing.",
+    "body": "Write the article before publishing.",
+}
+
+
+class ArticlePublishView(ContentView):
+    @transaction.atomic
+    def post(self, request, pk):
+        article = _article(pk)
+        data = checked(PublishSerializer, request.data)
+        missing = {
+            name: [message]
+            for name, message in PUBLISH_NEEDS.items()
+            if not getattr(article, name).strip()
+        }
+        if article.cover and not article.cover_alt.strip():
+            missing["cover_alt"] = ["Describe the cover photo for blind visitors."]
+        if missing:
+            raise serializers.ValidationError(missing)
+        now = timezone.now()
+        when = data.get("publish_at") or now
+        article.status = Article.Status.PUBLISHED
+        article.publish_at = when if when > now else now
+        article.email_subscribers = data["email_subscribers"]
+        article.save()
+        record(
+            AuditLog.Action.PUBLISHED,
+            actor=request.user,
+            entity=article,
+            new={
+                "publish_at": article.publish_at.isoformat(),
+                "email_subscribers": article.email_subscribers,
+            },
+            request=request,
+        )
+        refresh.refresh_platform_site()
+        if article.email_subscribers and article.publish_at <= now:
+            transaction.on_commit(email_due_articles)
+        return Response(article_row(article))
+
+
+class ArticleUnpublishView(ContentView):
+    @transaction.atomic
+    def post(self, request, pk):
+        article = _article(pk)
+        if _is_live(article):
+            article.status = Article.Status.DRAFT
+            article.save(update_fields=["status", "updated_at"])
+            record(AuditLog.Action.UNPUBLISHED, actor=request.user, entity=article, request=request)
+            refresh.refresh_platform_site()
+        return Response(article_row(article))
+
+
+class ArticleImageSerializer(serializers.Serializer):
+    image = serializers.FileField()
+    alt_text = serializers.CharField(max_length=200)
+
+    def validate_image(self, value):
+        return validate_photo(value, max_mb=10)
+
+
+class ArticleImagesView(ContentView):
+    parser_classes = [MultiPartParser]
+
+    def post(self, request):
+        data = checked(ArticleImageSerializer, request.data)
+        photo = ArticleImage.objects.create(**data)
+        src = image_payload(photo.renditions, photo.alt_text)["src"]
+        alt = photo.alt_text.replace("[", "").replace("]", "")
+        return Response(
+            {"src": src, "alt": photo.alt_text, "markdown": f"![{alt}]({src})"}, status=201
+        )

@@ -1,5 +1,6 @@
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 
 from apps.core.models import ImageRenditionsMixin
 
@@ -39,3 +40,95 @@ class GalleryPhoto(ImageRenditionsMixin):
     def clean(self):
         if self.visible and self.shows_people and not self.people_permission:
             raise ValidationError({"people_permission": PEOPLE_PERMISSION})
+
+
+ARTICLE_FORMAT_HELP = (
+    "Separate paragraphs with a blank line. Start a line with '## ' for a heading, '- ' for a "
+    "list item or '> ' for a quote. Write **bold**, [link text](https://…) and "
+    "![photo description](/media/…)."
+)
+
+
+class ArticleQuerySet(models.QuerySet):
+    def public(self):
+        return self.filter(
+            status=Article.Status.PUBLISHED, publish_at__lte=timezone.now()
+        ).order_by("-publish_at", "-id")
+
+
+class Article(ImageRenditionsMixin):
+    """News about the platform, or a tip for running and growing a school (business tools
+    spec §5.3). A published article with a future ``publish_at`` is scheduled."""
+
+    class Kind(models.TextChoices):
+        NEWS = "news", "News"
+        TIP = "tip", "Tips for schools"
+
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Draft"
+        PUBLISHED = "published", "Published"
+
+    rendition_source_field = "cover"
+
+    kind = models.CharField(max_length=10, choices=Kind.choices, default=Kind.TIP)
+    title = models.CharField(max_length=160)
+    slug = models.SlugField(max_length=170, unique=True)
+    summary = models.CharField(max_length=240, blank=True)
+    body = models.TextField(blank=True, help_text=ARTICLE_FORMAT_HELP)
+    cover = models.ImageField(upload_to="platform/articles/", blank=True)
+    cover_alt = models.CharField(max_length=200, blank=True)
+    author_name = models.CharField(max_length=80, blank=True)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT)
+    publish_at = models.DateTimeField(
+        null=True, blank=True, help_text="Empty until first published; the address is then fixed."
+    )
+    email_subscribers = models.BooleanField(default=False)
+    emailed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    objects = ArticleQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["-updated_at", "-id"]
+
+    def __str__(self):
+        return self.title
+
+    @property
+    def state(self) -> str:
+        if self.status == self.Status.DRAFT:
+            return "draft"
+        return "scheduled" if self.publish_at and self.publish_at > timezone.now() else "published"
+
+
+class ArticleImage(ImageRenditionsMixin):
+    """A photo placed inside an article's text."""
+
+    image = models.ImageField(upload_to="platform/articles/photos/")
+    alt_text = models.CharField(max_length=200)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class TipSubscriberQuerySet(models.QuerySet):
+    def subscribed(self):
+        return self.filter(confirmed_at__isnull=False, unsubscribed_at__isnull=True)
+
+
+class TipSubscriber(models.Model):
+    """Someone who asked for new tips by email (business tools spec §5.6): confirmed by a link
+    before any tips are sent, and able to leave with one click."""
+
+    email = models.EmailField(unique=True)
+    consent_at = models.DateTimeField()
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    unsubscribed_at = models.DateTimeField(null=True, blank=True)
+    last_emailed_at = models.DateTimeField(
+        null=True, blank=True, help_text="The last confirmation email: at most one an hour."
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    objects = TipSubscriberQuerySet.as_manager()
+
+    def __str__(self):
+        return self.email
