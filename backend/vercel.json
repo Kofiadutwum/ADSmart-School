@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "config/wsgi.py": {
+      "maxDuration": 60,
+      "excludeFiles": "{tests/**,media/**,e2e-media/**,staticfiles/**,*.sqlite3,e2e-sms.jsonl}"
+    }
+  },
+  "crons": [{ "path": "/api/cron/article-emails", "schedule": "0 7 * * *" }]
+}

@@ -21,6 +21,14 @@ class ConsoleBackend:
         return ""
 
 
+class UnavailableBackend:
+    """Production until a text-message provider is connected (Plan 6A): sending fails, so the
+    sign-in screen says the text could not be sent and offers email instead."""
+
+    def send(self, to: str, body: str) -> str:
+        raise RuntimeError("No SMS provider is set up yet.")
+
+
 class MemoryBackend:
     """Tests: keeps messages in MemoryBackend.outbox (emptied before every test)."""
 

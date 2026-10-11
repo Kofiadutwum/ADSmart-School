@@ -13,6 +13,7 @@ OWN_SESSIONS = "the signed-in user's own sessions (tests/accounts/test_sessions.
 
 CLASSIFIED = {
     "api/health": NO_SCHOOL_DATA,
+    "api/cron/article-emails": NO_SCHOOL_DATA,
     "api/public/sites/<str:host>/site": SCHOOL_FROM_PATH,
     "api/public/sites/<str:host>/news": SCHOOL_FROM_PATH,
     "api/public/sites/<str:host>/news/<slug:slug>": SCHOOL_FROM_PATH,

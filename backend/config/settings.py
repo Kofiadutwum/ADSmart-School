@@ -4,10 +4,13 @@ Every value that differs between environments comes from environment
 variables; backend/.env.example lists them all.
 """
 
+import os
 from pathlib import Path
 
 import environ
 from django.core.exceptions import ImproperlyConfigured
+
+from config.mail import mailers
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -30,6 +33,18 @@ PLATFORM_PHONE = env("PLATFORM_PHONE", default="+233545875881")
 # (business tools spec §5.7). Without a secret nothing is sent; pages catch up within 5 minutes.
 FRONTEND_ORIGIN = env("FRONTEND_ORIGIN", default="http://127.0.0.1:3000")
 REVALIDATE_SECRET = env("REVALIDATE_SECRET", default="")
+# Next.js signs the visitor's address and IP with this (apps.core.forwarding, Plan 6A). Leave
+# empty in development, where Next.js and Django share one machine.
+PROXY_SECRET = env("PROXY_SECRET", default="")
+# Vercel Cron sends "Authorization: Bearer <CRON_SECRET>" (Plan 6A).
+CRON_SECRET = env("CRON_SECRET", default="")
+# Uploads go through Vercel Functions, which accept at most 4.5 MB: set 4 there (Plan 6A).
+PHOTO_MAX_MB = env.int("PHOTO_MAX_MB", default=10)
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
+if not DEBUG:  # behind HTTPS in production (Vercel or Caddy)
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 # How a school's address is written in links: development "http://{host}:3000",
 # production "https://{host}".
 SITE_URL_TEMPLATE = env("SITE_URL_TEMPLATE", default="http://{host}:3000")
@@ -56,6 +71,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "apps.core.forwarding.SignedForwardingMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -127,6 +143,15 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = Path(env("DJANGO_MEDIA_ROOT", default=str(BASE_DIR / "media")))
+# Uploaded photos live on Cloudinary when CLOUDINARY_URL is set (Plan 6A), else in MEDIA_ROOT.
+STORAGES = {
+    "default": {
+        "BACKEND": "apps.core.cloudinary_storage.CloudinaryStorage"
+        if env("CLOUDINARY_URL", default="")
+        else "django.core.files.storage.FileSystemStorage"
+    },
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
 
 # API paths have no trailing slash; Next.js forwards them unchanged.
 APPEND_SLASH = False
@@ -135,17 +160,14 @@ APPEND_SLASH = False
 CSRF_FAILURE_VIEW = "apps.core.views.csrf_failure"
 
 # Django 6.1 mailers (EMAIL_BACKEND is deprecated). Tests swap every mailer for locmem.
-MAILERS = {
-    "default": {
-        "BACKEND": env(
-            "DJANGO_EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend"
-        ),
-    }
-}
+MAILERS = mailers(os.environ)
 DEFAULT_FROM_EMAIL = env("DJANGO_DEFAULT_FROM_EMAIL", default="ADsmartschool <no-reply@localhost>")
 
 # SMS (Phase 1 spec §3.7). Development logs codes to the console (and SMS_FILE_PATH, if set).
-SMS_BACKEND = env("SMS_BACKEND", default="apps.notifications.backends.ConsoleBackend")
+SMS_BACKEND = env(
+    "SMS_BACKEND",
+    default="apps.notifications.backends." + ("ConsoleBackend" if DEBUG else "UnavailableBackend"),
+)
 SMS_FILE_PATH = env("SMS_FILE_PATH", default="")
 
 # Phase 1 spec §9: seed_demo adds one sign-in per role for trying the system. Development only.

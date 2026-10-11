@@ -120,7 +120,7 @@ class NewPhotoSerializer(PhotoFieldsSerializer):
     visible = FormBoolean(required=False, default=True)
 
     def validate_image(self, value):
-        return validate_photo(value, max_mb=10)
+        return validate_photo(value)
 
     def validate(self, data):
         if data["visible"] and data["shows_people"] and not data["people_permission"]:
@@ -307,7 +307,7 @@ class CoverSerializer(serializers.Serializer):
     cover_alt = serializers.CharField(max_length=200)
 
     def validate_image(self, value):
-        return validate_photo(value, max_mb=10)
+        return validate_photo(value)
 
 
 class ArticleCoverView(ContentView):
@@ -414,7 +414,7 @@ class ArticleImageSerializer(serializers.Serializer):
     alt_text = serializers.CharField(max_length=200)
 
     def validate_image(self, value):
-        return validate_photo(value, max_mb=10)
+        return validate_photo(value)
 
 
 class ArticleImagesView(ContentView):

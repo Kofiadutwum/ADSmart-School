@@ -1,3 +1,28 @@
+[project]
+name = "adsmartschool-backend"
+version = "1.0.0"
+description = "ADsmartschool: the Django API behind every school website and portal."
+requires-python = ">=3.14"
+# Keep in step with requirements.txt (tests/test_packaging.py checks it).
+dependencies = [
+    "Django==6.1.2",
+    "argon2-cffi==25.1.0",
+    "djangorestframework==3.18.3",
+    "django-environ==0.14.0",
+    "phonenumbers==9.0.41",
+    "Pillow==12.3.0",
+    "tzdata==2026.5",
+    "psycopg[binary]==3.3.6",
+    "cloudinary==1.46.3",
+]
+
+# Vercel's Python runtime (Plan 6A): the WSGI app, and a build step that updates the database.
+[tool.vercel]
+entrypoint = "config.wsgi:application"
+
+[tool.vercel.scripts]
+build = "python vercel_build.py"
+
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings_test"
 testpaths = ["tests"]

@@ -1,6 +1,8 @@
 """Public endpoints for the owner's website (business tools spec §5)."""
 
+from django.conf import settings
 from django.shortcuts import get_object_or_404
+from django.utils.crypto import constant_time_compare
 from rest_framework import serializers
 from rest_framework.exceptions import NotFound, ParseError
 from rest_framework.response import Response
@@ -128,3 +130,15 @@ class VisitView(PublicView):
         if site is not None and site.kind == PLATFORM and path and not robot:
             visits.count_visit(path)
         return Response(status=204)
+
+
+# Scheduled article emails (Plan 6A): Vercel Cron calls this once a day.
+
+
+class ArticleEmailsCronView(PublicView):
+    def get(self, request):
+        secret = settings.CRON_SECRET
+        given = request.headers.get("Authorization", "")
+        if not secret or not constant_time_compare(given, f"Bearer {secret}"):
+            raise ApiError("not_allowed", "Only the scheduler may call this.", 401)
+        return Response({"sent": articles.email_due_articles()})
