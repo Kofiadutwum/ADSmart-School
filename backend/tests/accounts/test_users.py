@@ -13,7 +13,7 @@ STRONG = "correct horse battery"
 
 
 def test_every_role_exists_as_a_group():
-    assert len(roles.ALL_ROLES) == 14 and roles.PLATFORM_ADMIN in roles.ALL_ROLES
+    assert len(roles.ALL_ROLES) == 17 and set(roles.PLATFORM_ROLES) <= set(roles.ALL_ROLES)
     assert set(roles.ALL_ROLES) <= set(Group.objects.values_list("name", flat=True))
 
 
@@ -109,7 +109,7 @@ def test_create_user_command_makes_platform_staff(db):
         "create_user", kind="platform", username="ops", password=STRONG, phone="0241112222"
     )
     user = User.objects.get(username="platform:ops")
-    assert user.school is None and roles.roles_of(user) == ["Platform Admin"]
+    assert user.school is None and roles.roles_of(user) == ["Platform Owner"]
 
 
 def test_accounts_that_need_a_code_must_have_somewhere_to_send_it(school):

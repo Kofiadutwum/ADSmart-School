@@ -18,7 +18,7 @@ from apps.school.models import School
 DEFAULT_ROLE = {
     User.Kind.PARENT: roles.PARENT,
     User.Kind.STUDENT: roles.STUDENT,
-    User.Kind.PLATFORM: roles.PLATFORM_ADMIN,
+    User.Kind.PLATFORM: roles.PLATFORM_OWNER,
 }
 
 

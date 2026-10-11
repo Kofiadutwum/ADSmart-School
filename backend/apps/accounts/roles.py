@@ -13,7 +13,11 @@ CANTEEN = "Canteen Officer"
 TRANSPORT = "Transport Officer"
 PARENT = "Parent"
 STUDENT = "Student"
-PLATFORM_ADMIN = "Platform Admin"  # the owner's team (amendment §4)
+# The owner's team (amendment §4), by job (business tools spec §2). Owner can do everything.
+PLATFORM_OWNER = "Platform Owner"
+PLATFORM_FINANCE = "Platform Finance"
+PLATFORM_CONTENT = "Platform Content"
+PLATFORM_SUPPORT = "Platform Support"
 
 SCHOOL_ROLES = (
     ADMINISTRATOR,
@@ -30,7 +34,8 @@ SCHOOL_ROLES = (
     PARENT,
     STUDENT,
 )
-ALL_ROLES = (*SCHOOL_ROLES, PLATFORM_ADMIN)
+PLATFORM_ROLES = (PLATFORM_OWNER, PLATFORM_FINANCE, PLATFORM_CONTENT, PLATFORM_SUPPORT)
+ALL_ROLES = (*SCHOOL_ROLES, *PLATFORM_ROLES)
 SECOND_FACTOR_ROLES = frozenset({ADMINISTRATOR, HEAD_TEACHER, ACCOUNTANT, PROPRIETOR})
 
 

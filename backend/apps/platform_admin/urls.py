@@ -1,6 +1,6 @@
 from django.urls import path
 
-from apps.platform_admin import views
+from apps.platform_admin import team, views
 
 urlpatterns = [
     path("schools", views.SchoolsView.as_view()),
@@ -14,4 +14,7 @@ urlpatterns = [
     path("leads", views.LeadsView.as_view()),
     path("leads/<int:pk>", views.LeadDetailView.as_view()),
     path("audit", views.AuditView.as_view()),
+    path("team", team.TeamView.as_view()),
+    path("team/<int:pk>", team.TeamMemberView.as_view()),
+    path("team/<int:pk>/reset-password", team.TeamResetPasswordView.as_view()),
 ]

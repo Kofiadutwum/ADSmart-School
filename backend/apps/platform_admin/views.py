@@ -17,14 +17,18 @@ from apps.audit.services import record
 from apps.core.phones import normalise_gh_phone
 from apps.people.models import Parent, Staff, Student
 from apps.platform_admin import services
-from apps.platform_admin.permissions import IsPlatformStaff
+from apps.platform_admin.permissions import PlatformRole
 from apps.school.models import LEVEL_CODES, School
 from apps.website.models import Enquiry, Lead
 from apps.website.services import publication_blockers
 
 
-class PlatformStaffView(APIView):
-    permission_classes = [IsPlatformStaff]
+class SupportView(APIView):
+    permission_classes = [PlatformRole(roles.PLATFORM_SUPPORT)]
+
+
+class OwnerView(APIView):
+    permission_classes = [PlatformRole()]
 
 
 def school_row(school: School, blockers: list[str] | None = None) -> dict:
@@ -116,7 +120,7 @@ class NewSchoolSerializer(serializers.Serializer):
     administrator = AdministratorSerializer()
 
 
-class SchoolsView(PlatformStaffView):
+class SchoolsView(SupportView):
     def get(self, request):
         schools = School.objects.all()
         query = request.query_params.get("q", "").strip()
@@ -139,12 +143,12 @@ class SchoolsView(PlatformStaffView):
         return Response(body, status=201)
 
 
-class SchoolDetailView(PlatformStaffView):
+class SchoolDetailView(SupportView):
     def get(self, request, slug):
         return Response(school_detail(get_object_or_404(School, slug=slug)))
 
 
-class AdministratorsView(PlatformStaffView):
+class AdministratorsView(SupportView):
     def post(self, request, slug):
         school = get_object_or_404(School, slug=slug)
         data = validated(AdministratorSerializer, request)
@@ -161,7 +165,7 @@ class StatusSerializer(serializers.Serializer):
     reason = serializers.CharField(max_length=500)
 
 
-class SchoolStatusView(PlatformStaffView):
+class SchoolStatusView(SupportView):
     def post(self, request, slug):
         school = get_object_or_404(School, slug=slug)
         data = validated(StatusSerializer, request)
@@ -182,7 +186,7 @@ def _administrator(slug: str, pk: int) -> User:
     )
 
 
-class ResetPasswordView(PlatformStaffView):
+class ResetPasswordView(SupportView):
     def post(self, request, slug, pk):
         user = _administrator(slug, pk)
         password = services.reset_administrator_password(user, by=request.user, request=request)
@@ -209,13 +213,13 @@ class LeadUpdateSerializer(serializers.Serializer):
     staff_notes = serializers.CharField(max_length=2000, allow_blank=True, default="")
 
 
-class LeadsView(PlatformStaffView):
+class LeadsView(SupportView):
     def get(self, request):
         leads = Lead.objects.order_by("-created_at", "-id")
         return Response([lead_row(lead) for lead in leads])
 
 
-class LeadDetailView(PlatformStaffView):
+class LeadDetailView(SupportView):
     def patch(self, request, pk):
         lead = get_object_or_404(Lead, pk=pk)
         data = validated(LeadUpdateSerializer, request)
@@ -236,7 +240,7 @@ class LeadDetailView(PlatformStaffView):
 AUDIT_LIMIT = 200  # shortcut: the latest entries only; add paging once the log grows
 
 
-class AuditView(PlatformStaffView):
+class AuditView(OwnerView):
     """Platform events, plus everything platform staff did in any school (amendment §4)."""
 
     def get(self, request):

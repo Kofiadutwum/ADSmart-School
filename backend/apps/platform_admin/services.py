@@ -3,6 +3,7 @@
 import secrets
 
 from django.conf import settings
+from django.contrib.auth.models import Group
 from django.db import transaction
 
 from apps.accounts import roles
@@ -109,5 +110,84 @@ def reset_administrator_password(user: User, *, by, request=None) -> str:
         user,
         f"{settings.PLATFORM_NAME} support has reset your sign-in password. "
         "If you did not ask for this, contact them at once.",
+    )
+    return password
+
+
+class LastOwnerError(Exception):
+    """The team must keep at least one active Owner (business tools spec §2)."""
+
+
+def _set_team_roles(user: User, names) -> None:
+    user.groups.remove(*Group.objects.filter(name__in=roles.PLATFORM_ROLES))
+    user.groups.add(*Group.objects.filter(name__in=names))
+
+
+@transaction.atomic
+def add_team_member(
+    *, first_name, surname, username, phone, email, roles_held, by, request=None
+) -> tuple[User, str]:
+    user = User.objects.create_user(
+        username,
+        kind=User.Kind.PLATFORM,
+        display_name=f"{first_name} {surname}".strip(),
+        phone=phone,
+        email=email,
+    )
+    _set_team_roles(user, roles_held)
+    record(
+        AuditLog.Action.USER_CREATED,
+        actor=by,
+        entity=user,
+        new={"roles": sorted(roles_held)},
+        request=request,
+    )
+    return user, _issue_password(user)
+
+
+@transaction.atomic
+def update_team_member(user: User, *, roles_held=None, is_active=None, by, request=None) -> User:
+    owners = set(
+        User.objects.select_for_update(of=("self",))
+        .filter(kind=User.Kind.PLATFORM, is_active=True, groups__name=roles.PLATFORM_OWNER)
+        .values_list("pk", flat=True)
+    )
+    current = [name for name in roles.roles_of(user) if name in roles.PLATFORM_ROLES]
+    new_roles = sorted(set(roles_held)) if roles_held is not None else current
+    active = user.is_active if is_active is None else is_active
+    stays_owner = active and roles.PLATFORM_OWNER in new_roles
+    if user.pk in owners and not stays_owner and len(owners) == 1:
+        raise LastOwnerError
+    if new_roles != current:
+        _set_team_roles(user, new_roles)
+        record(
+            AuditLog.Action.ROLES_CHANGED,
+            actor=by,
+            entity=user,
+            old={"roles": current},
+            new={"roles": new_roles},
+            request=request,
+        )
+    if active != user.is_active:
+        user.is_active = active
+        user.save(update_fields=["is_active"])
+        action = (
+            AuditLog.Action.ACCOUNT_REACTIVATED if active else AuditLog.Action.ACCOUNT_DEACTIVATED
+        )
+        record(action, actor=by, entity=user, request=request)
+        if not active:
+            end_other_sessions(user, keep_key=None)
+    return user
+
+
+def reset_team_password(user: User, *, by, request=None) -> str:
+    password = _issue_password(user)
+    end_other_sessions(user, keep_key=None)
+    record(
+        AuditLog.Action.PASSWORD_RESET,
+        actor=by,
+        entity=user,
+        reason="Reset by an Owner",
+        request=request,
     )
     return password
