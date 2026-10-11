@@ -44,6 +44,9 @@ CLASSIFIED = {
     "api/platform/team": PLATFORM_STAFF,
     "api/platform/team/<int:pk>": PLATFORM_STAFF,
     "api/platform/team/<int:pk>/reset-password": PLATFORM_STAFF,
+    "api/platform/website/gallery": PLATFORM_STAFF,
+    "api/platform/website/gallery/order": PLATFORM_STAFF,
+    "api/platform/website/gallery/<int:pk>": PLATFORM_STAFF,
 }
 
 

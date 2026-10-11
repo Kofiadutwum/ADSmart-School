@@ -26,6 +26,10 @@ PLATFORM_NAME = env("PLATFORM_NAME", default="ADsmartschool")
 PLATFORM_DOMAIN = env("PLATFORM_DOMAIN", default="localhost")
 PLATFORM_EMAIL = env("PLATFORM_EMAIL", default="kofiadutwumjnr881@gmail.com")
 PLATFORM_PHONE = env("PLATFORM_PHONE", default="+233545875881")
+# The Next.js server, which Django asks to rebuild the platform website after content changes
+# (business tools spec §5.7). Without a secret nothing is sent; pages catch up within 5 minutes.
+FRONTEND_ORIGIN = env("FRONTEND_ORIGIN", default="http://127.0.0.1:3000")
+REVALIDATE_SECRET = env("REVALIDATE_SECRET", default="")
 # How a school's address is written in links: development "http://{host}:3000",
 # production "https://{host}".
 SITE_URL_TEMPLATE = env("SITE_URL_TEMPLATE", default="http://{host}:3000")
@@ -48,6 +52,7 @@ INSTALLED_APPS = [
     "apps.academics",
     "apps.people",
     "apps.platform_admin",
+    "apps.platform_content",
 ]
 
 MIDDLEWARE = [
