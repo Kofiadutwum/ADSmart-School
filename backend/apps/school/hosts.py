@@ -25,7 +25,7 @@ def resolve_host(host: str) -> Site | None:
     root = settings.PLATFORM_DOMAIN.lower()
     if domain in (root, f"www.{root}"):
         return Site(PLATFORM)
-    if domain == f"admin.{root}":
+    if domain == f"admin.{root}" or (settings.ADMIN_HOST and domain == settings.ADMIN_HOST):
         return Site(ADMIN)
     school = None
     if domain.endswith(f".{root}"):

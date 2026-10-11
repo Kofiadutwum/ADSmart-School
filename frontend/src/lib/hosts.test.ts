@@ -25,6 +25,13 @@ describe("routeFor", () => {
     expect(route(host, path)).toBeNull();
   });
 
+  it("serves the admin area at a named address until the platform has its own domain", () => {
+    const admin = "adsmartschool-admin.vercel.app";
+    expect(routeFor(admin, "/schools", "adsmartschool.vercel.app", admin)).toBe("/platform-admin/schools");
+    expect(routeFor("AdsmartSchool-Admin.vercel.app", "/", "adsmartschool.vercel.app", admin)).toBe("/platform-admin");
+    expect(routeFor("adsmartschool.vercel.app", "/", "adsmartschool.vercel.app", admin)).toBe("/platform-site");
+  });
+
   it("never shows another site's internal pages", () => {
     expect(route("adsmart.localhost", "/sites/brightfuture.localhost")).toBe("/sites/adsmart.localhost/not-found");
     expect(route("adsmart.localhost", "/sites/brightfuture.localhost/about")).toBe("/sites/adsmart.localhost/not-found");

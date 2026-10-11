@@ -14,7 +14,12 @@ export function proxy(request: NextRequest) {
     });
   }
   if (pathname.startsWith("/api/")) return NextResponse.next(); // Next.js's own routes
-  const target = routeFor(request.headers.get("host") ?? "", pathname, process.env.PLATFORM_DOMAIN ?? "localhost");
+  const target = routeFor(
+    request.headers.get("host") ?? "",
+    pathname,
+    process.env.PLATFORM_DOMAIN ?? "localhost",
+    process.env.ADMIN_HOST ?? "",
+  );
   if (target === null) return NextResponse.next();
   const url = request.nextUrl.clone();
   url.pathname = target;

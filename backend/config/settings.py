@@ -27,6 +27,9 @@ USE_X_FORWARDED_HOST = True
 
 PLATFORM_NAME = env("PLATFORM_NAME", default="ADsmartschool")
 PLATFORM_DOMAIN = env("PLATFORM_DOMAIN", default="localhost")
+# Until the platform has its own domain there is no admin.<domain>: name another address for
+# the admin area, e.g. a second Vercel address (Plan 6A). Empty once the domain is in place.
+ADMIN_HOST = env("ADMIN_HOST", default="").lower()
 PLATFORM_EMAIL = env("PLATFORM_EMAIL", default="kofiadutwumjnr881@gmail.com")
 PLATFORM_PHONE = env("PLATFORM_PHONE", default="+233545875881")
 # The Next.js server, which Django asks to rebuild the platform website after content changes

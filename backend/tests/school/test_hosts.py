@@ -59,3 +59,18 @@ def test_school_for_host_refuses_unknown_and_suspended_schools(school):
         school_for_host("adsmart.localhost")
     assert caught.value.status_code == 503
     assert caught.value.get_codes() == "suspended"
+
+
+def test_a_named_admin_address_serves_the_admin_area_until_there_is_a_domain(settings):
+    settings.PLATFORM_DOMAIN = "adsmartschool.vercel.app"
+    settings.ADMIN_HOST = "adsmartschool-admin.vercel.app"
+
+    assert resolve_host("adsmartschool-admin.vercel.app").kind == "admin"
+    assert resolve_host("AdsmartSchool-Admin.vercel.app:443").kind == "admin"
+    assert resolve_host("adsmartschool.vercel.app").kind == "platform"
+
+
+def test_no_named_admin_address_by_default(settings):
+    settings.ADMIN_HOST = ""
+
+    assert resolve_host("") is None

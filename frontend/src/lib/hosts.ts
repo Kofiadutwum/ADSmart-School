@@ -9,13 +9,14 @@ export function hostname(host: string): string {
 }
 
 /** The internal path for a request, or null to leave it as it is. */
-export function routeFor(rawHost: string, pathname: string, platformDomain: string): string | null {
+/** `adminHost`: the admin area's address until the platform has its own domain (Plan 6A). */
+export function routeFor(rawHost: string, pathname: string, platformDomain: string, adminHost = ""): string | null {
   const host = hostname(rawHost);
   const root = platformDomain.toLowerCase();
   const base =
     host === root || host === `www.${root}`
       ? "/platform-site"
-      : host === `admin.${root}`
+      : host === `admin.${root}` || (adminHost !== "" && host === adminHost.toLowerCase())
         ? "/platform-admin"
         : `/sites/${host}`;
   if (pathname === base || pathname.startsWith(`${base}/`)) return null; // this site's own URL
