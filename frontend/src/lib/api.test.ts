@@ -49,6 +49,14 @@ describe("server API client", () => {
     await expect(getSite("adsmart.localhost")).rejects.toThrow("500");
   });
 
+  it("fills in sections that an older saved copy of the platform's details lacks", async () => {
+    stubFetch(200, { name: "ADsmartschool", schools: [] });
+
+    const platform = await getPlatform();
+
+    expect(platform).toMatchObject({ gallery: [], latest_articles: [], testimonials: [], faqs: [], whatsapp_channel: "" });
+  });
+
   it("reads the platform's details", async () => {
     vi.stubEnv("DJANGO_ORIGIN", "http://django.test");
     const fetchMock = stubFetch(200, { name: "SchoolSite" });

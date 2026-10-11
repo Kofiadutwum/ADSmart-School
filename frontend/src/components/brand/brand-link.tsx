@@ -31,7 +31,7 @@ export function BrandLink({ name, logo = null, className }: Props) {
       onMouseEnter={swing}
       onFocus={swing}
     >
-      <span ref={tileRef} className="logo-tile origin-top">
+      <span ref={tileRef} className="logo-tile shrink-0 origin-top">
         <SchoolMark name={name} logo={logo} />
       </span>
       <span className="text-base leading-tight font-semibold sm:text-lg">{name}</span>

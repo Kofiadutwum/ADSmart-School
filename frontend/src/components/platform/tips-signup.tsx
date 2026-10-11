@@ -84,7 +84,7 @@ export function TipsSignup({ platformName }: { platformName: string }) {
       <h3 id="tips-title" className="text-xl font-semibold">
         Get new tips by email
       </h3>
-      <p className="text-ink-muted">Practical ideas for running and growing a school. No more than a few a month.</p>
+      <p className="text-ink-muted">Practical ideas for running and growing a school, sent when we publish them.</p>
       <FormAlert message={error} focusKey={attempt} />
       <Field id="tips-email" label="Email" required error={errors.email}>
         {(props) => (

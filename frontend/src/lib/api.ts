@@ -57,9 +57,10 @@ export function contentOf(site: SiteData, key: string, fallback = ""): string {
 const PLATFORM_TAGS = ["platform"];
 
 export async function getPlatform(): Promise<PlatformData> {
-  const platform = await fetchJson<PlatformData>("/api/public/platform", PLATFORM_TAGS);
+  // Partial: a copy cached before newer sections existed must not break the page after an update.
+  const platform = await fetchJson<Partial<PlatformData>>("/api/public/platform", PLATFORM_TAGS);
   if (!platform) throw new Error("Website API is missing /api/public/platform");
-  return platform;
+  return { gallery: [], latest_articles: [], testimonials: [], faqs: [], whatsapp_channel: "", ...platform } as PlatformData;
 }
 
 export async function getPlatformPrivacyNotice(): Promise<PrivacyNotice | null> {

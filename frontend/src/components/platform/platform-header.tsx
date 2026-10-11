@@ -11,7 +11,7 @@ export function PlatformHeader({ name, hasArticles = false }: { name: string; ha
         <BrandLink name={name} logo={PLATFORM_LOGO} />
         <nav aria-label="Main" className="flex items-center gap-2">
           {hasArticles && (
-            <Link href="/articles" className="inline-flex min-h-11 items-center rounded-control px-3 font-semibold hover:bg-ink/5">
+            <Link href="/articles" className="hidden min-h-11 items-center rounded-control px-3 font-semibold hover:bg-ink/5 sm:inline-flex">
               Articles
             </Link>
           )}

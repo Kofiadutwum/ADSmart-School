@@ -31,7 +31,7 @@ export function SchoolMark({ name, logo, className }: Props) {
         height={logo.height}
         fetchPriority="low"
         decoding="async"
-        className={cn("h-8 w-auto sm:h-9", className)}
+        className={cn("h-8 w-auto shrink-0 sm:h-9", className)}
       />
     );
   }
