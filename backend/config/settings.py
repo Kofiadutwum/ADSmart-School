@@ -107,6 +107,10 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Plan 1 runs on SQLite while DATABASE_URL is unset; Plan 2 switches to PostgreSQL.
 if env("DATABASE_URL", default=""):
     DATABASES = {"default": env.db("DATABASE_URL")}
+    # A pooled address (Neon's "-pooler") shares connections between requests, so it cannot
+    # keep server-side cursors open (Django docs: transaction pooling).
+    if "-pooler." in env("DATABASE_URL"):
+        DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
 else:
     DATABASES = {
         "default": {"ENGINE": "django.db.backends.sqlite3", "NAME": BASE_DIR / "db.sqlite3"}
