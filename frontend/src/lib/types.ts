@@ -142,6 +142,51 @@ export type SchoolDetail = SchoolRow & {
 
 export type OneTimePassword = { username: string; one_time_password: string };
 
+/** The Website section of the admin area (business tools spec §5). */
+export type ArticleKind = "news" | "tip";
+export type ArticleState = "draft" | "scheduled" | "published";
+export type AdminArticle = {
+  id: number;
+  kind: ArticleKind;
+  title: string;
+  slug: string;
+  summary: string;
+  body: string;
+  cover: ImageData | null;
+  cover_alt: string;
+  author_name: string;
+  status: "draft" | "published";
+  state: ArticleState;
+  publish_at: string | null;
+  email_subscribers: boolean;
+  emailed_at: string | null;
+  updated_at: string;
+};
+export type AdminGalleryPhoto = {
+  id: number;
+  image: ImageData | null;
+  alt_text: string;
+  caption: string;
+  shows_people: boolean;
+  people_permission: boolean;
+  visible: boolean;
+  order: number;
+};
+export type AdminTestimonial = {
+  id: number;
+  quote: string;
+  person_name: string;
+  person_role: string;
+  school_name: string;
+  school_slug: string;
+  photo: ImageData | null;
+  permission: boolean;
+  visible: boolean;
+  order: number;
+};
+export type AdminFaq = { id: number; question: string; answer: string; visible: boolean; order: number };
+export type SubscriberCounts = { confirmed: number; pending: number; unsubscribed: number };
+
 /** GET /api/platform/team (business tools spec §2). */
 export type TeamMember = {
   id: number;
