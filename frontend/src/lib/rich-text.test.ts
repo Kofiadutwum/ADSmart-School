@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseRichText } from "./rich-text";
+import { parseInline, parseRichText } from "./rich-text";
 
 describe("parseRichText", () => {
   it("splits paragraphs on blank lines and joins wrapped lines", () => {
@@ -16,8 +16,45 @@ describe("parseRichText", () => {
     ]);
   });
 
+  it("reads quotes and this site's own photos", () => {
+    expect(parseRichText("> Every child counts.\n> Every day.\n\n![Pupils reading](/media/a.webp)")).toEqual([
+      { type: "quote", text: "Every child counts. Every day." },
+      { type: "image", alt: "Pupils reading", src: "/media/a.webp" },
+    ]);
+  });
+
+  it("keeps photos from other sites as plain text", () => {
+    expect(parseRichText("![x](https://other.example/a.png)")).toEqual([
+      { type: "paragraph", text: "![x](https://other.example/a.png)" },
+    ]);
+  });
+
   it("copes with Windows line endings and empty input", () => {
     expect(parseRichText("One\r\n\r\nTwo")).toHaveLength(2);
     expect(parseRichText("  \n\n ")).toEqual([]);
+  });
+});
+
+describe("parseInline", () => {
+  it("reads bold words and safe links", () => {
+    expect(parseInline("Read **this** at [our site](https://example.com) or [call us](tel:+233200000000).")).toEqual([
+      { type: "text", text: "Read " },
+      { type: "bold", text: "this" },
+      { type: "text", text: " at " },
+      { type: "link", text: "our site", href: "https://example.com" },
+      { type: "text", text: " or " },
+      { type: "link", text: "call us", href: "tel:+233200000000" },
+      { type: "text", text: "." },
+    ]);
+  });
+
+  it("keeps unsafe links as plain text", () => {
+    for (const source of ["[click](javascript:alert(1))", "[x](//other.example)", "[x](data:text/html,hi)"]) {
+      expect(parseInline(source)).toEqual([{ type: "text", text: source }]);
+    }
+  });
+
+  it("allows links within this website", () => {
+    expect(parseInline("[Prices](/#prices)")).toEqual([{ type: "link", text: "Prices", href: "/#prices" }]);
   });
 });

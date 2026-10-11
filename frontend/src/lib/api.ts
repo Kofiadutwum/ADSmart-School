@@ -1,5 +1,14 @@
 import { notFound, redirect } from "next/navigation";
-import type { NewsPost, NewsSummary, PlatformData, PrivacyNotice, SiteData } from "./types";
+import type {
+  ArticleKind,
+  NewsPost,
+  NewsSummary,
+  PlatformArticle,
+  PlatformArticleSummary,
+  PlatformData,
+  PrivacyNotice,
+  SiteData,
+} from "./types";
 
 /** Public pages are rebuilt at most every five minutes (ISR). */
 export const REVALIDATE_SECONDS = 300;
@@ -55,4 +64,14 @@ export async function getPlatform(): Promise<PlatformData> {
 
 export async function getPlatformPrivacyNotice(): Promise<PrivacyNotice | null> {
   return fetchJson<PrivacyNotice>("/api/public/platform/privacy-notice", PLATFORM_TAGS);
+}
+
+/** shortcut: the newest 50; add paging when the owner has published more than that. */
+export async function getPlatformArticles(kind?: ArticleKind): Promise<PlatformArticleSummary[]> {
+  const query = kind ? `?kind=${kind}` : "";
+  return (await fetchJson<PlatformArticleSummary[]>(`/api/public/platform/articles${query}`, PLATFORM_TAGS)) ?? [];
+}
+
+export async function getPlatformArticle(slug: string): Promise<PlatformArticle | null> {
+  return fetchJson<PlatformArticle>(`/api/public/platform/articles/${encodeURIComponent(slug)}`, PLATFORM_TAGS);
 }

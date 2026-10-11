@@ -26,12 +26,20 @@ export default async function PlatformLayout({ children }: { children: ReactNode
   return (
     <>
       <SkipLink />
-      <PlatformHeader name={platform.name} />
+      <PlatformHeader name={platform.name} hasArticles={platform.latest_articles.length > 0} />
       <OfflineBar />
       <main id="main" tabIndex={-1} className="outline-none">
         {children}
       </main>
-      <PlatformFooter name={platform.name} email={platform.email} phone={platform.phone} phoneDisplay={platform.phone_display} />
+      <PlatformFooter
+        name={platform.name}
+        email={platform.email}
+        phone={platform.phone}
+        phoneDisplay={platform.phone_display}
+        hasArticles={platform.latest_articles.length > 0}
+        hasFaqs={platform.faqs.length > 0}
+        whatsapp={platform.whatsapp_channel}
+      />
       {!platform.is_public && <PreviewRibbon />}
       <VisitBeacon />
     </>

@@ -1,12 +1,19 @@
 import { Globe, Inbox, ShieldCheck, Smartphone, type LucideIcon } from "lucide-react";
+import Link from "next/link";
 import { SwingIn } from "@/components/motion/swing-in";
+import { ArticlesSection } from "@/components/platform/articles-section";
+import { FaqSection } from "@/components/platform/faq-section";
 import { LeadForm } from "@/components/platform/lead-form";
+import { PhotoGrid } from "@/components/platform/photo-grid";
+import { TestimonialsSection } from "@/components/platform/testimonials-section";
+import { TipsSignup } from "@/components/platform/tips-signup";
 import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { getPlatform } from "@/lib/api";
 
 export const revalidate = 300;
+const GALLERY_ON_HOME = 12;
 
 // Only what a school gets today; new features join this list as they ship (amendment §6).
 const FEATURES: { title: string; text: string; Icon: LucideIcon }[] = [
@@ -100,6 +107,26 @@ export default async function PlatformHomePage() {
         </section>
       )}
 
+      {platform.gallery.length > 0 && (
+        <section id="gallery" aria-labelledby="gallery-title" className="scroll-mt-24 pb-20 sm:pb-28">
+          <Container>
+            <SectionHeading id="gallery-title" eyebrow="Gallery" title="A closer look" />
+            <PhotoGrid photos={platform.gallery.slice(0, GALLERY_ON_HOME)} />
+            {platform.gallery.length > GALLERY_ON_HOME && (
+              <p className="mt-6">
+                <Link href="/gallery" className="link inline-flex min-h-11 items-center font-semibold">
+                  See all photos
+                </Link>
+              </p>
+            )}
+          </Container>
+        </section>
+      )}
+
+      <TestimonialsSection testimonials={platform.testimonials} />
+      <ArticlesSection articles={platform.latest_articles} />
+      <FaqSection faqs={platform.faqs} />
+
       <section id="get-online" aria-labelledby="get-online-title" className="scroll-mt-24 bg-card py-20 sm:py-28">
         <Container className="grid gap-10 lg:grid-cols-[1fr_1.4fr]">
           <div>
@@ -116,6 +143,9 @@ export default async function PlatformHomePage() {
                 .
               </p>
             )}
+            <div className="mt-8">
+              <TipsSignup platformName={platform.name} />
+            </div>
           </div>
           <LeadForm platformName={platform.name} />
         </Container>

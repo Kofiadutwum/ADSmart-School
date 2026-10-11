@@ -69,6 +69,29 @@ export type ApiErrorBody = { code: string; message: string; fields: Record<strin
 export type PlatformSchool = { name: string; town: string; region: string; url: string };
 
 /** GET /api/public/platform (amendment §6). */
+export type PlatformArticleSummary = {
+  slug: string;
+  kind: ArticleKind;
+  title: string;
+  summary: string;
+  cover: ImageData | null;
+  author: string;
+  published_at: string;
+  reading_minutes: number;
+};
+export type PlatformArticle = PlatformArticleSummary & { body: string; related: PlatformArticleSummary[] };
+export type PlatformGalleryPhoto = { id: number; image: ImageData | null; caption: string };
+export type PlatformTestimonial = {
+  id: number;
+  quote: string;
+  name: string;
+  role: string;
+  school: string;
+  school_url: string | null;
+  photo: ImageData | null;
+};
+export type PlatformFaq = { id: number; question: string; answer: string };
+
 export type PlatformData = {
   name: string;
   email: string;
@@ -77,6 +100,11 @@ export type PlatformData = {
   url: string;
   is_public: boolean;
   schools: PlatformSchool[];
+  gallery: PlatformGalleryPhoto[];
+  latest_articles: PlatformArticleSummary[];
+  testimonials: PlatformTestimonial[];
+  faqs: PlatformFaq[];
+  whatsapp_channel: string;
 };
 
 export type AccountKind = "staff" | "parent" | "student" | "platform";
