@@ -12,7 +12,7 @@ test("the platform team adds a school, and its Administrator signs in", async ({
   const site = `http://e2e-school-${project}.localhost:3100`;
 
   await page.goto(`${ADMIN}/`);
-  await expect(page).toHaveURL(`${ADMIN}/sign-in?next=%2Fschools`);
+  await expect(page).toHaveURL(`${ADMIN}/sign-in?next=%2F`);
   await signIn(page, null, accounts.platform_admins[project], accounts.password);
   await confirmWithTextedCode(page, e164(accounts.phones.platform_admins[project]));
   await expect(page.getByRole("heading", { name: "Schools" })).toBeVisible();

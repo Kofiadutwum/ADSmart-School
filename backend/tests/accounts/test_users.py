@@ -112,6 +112,41 @@ def test_create_user_command_makes_platform_staff(db):
     assert user.school is None and roles.roles_of(user) == ["Platform Owner"]
 
 
+def test_a_team_account_gets_only_the_role_asked_for(db):
+    call_command(
+        "create_user",
+        kind="platform",
+        username="writer",
+        password=STRONG,
+        phone="0241112223",
+        role=[roles.PLATFORM_CONTENT],
+    )
+
+    assert roles.roles_of(User.objects.get(username="platform:writer")) == ["Platform Content"]
+
+
+def test_roles_must_suit_the_kind_of_account(school):
+    with pytest.raises(CommandError, match="team roles"):
+        call_command(
+            "create_user",
+            kind="platform",
+            username="ops",
+            password=STRONG,
+            phone="0241112224",
+            role=[roles.ADMINISTRATOR],
+        )
+    with pytest.raises(CommandError, match="school roles"):
+        call_command(
+            "create_user",
+            kind="staff",
+            school="adsmart",
+            username="admin",
+            password=STRONG,
+            phone="0241112225",
+            role=[roles.PLATFORM_OWNER],
+        )
+
+
 def test_accounts_that_need_a_code_must_have_somewhere_to_send_it(school):
     with pytest.raises(CommandError, match="--phone or --email"):
         call_command("create_user", kind="platform", username="ops", password=STRONG)

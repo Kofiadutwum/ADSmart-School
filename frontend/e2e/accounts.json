@@ -28,6 +28,14 @@
     "platform_admins": {
       "phone": "0244000021",
       "desktop": "0244000022"
+    },
+    "platform_writers": {
+      "phone": "0244000031",
+      "desktop": "0244000032"
     }
+  },
+  "platform_writers": {
+    "phone": "e2e-writer-phone",
+    "desktop": "e2e-writer-desktop"
   }
 }

@@ -65,12 +65,25 @@ Open http://sample.localhost:3000 (Sample School) or http://localhost:3000 (the 
     Administrator's password; they are told by SMS.
   - Suspend or reactivate a school, with a reason.
   - Work through the "Get your school online" leads, and read the platform audit log.
+  - **Team:** add team members and choose their roles. Owner can do everything; Finance handles
+    money (coming in the next plan); Content edits your website; Support looks after schools and
+    leads. Each person only sees the pages their roles allow.
+  - **Website:** write articles and tips (save drafts, publish now or schedule), add gallery
+    photos, comments from schools and questions and answers, see tip subscribers and set your
+    WhatsApp Channel link. Changes show on your website within seconds.
 - **Adding a school from the command line** still works:
   `.venv/Scripts/python manage.py create_school --slug brightfuture --name "Bright Future Academy"
   --town Ejisu --region "Ashanti Region" --phone 0201234567 --email office@brightfuture.example
   --levels kg,lower_primary,upper_primary`.
 - **Platform settings** (`backend/.env`): `PLATFORM_NAME`, `PLATFORM_DOMAIN`, `PLATFORM_EMAIL`,
-  `SITE_URL_TEMPLATE`. The frontend needs the same `PLATFORM_DOMAIN` in `frontend/.env.local`.
+  `PLATFORM_PHONE`, `SITE_URL_TEMPLATE`. The frontend needs the same `PLATFORM_DOMAIN` in
+  `frontend/.env.local`.
+- **Instant website updates:** set the same long random `REVALIDATE_SECRET` in `backend/.env` and
+  `frontend/.env.local` (and `FRONTEND_ORIGIN` in `backend/.env` if Next.js is not on
+  `http://127.0.0.1:3000`). Without it, changes still appear within 5 minutes.
+- **Scheduled articles:** an article scheduled with "Email tip subscribers" is emailed by
+  `.venv/Scripts/python manage.py send_article_emails`. Run it every few minutes once the site is
+  live (Plan 6 sets this up on the server).
 
 ## Accounts and sign-in
 
@@ -81,7 +94,9 @@ two different people.
 
 - Create a school's first Administrator (you will be asked for a password):
   `cd backend && .venv/Scripts/python manage.py create_user --kind staff --school sample --username admin --name "Your Name" --role Administrator --phone 024xxxxxxx`
-- Add someone to your team: `manage.py create_user --kind platform --username yourname --name "Your Name" --email you@example.com`
+- Add someone to your team: use the Team page in the admin area, or
+  `manage.py create_user --kind platform --username yourname --name "Your Name" --email you@example.com`
+  (an Owner unless you add `--role "Platform Content"` or another team role).
 - Administrators, Head Teachers, Accountants, Proprietors and everyone on your team confirm each
   sign-in with a 6-digit code. They choose to get it by SMS to their mobile number or by email to
   their address, so their account needs at least one of the two (`--phone`, `--email`). A code lasts

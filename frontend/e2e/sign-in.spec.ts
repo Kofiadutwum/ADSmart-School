@@ -71,7 +71,7 @@ test("a parent activates their account with an SMS code from their school", asyn
 
 test("platform staff sign in at the admin address with a second factor", async ({ page }, testInfo) => {
   await page.goto(`${ADMIN}/`);
-  await expect(page).toHaveURL(`${ADMIN}/sign-in?next=%2Fschools`);
+  await expect(page).toHaveURL(`${ADMIN}/sign-in?next=%2F`);
   await expect(page.getByRole("tab")).toHaveCount(0);
   const project = testInfo.project.name as Project;
   await signIn(page, null, accounts.platform[project], accounts.password);

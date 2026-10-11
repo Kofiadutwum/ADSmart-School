@@ -47,6 +47,8 @@ function run(command, args, options) {
 fs.rmSync(path.join(backend, "e2e.sqlite3"), { force: true });
 fs.rmSync(djangoEnv.DJANGO_MEDIA_ROOT, { recursive: true, force: true });
 fs.rmSync(djangoEnv.SMS_FILE_PATH, { force: true });
+// A fresh database needs fresh page data too: Next.js keeps fetched data between builds.
+fs.rmSync(path.join(frontend, ".next", "cache", "fetch-cache"), { recursive: true, force: true });
 await run(python, ["manage.py", "migrate", "--noinput"], { cwd: backend, env: djangoEnv });
 await run(python, ["manage.py", "createcachetable"], { cwd: backend, env: djangoEnv });
 await run(python, ["manage.py", "seed_website"], { cwd: backend, env: djangoEnv });
@@ -75,6 +77,10 @@ for (const [project, username] of Object.entries(accounts.platform)) {
 for (const [project, username] of Object.entries(accounts.platform_admins)) {
   await createUser("--kind", "platform", "--username", username, "--name", `Ama Boss ${project}`,
     "--password", accounts.password, "--phone", accounts.phones.platform_admins[project]);
+}
+for (const [project, username] of Object.entries(accounts.platform_writers)) {
+  await createUser("--kind", "platform", "--username", username, "--name", `Esi Writer ${project}`,
+    "--role", "Platform Content", "--password", accounts.password, "--phone", accounts.phones.platform_writers[project]);
 }
 
 const django = spawn(python, ["manage.py", "runserver", "127.0.0.1:8100", "--noreload"], {

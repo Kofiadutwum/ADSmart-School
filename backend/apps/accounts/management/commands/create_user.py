@@ -45,6 +45,13 @@ class Command(BaseCommand):
     @transaction.atomic
     def handle(self, *args, kind, school, username, name, role, password, phone, email, **options):
         owner = None
+        allowed = roles.PLATFORM_ROLES if kind == User.Kind.PLATFORM else roles.SCHOOL_ROLES
+        if not set(role) <= set(allowed):
+            raise CommandError(
+                "Platform staff take team roles (Platform Owner, Finance, Content or Support)."
+                if kind == User.Kind.PLATFORM
+                else "School accounts take school roles, not team roles."
+            )
         if kind == User.Kind.PLATFORM:
             if school:
                 raise CommandError("Platform staff belong to no school: leave out --school.")
@@ -90,7 +97,9 @@ class Command(BaseCommand):
         user.set_password(password)
         user.save()
 
-        names = set(role) | ({DEFAULT_ROLE[kind]} if kind in DEFAULT_ROLE else set())
+        names = set(role)
+        if kind in DEFAULT_ROLE and not (kind == User.Kind.PLATFORM and names):
+            names.add(DEFAULT_ROLE[kind])  # a team member given a role gets only that role
         user.groups.set(Group.objects.filter(name__in=names))
         record(
             AuditLog.Action.USER_CREATED,
