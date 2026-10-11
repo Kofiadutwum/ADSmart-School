@@ -20,4 +20,6 @@ urlpatterns = [
     path("faqs/order", views.FaqOrderView.as_view()),
     path("faqs/<int:pk>", views.FaqView.as_view()),
     path("settings", views.SettingsView.as_view()),
+    path("subscribers", views.SubscribersView.as_view()),
+    path("subscribers.csv", views.SubscribersCsvView.as_view()),
 ]

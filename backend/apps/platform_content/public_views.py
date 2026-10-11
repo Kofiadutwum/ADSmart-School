@@ -1,10 +1,16 @@
 """Public endpoints for the owner's website (business tools spec §5)."""
 
 from django.shortcuts import get_object_or_404
+from rest_framework import serializers
+from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 
-from apps.platform_content import articles
+from apps.core.exceptions import ApiError
+from apps.platform_content import articles, tips
 from apps.platform_content.models import Article
+from apps.school.hosts import PLATFORM, resolve_host
+from apps.website.enquiries import check_form_token
 from apps.website.views import PublicView
 
 DEFAULT_LIMIT, MAX_LIMIT = 50, 100
@@ -27,3 +33,73 @@ class ArticlesPublicView(PublicView):
 class ArticlePublicView(PublicView):
     def get(self, request, slug):
         return Response(articles.detail(get_object_or_404(Article.objects.public(), slug=slug)))
+
+
+# Tips by email (§5.6)
+
+CHECK_EMAIL = {"status": "check_email"}
+
+
+class TipsIpThrottle(AnonRateThrottle):
+    scope = "tips_ip"
+
+
+class TipSignUpSerializer(serializers.Serializer):
+    email = serializers.EmailField(max_length=254)
+    consent = serializers.BooleanField()
+
+    def validate_email(self, value):
+        return value.strip().lower()
+
+    def validate_consent(self, value):
+        if not value:
+            raise serializers.ValidationError("Tick the box to agree to receive tips by email.")
+        return value
+
+
+class TokenSerializer(serializers.Serializer):
+    token = serializers.CharField(max_length=500)
+
+
+class TipSignUpView(PublicView):
+    throttle_classes = [TipsIpThrottle]
+
+    def post(self, request):
+        site = resolve_host(request.get_host())
+        if site is None or site.kind != PLATFORM:
+            raise NotFound("Sign up for tips on the platform's own website.")
+        if request.data.get("website"):  # honeypot: pretend success, keep nothing
+            return Response(CHECK_EMAIL, status=202)
+        check_form_token(str(request.data.get("form_token", "")))
+        serializer = TipSignUpSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        tips.sign_up(serializer.validated_data["email"])
+        return Response(CHECK_EMAIL, status=202)
+
+
+def _token(request) -> str:
+    serializer = TokenSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    return serializer.validated_data["token"]
+
+
+class TipConfirmView(PublicView):
+    throttle_classes = [TipsIpThrottle]
+
+    def post(self, request):
+        if not tips.confirm(_token(request)):
+            raise ApiError(
+                "invalid_link",
+                "This link has expired or isn't valid. Please sign up again.",
+                400,
+            )
+        return Response({"status": "confirmed"})
+
+
+class TipUnsubscribeView(PublicView):
+    throttle_classes = [TipsIpThrottle]
+
+    def post(self, request):
+        if not tips.unsubscribe(_token(request)):
+            raise ApiError("invalid_link", "This link isn't valid.", 400)
+        return Response({"status": "unsubscribed"})

@@ -1,10 +1,13 @@
 """The Website section of the admin area (business tools spec §5), for the Content role."""
 
+import csv
+import io
 import re
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.db.models import Max
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.text import slugify
@@ -29,6 +32,7 @@ from apps.platform_content.models import (
     GalleryPhoto,
     PlatformSettings,
     Testimonial,
+    TipSubscriber,
 )
 from apps.platform_content.uploads import FormBoolean, delete_photo_files, validate_photo
 from apps.school.models import School
@@ -703,3 +707,45 @@ class SettingsView(ContentView):
             )
             refresh.refresh_platform_site()
         return Response({"whatsapp_channel_url": found.whatsapp_channel_url})
+
+
+# Tip subscribers (§5.6)
+
+
+class SubscribersView(ContentView):
+    def get(self, request):
+        everyone = TipSubscriber.objects
+        return Response(
+            {
+                "confirmed": everyone.subscribed().count(),
+                "pending": everyone.filter(confirmed_at__isnull=True).count(),
+                "unsubscribed": everyone.filter(unsubscribed_at__isnull=False).count(),
+            }
+        )
+
+
+def _spreadsheet_safe(value: str) -> str:
+    """Spreadsheets run cells starting with these as formulas."""
+    return f"'{value}" if value[:1] in ("=", "+", "-", "@") else value
+
+
+class SubscribersCsvView(ContentView):
+    def get(self, request):
+        buffer = io.StringIO()
+        writer = csv.writer(buffer)
+        writer.writerow(["email", "confirmed_at"])
+        for subscriber in TipSubscriber.objects.subscribed().order_by("email"):
+            confirmed = timezone.localtime(subscriber.confirmed_at).strftime("%Y-%m-%d %H:%M")
+            writer.writerow([_spreadsheet_safe(subscriber.email), confirmed])
+        record(
+            AuditLog.Action.VIEWED_RESTRICTED,
+            actor=request.user,
+            entity_type="platform_content.tipsubscriber",
+            reason="Downloaded the tip subscribers list",
+            request=request,
+        )
+        response = HttpResponse(
+            "\ufeff" + buffer.getvalue(), content_type="text/csv; charset=utf-8"
+        )
+        response["Content-Disposition"] = 'attachment; filename="tip-subscribers.csv"'
+        return response

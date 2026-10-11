@@ -63,6 +63,11 @@ CLASSIFIED = {
     "api/platform/website/settings": PLATFORM_STAFF,
     "api/public/platform/articles": NO_SCHOOL_DATA,
     "api/public/platform/articles/<slug:slug>": NO_SCHOOL_DATA,
+    "api/public/platform/tips": PLATFORM_ONLY,
+    "api/public/platform/tips/confirm": NO_SCHOOL_DATA,
+    "api/public/platform/tips/unsubscribe": NO_SCHOOL_DATA,
+    "api/platform/website/subscribers": PLATFORM_STAFF,
+    "api/platform/website/subscribers.csv": PLATFORM_STAFF,
 }
 
 
