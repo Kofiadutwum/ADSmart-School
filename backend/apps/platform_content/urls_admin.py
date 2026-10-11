@@ -12,4 +12,12 @@ urlpatterns = [
     path("articles/<int:pk>/publish", views.ArticlePublishView.as_view()),
     path("articles/<int:pk>/unpublish", views.ArticleUnpublishView.as_view()),
     path("article-images", views.ArticleImagesView.as_view()),
+    path("testimonials", views.TestimonialsView.as_view()),
+    path("testimonials/order", views.TestimonialOrderView.as_view()),
+    path("testimonials/<int:pk>", views.TestimonialView.as_view()),
+    path("testimonials/<int:pk>/photo", views.TestimonialPhotoView.as_view()),
+    path("faqs", views.FaqsView.as_view()),
+    path("faqs/order", views.FaqOrderView.as_view()),
+    path("faqs/<int:pk>", views.FaqView.as_view()),
+    path("settings", views.SettingsView.as_view()),
 ]

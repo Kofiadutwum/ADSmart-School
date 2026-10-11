@@ -7,6 +7,7 @@ from PIL import Image
 from apps.accounts import roles
 from apps.platform_content import refresh
 from tests.platform_admin.conftest import make_platform_member, signed_in
+from tests.website.conftest import ready_site  # noqa: F401 - shared fixture
 
 
 def photo(name: str = "pupils.png", size=(1200, 800), fmt: str = "PNG") -> SimpleUploadedFile:

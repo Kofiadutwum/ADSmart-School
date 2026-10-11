@@ -132,3 +132,84 @@ class TipSubscriber(models.Model):
 
     def __str__(self):
         return self.email
+
+
+WORDS_PERMISSION = (
+    "Tick that this person agreed to have their words and name published before showing it."
+)
+
+
+class TestimonialQuerySet(models.QuerySet):
+    def public(self):
+        return self.filter(visible=True, permission=True)
+
+
+class Testimonial(ImageRenditionsMixin):
+    """What a school says about the platform (business tools spec §5.5)."""
+
+    rendition_source_field = "photo"
+
+    quote = models.CharField(max_length=600)
+    person_name = models.CharField(max_length=80)
+    person_role = models.CharField(max_length=80, blank=True)
+    school_name = models.CharField(max_length=120, blank=True)
+    school = models.ForeignKey(
+        "school.School",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        help_text="Links the comment to the school's website while that site is public.",
+    )
+    photo = models.ImageField(upload_to="platform/testimonials/", blank=True)
+    permission = models.BooleanField(
+        default=False, help_text="The person agreed to have their words and name published."
+    )
+    visible = models.BooleanField(default=True)
+    order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    objects = TestimonialQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return self.person_name
+
+    def clean(self):
+        if self.visible and not self.permission:
+            raise ValidationError({"permission": WORDS_PERMISSION})
+
+
+class FaqItem(models.Model):
+    """A question and answer on the owner's website (business tools spec §5.5)."""
+
+    question = models.CharField(max_length=200)
+    answer = models.TextField(help_text=ARTICLE_FORMAT_HELP)
+    visible = models.BooleanField(default=True)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return self.question
+
+
+class PlatformSettings(models.Model):
+    """Settings for the owner's website. One row (pk 1)."""
+
+    whatsapp_channel_url = models.URLField(
+        blank=True, help_text="Your WhatsApp Channel's link, e.g. https://whatsapp.com/channel/…"
+    )
+
+    class Meta:
+        verbose_name_plural = "platform settings"
+
+    def __str__(self):
+        return "Platform settings"
+
+    @classmethod
+    def load(cls) -> PlatformSettings:
+        return cls.objects.get_or_create(pk=1)[0]
