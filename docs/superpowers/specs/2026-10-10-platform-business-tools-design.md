@@ -58,9 +58,11 @@
 |---|---|---|
 | What "Finance" covers | Your income from schools (their subscriptions to ADsmartschool) | School fees that parents pay to schools: a separate, later module (§10) |
 | Currency | Ghana cedis (GH₵). Amounts are stored as whole pesewas, so there are no rounding errors | — |
-| How prices work | Each plan has a **base price** per term or per year, plus an optional **price per pupil** | Base price only |
-| Billing terms | Three billing dates a year that you set (defaults: 1 September, 1 January, 1 May) | Each school's own term dates |
-| A school that joins mid-term | Billed for the term it starts in. You can give a discount by hand | Automatic part-term pricing |
+| How prices work | **Owner, 2026-10-11:** one **yearly price** per plan, paid in one go. Enterprise shows a starting price ("From GH₵10,000"), and each group's price is agreed | — |
+| When bills are due | Once a year, on the anniversary of the day the school's free trial ended | One date a year for every school |
+| Changing a price | **Owner, 2026-10-11:** new schools only. Schools already on a plan keep their price until you move them | — |
+| Who changes plans and prices | **Owner, 2026-10-11:** Owner and Finance | — |
+| Enterprise (school groups) | **Owner, 2026-10-11:** one bill for the whole group, at a price agreed with the group | — |
 | Free trial | 30 days, set per plan | No trial |
 | Online payments | **Paystack**: MTN MoMo, Telecel Cash, AirtelTigo Money and cards, in cedis | Hubtel |
 | Paystack's fee on each payment | You absorb it, so the school pays exactly the bill | The school pays it on top |
@@ -104,24 +106,40 @@ Today every team account can do everything. From now on each account has one or 
 You create plans in the admin area. A plan has:
 - **Name**, e.g. "Starter" or "Standard".
 - **What's included:** a short list shown on your website's prices section.
-- **Billing period:** per term or per year.
-- **Base price** in GH₵.
-- **Price per pupil** in GH₵. Optional; 0 means none.
+- **Who it's for:** a short line, e.g. "Small schools and newly established private schools".
+- **Price per year** in GH₵, paid in one go.
+- **"From" price:** when ticked, the website shows "From GH₵…" and a **Talk to us** button, because each customer's price is agreed (Enterprise).
 - **Free-trial length** in days (default 30).
 - **Show on website:** yes or no.
 - **Active:** yes or no. A plan that is switched off can't be given to new schools, but schools already on it keep it.
 
-**Pupil count:** at billing time, the number of the school's **current, real pupils** (enrolled and not left). Demo pupils never count.
+**Starting plans (owner, 2026-10-11):**
+
+| Plan | Who it's for | Price per year |
+|---|---|---|
+| Basic | Small schools and newly established private schools | GH₵1,200 |
+| Standard | Established basic schools and junior high schools | GH₵2,400 |
+| Professional | Larger schools requiring more administrative tools | GH₵4,800 |
+| Premium | Large schools requiring extensive features | GH₵7,200 |
+| Enterprise | School groups and multiple campuses | From GH₵10,000 |
+
+- **Who can change plans and prices:** Owner and Finance.
+- **Features:** plans don't switch features on or off yet. Every school gets everything the system does today; a plan sets the price and the words shown on the website.
 
 ### 3.2 Each school's subscription
 - **Every school has one subscription:**
   - its plan;
+  - **its own yearly price**, copied from the plan when the school joins or is moved. Changing a plan's price affects new schools only (owner, 2026-10-11);
   - its start date;
-  - its next billing date;
+  - its next billing date (once a year);
   - an optional standing discount (a percentage or a fixed amount, with a reason).
+- **School groups (Enterprise):**
+  - A group has a name and a billing contact, and owns several schools (its campuses).
+  - The group has one subscription at its agreed price and gets **one bill a year** for all its campuses.
+  - Each campus still has its own website, records and portal. Its Billing page shows the group's bills.
 - **Trial:**
   - A new school starts on trial (status `TRIAL`).
-  - Its first bill is issued when the trial ends, for the term then running.
+  - Its first bill is issued when the trial ends. After that, a bill comes once a year on that date.
   - Its first payment makes it `ACTIVE`.
 - **Changing plan:** takes effect from the next bill. A bill already issued is left as it is.
 - **Where it shows:** on the school's page in the admin area, as a new **Billing** tab.
@@ -129,11 +147,10 @@ You create plans in the admin area. A plan has:
 ### 3.3 Bills (invoices)
 - **Numbering:** `ADS-2026-0001`, `ADS-2026-0002` and so on, with no gaps.
 - **When they're made:**
-  - automatically, 14 days before each billing date (a setting);
+  - automatically, 14 days before each yearly billing date (a setting);
   - or by Finance by hand, for one-off charges.
 - **Lines:**
-  - the base price;
-  - pupils × the price per pupil, showing the count used;
+  - the plan and the year it covers, at the subscription's own price (or the group's agreed price);
   - any discount;
   - the total.
 - **Due date:** the billing date. The number of days is a setting.
@@ -206,7 +223,6 @@ What the payer's browser reports is never trusted on its own. Card and MoMo deta
 - **Finance settings** (Owner only):
   - your business details;
   - bank and MoMo details;
-  - billing dates;
   - days before billing that bills are made;
   - the reminder schedule;
   - pausing on or off, with its days;
@@ -319,7 +335,7 @@ The landing page runs top to bottom:
 
 ### 5.4 Prices section
 - **Source:** built from the plans marked "Show on website" (§3.1), so the website and your bills always use the same prices.
-- **Content:** each plan's name, price per term or year, price per pupil, what's included and its free trial, with a **Get your school online** button.
+- **Content:** each plan's name, who it's for, its price per year (or "From GH₵…" with **Talk to us**), what's included and its free trial, with a **Get your school online** button.
 - **Wording:** a short line of text above the plans is editable by Content.
 - **Hidden** when no plan is marked to show.
 
@@ -450,8 +466,8 @@ This work splits into plans, each finished, tested and merged before the next. T
 
 | Plan | Contents |
 |---|---|
-| **5B** | **Team roles and your website content:** roles and the Team screen; gallery; articles and tips with the editor and scheduling; comments from schools; questions and answers; prices section; tip sign-up and WhatsApp button; visitor counting; quick website updates |
-| **5C** | **Finance:** plans, subscriptions, bills, payments recorded by hand, credits, reversals, receipts, reminders, pausing for non-payment, the school's Billing page, finance settings, CSV downloads |
+| **5B** | **Team roles and your website content:** roles and the Team screen; gallery; articles and tips with the editor and scheduling; comments from schools; questions and answers; tip sign-up and WhatsApp button; visitor counting; quick website updates |
+| **5C** | **Finance:** plans (with the five starting plans), the prices section on your website, school groups, subscriptions, bills, payments recorded by hand, credits, reversals, receipts, reminders, pausing for non-payment, the school's Billing page, finance settings, CSV downloads |
 | **5D** | **Online payments and Statistics:** Paystack Mobile Money and card (test mode until launch); the Statistics page |
 | **5E** | **Talking with schools:** announcements and support conversations |
 | **5F** | **Schools edit their own websites** (formerly 5B): a Website section in each school's portal, support permission (grants), quick website updates for school sites |
@@ -475,7 +491,7 @@ This work splits into plans, each finished, tested and merged before the next. T
 
 | Item | Needed for |
 |---|---|
-| Your plans and prices (names, base price, price per pupil, trial length) | 5B prices section, 5C |
+| ~~Your plans and prices~~ Provided 2026-10-11 (§3.1). Still to come: what's included in each plan, for the website list | 5C |
 | A Paystack business account (needs business registration documents) and its keys | 5D (test keys), 6 (live keys) |
 | Whether you must charge VAT and levies on your service. Ask an accountant or the Ghana Revenue Authority | 5C |
 | Business details for bills: registered name, address, tax number (TIN), MoMo number and bank details | 5C |
