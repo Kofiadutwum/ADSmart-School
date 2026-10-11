@@ -134,6 +134,9 @@ Browser tests and Lighthouse start their own seeded servers on ports 8100 and 31
 
 ## Before launch
 
+**Going online:** follow [docs/deploy/vercel.md](docs/deploy/vercel.md). It covers Vercel for
+the website and backend, Neon for the database and Cloudinary for photos.
+
 The site stays in **Preview** (not indexed, ribbon shown) until real photos replace the
 placeholders, every text block is reviewed, the privacy notice is approved, and the site is
 marked live. See spec §6.5 and §15.
