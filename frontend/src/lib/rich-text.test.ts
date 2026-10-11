@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { parseInline, parseRichText } from "./rich-text";
 
 describe("parseRichText", () => {
@@ -21,6 +21,15 @@ describe("parseRichText", () => {
       { type: "quote", text: "Every child counts. Every day." },
       { type: "image", alt: "Pupils reading", src: "/media/a.webp" },
     ]);
+  });
+
+  it("accepts photos from the media service the site is set up with", () => {
+    vi.stubEnv("NEXT_PUBLIC_MEDIA_ORIGIN", "https://res.cloudinary.com/demo");
+    expect(parseRichText("![Hall](https://res.cloudinary.com/demo/image/upload/hall.webp)")).toEqual([
+      { type: "image", alt: "Hall", src: "https://res.cloudinary.com/demo/image/upload/hall.webp" },
+    ]);
+    expect(parseRichText("![x](https://res.cloudinary.com/demoevil/a.webp)")[0].type).toBe("paragraph");
+    vi.unstubAllEnvs();
   });
 
   it("keeps photos from other sites as plain text", () => {

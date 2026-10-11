@@ -319,7 +319,7 @@ function CommentCard({ comment, index, count, onMove, onSaved, onDeleted }: Card
         />
       </div>
       <div className="flex flex-wrap items-end gap-3">
-        <Field id={`comment-${comment.id}-photo`} label={`Photo of ${comment.person_name}`} hint="Up to 5 MB.">
+        <Field id={`comment-${comment.id}-photo`} label={`Photo of ${comment.person_name}`}>
           {(props) => (
             <input
               {...props}

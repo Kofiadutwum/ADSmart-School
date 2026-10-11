@@ -19,7 +19,12 @@ export function isSafeHref(href: string): boolean {
   return /^(https?:\/\/|mailto:|tel:)/i.test(href) || (href.startsWith("/") && !href.startsWith("//"));
 }
 
-const isOwnPhoto = (src: string) => src.startsWith("/media/") && !src.includes("..");
+/** This site's photos: local media, or the media service it is set up with (Plan 6A). */
+function isOwnPhoto(src: string): boolean {
+  if (src.includes("..")) return false;
+  const service = process.env.NEXT_PUBLIC_MEDIA_ORIGIN?.replace(/\/*$/, "/");
+  return src.startsWith("/media/") || Boolean(service?.startsWith("https://") && src.startsWith(service));
+}
 
 export function parseRichText(source: string): RichBlock[] {
   return source

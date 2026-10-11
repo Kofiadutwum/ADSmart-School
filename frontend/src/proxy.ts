@@ -1,13 +1,20 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { backendUrl, isBackendPath, signedHeaders } from "@/lib/forward";
 import { routeFor } from "@/lib/hosts";
 
-/** Serves every school, the platform site and the admin area from one app (amendment §2.4). */
+const djangoOrigin = () => process.env.DJANGO_ORIGIN ?? "http://127.0.0.1:8000";
+
+/** Serves every school, the platform site and the admin area from one app (amendment §2.4), and
+ * hands the API and media to Django (Plan 6A). */
 export function proxy(request: NextRequest) {
-  const target = routeFor(
-    request.headers.get("host") ?? "",
-    request.nextUrl.pathname,
-    process.env.PLATFORM_DOMAIN ?? "localhost",
-  );
+  const { pathname, search } = request.nextUrl;
+  if (isBackendPath(pathname)) {
+    return NextResponse.rewrite(backendUrl(djangoOrigin(), pathname, search), {
+      request: { headers: signedHeaders(request.headers, process.env.PROXY_SECRET ?? "") },
+    });
+  }
+  if (pathname.startsWith("/api/")) return NextResponse.next(); // Next.js's own routes
+  const target = routeFor(request.headers.get("host") ?? "", pathname, process.env.PLATFORM_DOMAIN ?? "localhost");
   if (target === null) return NextResponse.next();
   const url = request.nextUrl.clone();
   url.pathname = target;
@@ -15,6 +22,6 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Everything except the API and media (forwarded to Django) and Next.js internals.
-  matcher: ["/((?!api/|media/|_next/).*)"],
+  // Everything except Next.js's own files.
+  matcher: ["/((?!_next/).*)"],
 };

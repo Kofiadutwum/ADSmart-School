@@ -27,12 +27,14 @@ const djangoEnv = {
   SMS_FILE_PATH: path.join(backend, "e2e-sms.jsonl"),
   FRONTEND_ORIGIN: "http://127.0.0.1:3100",
   REVALIDATE_SECRET: "e2e-only-revalidate-secret",
+  PROXY_SECRET: "e2e-only-proxy-secret",
 };
 const nextEnv = {
   ...process.env,
   DJANGO_ORIGIN: DJANGO,
   PLATFORM_DOMAIN: "localhost",
   REVALIDATE_SECRET: "e2e-only-revalidate-secret",
+  PROXY_SECRET: "e2e-only-proxy-secret",
 };
 
 function run(command, args, options) {

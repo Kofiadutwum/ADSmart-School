@@ -131,7 +131,7 @@ function AddPhoto({ onAdded }: { onAdded: (photo: AdminGalleryPhoto) => void }) 
         Add a photo
       </h2>
       <FormAlert message={error} focusKey={attempt} />
-      <Field id="photo-file" label="Photo" hint="JPEG, PNG or WebP, up to 10 MB." required error={errors.image}>
+      <Field id="photo-file" label="Photo" hint="JPEG, PNG or WebP." required error={errors.image}>
         {(props) => (
           <input
             {...props}
