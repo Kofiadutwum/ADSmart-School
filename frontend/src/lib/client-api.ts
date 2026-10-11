@@ -60,6 +60,17 @@ export function postJson<T>(path: string, data?: unknown): Promise<T> {
   return send<T>("POST", path, data);
 }
 
+/** Uploads (photos): the browser sets the multipart content type itself. */
+export async function postForm<T>(path: string, form: FormData): Promise<T> {
+  return handle<T>(
+    await fetch(path, {
+      method: "POST",
+      headers: { Accept: "application/json", "X-CSRFToken": csrfToken() },
+      body: form,
+    }),
+  );
+}
+
 export function deleteJson<T>(path: string): Promise<T> {
   return send<T>("DELETE", path);
 }

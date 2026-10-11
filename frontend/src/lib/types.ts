@@ -142,6 +142,18 @@ export type SchoolDetail = SchoolRow & {
 
 export type OneTimePassword = { username: string; one_time_password: string };
 
+/** GET /api/platform/team (business tools spec §2). */
+export type TeamMember = {
+  id: number;
+  name: string;
+  username: string;
+  phone: string;
+  email: string;
+  roles: string[];
+  is_active: boolean;
+  last_sign_in: string | null;
+};
+
 export type LeadStatus = "new" | "contacted" | "onboarded" | "closed";
 
 export type Lead = {

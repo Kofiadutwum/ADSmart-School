@@ -9,16 +9,19 @@ import { SkipLink } from "@/components/site/skip-link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { publicPath } from "@/lib/hosts";
+import { canUse } from "@/lib/platform-roles";
 import type { ImageData } from "@/lib/types";
 import { useAuth } from "./auth-provider";
 
-export type NavItem = { href: string; label: string };
+/** `roles`: shown only to people holding one of them (platform team; business tools §2). */
+export type NavItem = { href: string; label: string; roles?: readonly string[] };
 type Props = { name: string; logo?: ImageData | null; nav?: NavItem[]; children: ReactNode };
 
 /** The signed-in frame: brand, navigation, who is signed in and Sign out. */
 export function PortalShell({ name, logo = null, nav, children }: Props) {
   const { me, signOut } = useAuth();
   const path = publicPath(usePathname());
+  const items = nav?.filter((item) => canUse(me, item.roles));
   return (
     <>
       <SkipLink />
@@ -33,9 +36,9 @@ export function PortalShell({ name, logo = null, nav, children }: Props) {
             </Button>
           </div>
         </div>
-        {nav && (
+        {items && (
           <nav aria-label="Main" className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 pb-2 sm:px-6">
-            {nav.map((item) => {
+            {items.map((item) => {
               const current = path === item.href || path.startsWith(`${item.href}/`);
               return (
                 <Link

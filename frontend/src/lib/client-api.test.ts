@@ -5,6 +5,7 @@ import {
   errorMessage,
   fieldErrors,
   OFFLINE_MESSAGE,
+  postForm,
   postJson,
 } from "./client-api";
 
@@ -34,6 +35,19 @@ describe("browser API client", () => {
       "/api/auth/sessions/4",
       expect.objectContaining({ method: "DELETE", headers: expect.objectContaining({ "X-CSRFToken": "abc123" }) }),
     );
+  });
+
+  it("uploads forms with the CSRF token and lets the browser set the content type", async () => {
+    document.cookie = "csrftoken=abc123; path=/";
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 201, json: async () => ({ id: 1 }) });
+    vi.stubGlobal("fetch", fetchMock);
+    const form = new FormData();
+    form.append("alt_text", "Pupils reading");
+
+    await expect(postForm("/api/platform/website/gallery", form)).resolves.toEqual({ id: 1 });
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.body).toBe(form);
+    expect(init.headers).toEqual({ Accept: "application/json", "X-CSRFToken": "abc123" });
   });
 
   it("raises ApiRequestError carrying the error body", async () => {
