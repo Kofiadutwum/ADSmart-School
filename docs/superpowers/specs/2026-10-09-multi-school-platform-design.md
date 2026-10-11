@@ -288,6 +288,15 @@ The site is reachable at once, in preview, until the school passes its go-live c
 
 ## 12. Open items before launch (adds to Phase 1 spec §15)
 
+> **Owner decision, 2026-10-11 (hosting):**
+> - Next.js and Django run as two Vercel projects, the database is on Neon and uploaded photos
+>   are on Cloudinary.
+> - Until a domain is bought, the platform uses Vercel addresses, with a named admin address
+>   (`ADMIN_HOST`).
+> - Sign-in codes go by email (SMTP) until an SMS provider is connected.
+> - This replaces the Caddy and on-demand TLS plan in §10, Plan 6. The guide is
+>   `docs/deploy/vercel.md` (Plan 6A).
+
 | Item | Owner / verify with |
 |---|---|
 | The platform's real name and domain, and a wildcard DNS record for it | Owner |
