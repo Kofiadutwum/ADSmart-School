@@ -1,12 +1,23 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { CHECK_FORM, firstProblem, LoadState, useLoad } from "@/components/portal/kit";
+import {
+  CHECK_FORM,
+  firstProblem,
+  LoadState,
+  useLoad,
+} from "@/components/portal/kit";
 import { SaveBar } from "@/components/portal/save-bar";
 import { Field, inputClasses } from "@/components/site/field";
 import { Button } from "@/components/ui/button";
 import { FormAlert } from "@/components/ui/form-alert";
-import { deleteJson, errorMessage, fieldErrors, patchJson, postForm } from "@/lib/client-api";
+import {
+  deleteJson,
+  errorMessage,
+  fieldErrors,
+  patchJson,
+  postForm,
+} from "@/lib/client-api";
 import type { SchoolProfile } from "@/lib/types";
 
 const PROFILE = "/api/school/profile";
@@ -24,29 +35,58 @@ const TEXT_FIELDS = [
   "brand_accent",
 ] as const;
 type TextField = (typeof TEXT_FIELDS)[number];
-type Values = Record<TextField, string> & { founded_year: string; levels_offered: string[] };
+type Values = Record<TextField, string> & {
+  founded_year: string;
+  levels_offered: string[];
+};
 
 const FIELDS: [TextField | "founded_year", string, boolean, string?][] = [
   ["motto", "Motto", false],
   ["founded_year", "Year founded", false],
-  ["address", "Address", false, "Street or landmark, as parents would describe it."],
+  [
+    "address",
+    "Address",
+    false,
+    "Street or landmark, as parents would describe it.",
+  ],
   ["town", "Town", true],
   ["region", "Region", true],
   ["ghana_post_gps", "GhanaPost GPS", false, "For example AK-039-5028."],
   ["phone", "Phone", true],
   ["whatsapp", "WhatsApp", false, "A mobile number."],
   ["email", "Email", true],
-  ["map_query", "Map search words", false, "What to search on the map to find the school."],
+  [
+    "map_query",
+    "Map search words",
+    false,
+    "What to search on the map to find the school.",
+  ],
 ];
 const COLOURS: ["brand_primary" | "brand_accent", string, string, string][] = [
-  ["brand_primary", "Main colour", "Buttons with white text, and links. It must be dark enough.", "#ffffff"],
-  ["brand_accent", "Accent colour", "The main call to action, with dark text. It must be light enough.", "#0b0a1f"],
+  [
+    "brand_primary",
+    "Main colour",
+    "Buttons with white text, and links. It must be dark enough.",
+    "#ffffff",
+  ],
+  [
+    "brand_accent",
+    "Accent colour",
+    "The main call to action, with dark text. It must be light enough.",
+    "#0b0a1f",
+  ],
 ];
 const HEX = /^#[0-9a-f]{6}$/i;
 
 function valuesOf(profile: SchoolProfile): Values {
-  const text = Object.fromEntries(TEXT_FIELDS.map((name) => [name, profile[name]])) as Record<TextField, string>;
-  return { ...text, founded_year: profile.founded_year?.toString() ?? "", levels_offered: profile.levels_offered };
+  const text = Object.fromEntries(
+    TEXT_FIELDS.map((name) => [name, profile[name]]),
+  ) as Record<TextField, string>;
+  return {
+    ...text,
+    founded_year: profile.founded_year?.toString() ?? "",
+    levels_offered: profile.levels_offered,
+  };
 }
 
 /** The server's "Try #xxxxxx" advice for a colour that is hard to read. */
@@ -69,11 +109,20 @@ export function ProfileForm({ canEdit }: { canEdit: boolean }) {
     if (data) setValues((current) => current ?? valuesOf(data));
   }, [data]);
 
-  if (!data || !values) return <LoadState error={loadError} loading={!loadError} empty={false} emptyText="" />;
+  if (!data || !values)
+    return (
+      <LoadState
+        error={loadError}
+        loading={!loadError}
+        empty={false}
+        emptyText=""
+      />
+    );
   const profile = data;
   const form = values;
 
-  const set = (name: keyof Values, value: string | string[]) => setValues({ ...form, [name]: value } as Values);
+  const set = (name: keyof Values, value: string | string[]) =>
+    setValues({ ...form, [name]: value } as Values);
 
   function fail(message: string, found: Record<string, string>) {
     setError(message);
@@ -84,7 +133,8 @@ export function ProfileForm({ canEdit }: { canEdit: boolean }) {
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setNotice(null);
-    if (form.levels_offered.length === 0) return fail(CHECK_FORM, { levels_offered: "Choose at least one level." });
+    if (form.levels_offered.length === 0)
+      return fail(CHECK_FORM, { levels_offered: "Choose at least one level." });
     setBusy(true);
     try {
       const saved = await patchJson<SchoolProfile>(PROFILE, {
@@ -107,30 +157,51 @@ export function ProfileForm({ canEdit }: { canEdit: boolean }) {
     const codes = profile.level_choices.map((choice) => choice.code);
     set(
       "levels_offered",
-      codes.filter((each) => (each === code ? on : form.levels_offered.includes(each))),
+      codes.filter((each) =>
+        each === code ? on : form.levels_offered.includes(each),
+      ),
     );
   }
 
   return (
     <div className="space-y-8">
       <LogoSection profile={profile} canEdit={canEdit} onSaved={setData} />
-      <form noValidate onSubmit={onSubmit} aria-labelledby="profile-title" className="space-y-6">
+      <form
+        noValidate
+        onSubmit={onSubmit}
+        aria-labelledby="profile-title"
+        className="space-y-6"
+      >
         <div>
           <h2 id="profile-title" className="text-xl font-semibold">
             {profile.name}
           </h2>
           <p className="text-sm text-ink-muted">
-            To change the school&apos;s name or web address, contact the platform team.
+            To change the school&apos;s name or web address, contact the
+            platform team.
           </p>
         </div>
         <FormAlert message={error} focusKey={attempt} />
         <div className="grid gap-5 lg:grid-cols-2">
           {FIELDS.map(([name, label, required, hint]) => (
-            <Field key={name} id={`profile-${name}`} label={label} hint={hint} required={required} error={errors[name]}>
+            <Field
+              key={name}
+              id={`profile-${name}`}
+              label={label}
+              hint={hint}
+              required={required}
+              error={errors[name]}
+            >
               {(props) => (
                 <input
                   {...props}
-                  type={name === "email" ? "email" : name === "phone" || name === "whatsapp" ? "tel" : "text"}
+                  type={
+                    name === "email"
+                      ? "email"
+                      : name === "phone" || name === "whatsapp"
+                        ? "tel"
+                        : "text"
+                  }
                   inputMode={name === "founded_year" ? "numeric" : undefined}
                   value={form[name]}
                   disabled={!canEdit}
@@ -141,16 +212,23 @@ export function ProfileForm({ canEdit }: { canEdit: boolean }) {
             </Field>
           ))}
         </div>
-        <fieldset aria-describedby={errors.levels_offered ? "levels-error" : undefined}>
+        <fieldset
+          aria-describedby={errors.levels_offered ? "levels-error" : undefined}
+        >
           <legend className="font-medium">Levels taught</legend>
           <div className="mt-1 flex flex-wrap gap-x-6">
             {profile.level_choices.map((level) => (
-              <label key={level.code} className="inline-flex min-h-11 cursor-pointer items-center gap-2">
+              <label
+                key={level.code}
+                className="inline-flex min-h-11 cursor-pointer items-center gap-2"
+              >
                 <input
                   type="checkbox"
                   disabled={!canEdit}
                   checked={form.levels_offered.includes(level.code)}
-                  onChange={(event) => toggleLevel(level.code, event.target.checked)}
+                  onChange={(event) =>
+                    toggleLevel(level.code, event.target.checked)
+                  }
                   className="size-5 accent-indigo"
                 />
                 {level.name}
@@ -168,7 +246,13 @@ export function ProfileForm({ canEdit }: { canEdit: boolean }) {
             const suggestion = suggestionIn(errors[name]);
             return (
               <div key={name} className="space-y-2">
-                <Field id={`profile-${name}`} label={label} hint={hint} required error={errors[name]}>
+                <Field
+                  id={`profile-${name}`}
+                  label={label}
+                  hint={hint}
+                  required
+                  error={errors[name]}
+                >
                   {(props) => (
                     <div className="flex items-center gap-3">
                       <input
@@ -182,7 +266,12 @@ export function ProfileForm({ canEdit }: { canEdit: boolean }) {
                       <span
                         aria-hidden
                         className="inline-flex min-h-12 min-w-24 items-center justify-center rounded-control border border-line px-3 font-semibold"
-                        style={{ background: HEX.test(form[name]) ? form[name] : "transparent", color: text }}
+                        style={{
+                          background: HEX.test(form[name])
+                            ? form[name]
+                            : "transparent",
+                          color: text,
+                        }}
                       >
                         Sample
                       </span>
@@ -190,7 +279,10 @@ export function ProfileForm({ canEdit }: { canEdit: boolean }) {
                   )}
                 </Field>
                 {suggestion && canEdit && (
-                  <Button variant="outline" onClick={() => set(name, suggestion)}>
+                  <Button
+                    variant="outline"
+                    onClick={() => set(name, suggestion)}
+                  >
                     Use {suggestion}
                   </Button>
                 )}
@@ -215,7 +307,11 @@ export function ProfileForm({ canEdit }: { canEdit: boolean }) {
   );
 }
 
-type LogoProps = { profile: SchoolProfile; canEdit: boolean; onSaved: (profile: SchoolProfile) => void };
+type LogoProps = {
+  profile: SchoolProfile;
+  canEdit: boolean;
+  onSaved: (profile: SchoolProfile) => void;
+};
 
 function LogoSection({ profile, canEdit, onSaved }: LogoProps) {
   const [file, setFile] = useState<File | null>(null);
@@ -284,7 +380,9 @@ function LogoSection({ profile, canEdit, onSaved }: LogoProps) {
                 <Button
                   variant="outline"
                   disabled={busy}
-                  onClick={() => void run(() => deleteJson<SchoolProfile>(`${PROFILE}/logo`))}
+                  onClick={() =>
+                    void run(() => deleteJson<SchoolProfile>(`${PROFILE}/logo`))
+                  }
                 >
                   Remove logo
                 </Button>

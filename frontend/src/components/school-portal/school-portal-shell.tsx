@@ -40,7 +40,8 @@ export function SchoolPortalShell({ name, logo = null, children }: Props) {
   const router = useRouter();
   const choices = rolesWithScreens(me.roles);
   const [chosen, setChosen] = useState<string | null>(stored);
-  const active = chosen && choices.includes(chosen) ? chosen : (choices[0] ?? null);
+  const active =
+    chosen && choices.includes(chosen) ? chosen : (choices[0] ?? null);
 
   function switchTo(role: string) {
     setChosen(role);
@@ -66,7 +67,12 @@ export function SchoolPortalShell({ name, logo = null, children }: Props) {
 
   return (
     <ActiveRole value={active}>
-      <PortalShell name={name} logo={logo} nav={navFor(active)} aside={switcher}>
+      <PortalShell
+        name={name}
+        logo={logo}
+        nav={navFor(active)}
+        aside={switcher}
+      >
         {children}
       </PortalShell>
     </ActiveRole>

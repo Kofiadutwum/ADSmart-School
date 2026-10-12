@@ -11,9 +11,16 @@ export function DashboardView() {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-semibold">Dashboard</h1>
-        <p className="mt-1 text-ink-muted">Your school at a glance, and what is left before going live.</p>
+        <p className="mt-1 text-ink-muted">
+          Your school at a glance, and what is left before going live.
+        </p>
       </div>
-      <LoadState error={error} loading={!data && !error} empty={false} emptyText="" />
+      <LoadState
+        error={error}
+        loading={!data && !error}
+        empty={false}
+        emptyText=""
+      />
       {data && <Counts counts={data.counts} />}
       {data && <Checklist items={data.checklist} />}
     </div>
@@ -21,9 +28,18 @@ export function DashboardView() {
 }
 
 function Counts({ counts }: { counts: SchoolDashboard["counts"] }) {
-  const placed = counts.students_by_level.reduce((sum, level) => sum + level.count, 0);
+  const placed = counts.students_by_level.reduce(
+    (sum, level) => sum + level.count,
+    0,
+  );
   const cards: [string, number, string?][] = [
-    ["Pupils", placed + counts.not_in_class, counts.not_in_class ? `${counts.not_in_class} not yet in a class` : undefined],
+    [
+      "Pupils",
+      placed + counts.not_in_class,
+      counts.not_in_class
+        ? `${counts.not_in_class} not yet in a class`
+        : undefined,
+    ],
     ["Staff", counts.staff],
     ["Classes this year", counts.classes],
     ["New enquiries", counts.new_enquiries],
@@ -37,7 +53,9 @@ function Counts({ counts }: { counts: SchoolDashboard["counts"] }) {
         {cards.map(([label, value, note]) => (
           <div key={label} className="surface rounded-card p-4 shadow-elev-1">
             <dt className="text-sm text-ink-muted">{label}</dt>
-            <dd className="mt-1 text-3xl font-semibold tabular-nums">{value}</dd>
+            <dd className="mt-1 text-3xl font-semibold tabular-nums">
+              {value}
+            </dd>
             {note && <dd className="mt-1 text-sm text-ink-muted">{note}</dd>}
           </div>
         ))}
@@ -49,7 +67,9 @@ function Counts({ counts }: { counts: SchoolDashboard["counts"] }) {
             {counts.students_by_level.map((level) => (
               <li key={level.band} className="flex justify-between gap-4 py-2">
                 <span>{level.label}</span>
-                <span className="font-semibold tabular-nums">{level.count}</span>
+                <span className="font-semibold tabular-nums">
+                  {level.count}
+                </span>
               </li>
             ))}
           </ul>
@@ -62,7 +82,10 @@ function Counts({ counts }: { counts: SchoolDashboard["counts"] }) {
 function Checklist({ items }: { items: SchoolDashboard["checklist"] }) {
   const done = items.filter((item) => item.done).length;
   return (
-    <section aria-labelledby="checklist-title" className="surface rounded-card p-5 shadow-elev-1">
+    <section
+      aria-labelledby="checklist-title"
+      className="surface rounded-card p-5 shadow-elev-1"
+    >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 id="checklist-title" className="text-xl font-semibold">
           Go-live checklist
@@ -75,19 +98,32 @@ function Checklist({ items }: { items: SchoolDashboard["checklist"] }) {
         {items.map((item) => (
           <li key={item.key} className="flex items-start gap-3">
             {item.done ? (
-              <CircleCheck aria-hidden className="mt-0.5 size-5 shrink-0 text-success" />
+              <CircleCheck
+                aria-hidden
+                className="mt-0.5 size-5 shrink-0 text-success"
+              />
             ) : (
-              <CircleDashed aria-hidden className="mt-0.5 size-5 shrink-0 text-copper" />
+              <CircleDashed
+                aria-hidden
+                className="mt-0.5 size-5 shrink-0 text-copper"
+              />
             )}
             <div>
               <p className="font-medium">
-                <span className="sr-only">{item.done ? "Done: " : "To do: "}</span>
+                <span className="sr-only">
+                  {item.done ? "Done: " : "To do: "}
+                </span>
                 {item.label}
-                <span aria-hidden className="ml-2 text-sm font-normal text-ink-muted">
+                <span
+                  aria-hidden
+                  className="ml-2 text-sm font-normal text-ink-muted"
+                >
                   {item.done ? "Done" : "To do"}
                 </span>
               </p>
-              {item.detail && <p className="text-sm text-ink-muted">{item.detail}</p>}
+              {item.detail && (
+                <p className="text-sm text-ink-muted">{item.detail}</p>
+              )}
             </div>
           </li>
         ))}

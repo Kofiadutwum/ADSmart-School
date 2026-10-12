@@ -13,8 +13,19 @@ describe("MyTeachingView", () => {
         {
           roles: ["Teacher"],
           staff: { id: 3, name: "Abena Owusu" },
-          teaching: [{ id: 1, class: "Basic 2A", class_id: 5, subject: "Mathematics", term: 1, term_id: 9 }],
-          class_teacher_of: [{ id: 2, class: "Basic 2A", class_id: 5, term: 1, term_id: 9 }],
+          teaching: [
+            {
+              id: 1,
+              class: "Basic 2A",
+              class_id: 5,
+              subject: "Mathematics",
+              term: 1,
+              term_id: 9,
+            },
+          ],
+          class_teacher_of: [
+            { id: 2, class: "Basic 2A", class_id: 5, term: 1, term_id: 9 },
+          ],
         },
       ],
     ]);
@@ -25,8 +36,17 @@ describe("MyTeachingView", () => {
   });
 
   it("says plainly when nothing is assigned yet", async () => {
-    mockApi([["GET", "/api/school/me", 200, { roles: ["Teacher"], staff: null, teaching: [], class_teacher_of: [] }]]);
+    mockApi([
+      [
+        "GET",
+        "/api/school/me",
+        200,
+        { roles: ["Teacher"], staff: null, teaching: [], class_teacher_of: [] },
+      ],
+    ]);
     render(<MyTeachingView />);
-    expect(await screen.findByText(/no classes are assigned to you/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/no classes are assigned to you/i),
+    ).toBeInTheDocument();
   });
 });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { inputClasses } from "@/components/site/field";
+import { Field, inputClasses } from "@/components/site/field";
 import { Button } from "@/components/ui/button";
 import { errorMessage, fieldErrors, getJson } from "@/lib/client-api";
 
@@ -107,4 +107,74 @@ export function LoadState({
   }
   if (loading) return <p className="text-ink-muted">Loading…</p>;
   return empty ? <p className="text-ink-muted">{emptyText}</p> : null;
+}
+
+/** A form's submit state: the alert, the field errors and the busy flag, with the server's
+ * errors mapped onto the fields (Phase 1 spec §7.6). */
+export function useSubmit() {
+  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [attempt, setAttempt] = useState(0);
+  const [busy, setBusy] = useState(false);
+
+  function fail(message: string, found: Record<string, string> = {}) {
+    setError(message);
+    setErrors(found);
+    setAttempt((count) => count + 1);
+  }
+
+  async function run(action: () => Promise<void>) {
+    setBusy(true);
+    setError(null);
+    setErrors({});
+    try {
+      await action();
+    } catch (caught) {
+      fail(errorMessage(caught), fieldErrors(caught));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return { error, errors, attempt, busy, fail, run };
+}
+
+type InputFieldProps = {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: "text" | "date" | "email" | "tel";
+  required?: boolean;
+  hint?: string;
+  error?: string;
+  disabled?: boolean;
+};
+
+/** A labelled text or date input with its hint and error (spec §8.7). */
+export function InputField({
+  id,
+  label,
+  value,
+  onChange,
+  type = "text",
+  required = false,
+  hint,
+  error,
+  disabled,
+}: InputFieldProps) {
+  return (
+    <Field id={id} label={label} hint={hint} required={required} error={error}>
+      {(props) => (
+        <input
+          {...props}
+          type={type}
+          value={value}
+          disabled={disabled}
+          onChange={(event) => onChange(event.target.value)}
+          className={inputClasses}
+        />
+      )}
+    </Field>
+  );
 }
