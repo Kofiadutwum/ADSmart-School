@@ -1,4 +1,5 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { usePathname } from "next/navigation";
 import { describe, expect, it, vi } from "vitest";
 import { mockApi } from "@/test/http";
@@ -49,5 +50,23 @@ describe("PortalShell", () => {
     expect(await screen.findByRole("link", { name: "Website" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Account" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Schools" })).not.toBeInTheDocument();
+  });
+
+  it("opens the navigation and the extra controls from the menu on phones", async () => {
+    vi.mocked(usePathname).mockReturnValue("/platform-admin/schools");
+    mockApi([["GET", "/api/auth/me", 200, ME]]);
+    const user = userEvent.setup();
+    render(
+      <AuthProvider>
+        <PortalShell name="ADsmartschool admin" nav={NAV} aside={<p>Viewing as Owner</p>}>
+          <p>page</p>
+        </PortalShell>
+      </AuthProvider>,
+    );
+    await user.click(await screen.findByRole("button", { name: "Open menu" }));
+    const menu = screen.getByRole("dialog", { name: "Menu" });
+    expect(within(menu).getByText("Viewing as Owner")).toBeInTheDocument();
+    await user.click(within(menu).getByRole("link", { name: "Leads" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });

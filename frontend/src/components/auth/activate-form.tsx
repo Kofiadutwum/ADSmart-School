@@ -13,9 +13,9 @@ import { PasswordInput } from "./password-input";
 const CHECK_FORM = "Please check the highlighted fields.";
 const PHONE_MESSAGE = "Enter a Ghana mobile number, e.g. 024 123 4567.";
 const PASSWORD_HINT = "At least 8 characters. A short sentence is easy to remember.";
-
-/** First-time activation and forgotten passwords for parents, by SMS code (spec §5.2). */
-export function ActivateForm() {
+/** First-time activation and forgotten passwords for parents, by SMS code (spec §5.2). `home`:
+ * where they land once their password is set. */
+export function ActivateForm({ home = "/account" }: { home?: string }) {
   const router = useRouter();
   const [step, setStep] = useState<"phone" | "code">("phone");
   const [phone, setPhone] = useState("");
@@ -67,7 +67,7 @@ export function ActivateForm() {
     setBusy(true);
     try {
       await postJson("/api/auth/parent/set-password", { phone, code: code.trim(), password, remember });
-      router.replace("/account");
+      router.replace(home);
     } catch (caught) {
       fail(errorMessage(caught), fieldErrors(caught));
     } finally {
