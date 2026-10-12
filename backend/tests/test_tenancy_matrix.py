@@ -73,6 +73,8 @@ CLASSIFIED = {
     "api/platform/website/subscribers.csv": PLATFORM_STAFF,
     "api/school/me": SCHOOL_STAFF,
     "api/school/dashboard": SCHOOL_STAFF,
+    "api/school/profile": SCHOOL_STAFF,
+    "api/school/profile/logo": SCHOOL_STAFF,
 }
 
 

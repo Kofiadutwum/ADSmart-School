@@ -17,7 +17,8 @@ function djangoOrigin(): string {
   return process.env.DJANGO_ORIGIN ?? "http://127.0.0.1:8000";
 }
 
-/** `tags`: Django can refresh these straight away (the platform website; business tools §5.7). */
+/** `tags`: Django can refresh these straight away (the platform website, business tools §5.7;
+ * school sites after a profile change, Stage 7). */
 async function fetchJson<T>(path: string, tags?: string[]): Promise<T | null> {
   const response = await fetch(`${djangoOrigin()}${path}`, {
     headers: { Accept: "application/json" },
@@ -31,11 +32,12 @@ async function fetchJson<T>(path: string, tags?: string[]): Promise<T | null> {
   return (await response.json()) as T;
 }
 
+const SITE_TAGS = ["sites"];
 const sitePath = (host: string) => `/api/public/sites/${encodeURIComponent(host)}`;
 
 /** The school at this address. Unknown addresses show the not-found page. */
 export async function getSite(host: string): Promise<SiteData> {
-  return (await fetchJson<SiteData>(`${sitePath(host)}/site`)) ?? notFound();
+  return (await fetchJson<SiteData>(`${sitePath(host)}/site`, SITE_TAGS)) ?? notFound();
 }
 
 export async function getNewsList(host: string, limit = 20): Promise<NewsSummary[]> {
