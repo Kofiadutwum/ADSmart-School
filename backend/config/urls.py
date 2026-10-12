@@ -13,6 +13,7 @@ urlpatterns = [
     path("api/cron/article-emails", ArticleEmailsCronView.as_view()),
     path("api/auth/", include("apps.accounts.urls")),
     path("api/platform/", include("apps.platform_admin.urls")),
+    path("api/school/", include("apps.school_admin.urls")),
 ]
 
 if settings.DEBUG:
