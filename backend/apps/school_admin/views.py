@@ -1,11 +1,16 @@
 """The school portal API (Phase 1 spec §7.2–7.3). Every query starts from the signed-in user's
 own school, so another school's records are never fetched."""
 
+from datetime import date
+
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.academics.models import ClassTeacherAssignment, TeachingAssignment
 from apps.accounts import roles
+from apps.accounts.models import User
+from apps.audit.models import AuditLog
+from apps.core.exceptions import ApiError
 from apps.people.models import Staff
 from apps.people.services import STAFF_ROLES
 from apps.school_admin import dashboard
@@ -94,3 +99,58 @@ class MeView(SchoolView):
 class DashboardView(SchoolView):
     def get(self, request):
         return Response(dashboard.dashboard(self.school))
+
+
+AUDIT_LIMIT = 200  # shortcut: the latest entries only; add paging once the log grows
+ACTION_LABELS = dict(AuditLog.Action.choices)
+
+
+def _date(value: str, name: str) -> date:
+    try:
+        return date.fromisoformat(value)
+    except ValueError as exc:
+        raise ApiError("bad_date", f"Choose a {name} date like 2026-10-12.") from exc
+
+
+class AuditView(SchoolView):
+    """The school's own trail (Phase 1 spec §7.2), filtered by person, record or date. Platform
+    support appears by role, not by name (amendment §4)."""
+
+    def get(self, request):
+        log = AuditLog.objects.filter(school=self.school)
+        entries = log.select_related("actor")
+        params = request.query_params
+        if params.get("actor"):
+            if not params["actor"].isdigit():
+                raise ApiError("bad_person", "Choose a person from the list.")
+            entries = entries.filter(actor_id=params["actor"])
+        if params.get("entity_type"):
+            entries = entries.filter(entity_type=params["entity_type"])
+        if params.get("entity_id"):
+            entries = entries.filter(entity_id=params["entity_id"].strip())
+        if params.get("date_from"):
+            entries = entries.filter(created_at__date__gte=_date(params["date_from"], "from"))
+        if params.get("date_to"):
+            entries = entries.filter(created_at__date__lte=_date(params["date_to"], "to"))
+        types = log.order_by("entity_type").values_list("entity_type", flat=True).distinct()
+        return Response(
+            {
+                "entries": [_entry(entry) for entry in entries[:AUDIT_LIMIT]],
+                "record_types": [name for name in types if name],
+            }
+        )
+
+
+def _entry(entry: AuditLog) -> dict:
+    platform = entry.actor is not None and entry.actor.kind == User.Kind.PLATFORM
+    return {
+        "id": entry.pk,
+        "created_at": entry.created_at,
+        "actor_id": entry.actor_id,
+        "actor_name": "Platform support" if platform else entry.actor_name,
+        "action": entry.action,
+        "action_label": ACTION_LABELS.get(entry.action, entry.action),
+        "entity_type": entry.entity_type,
+        "entity_id": entry.entity_id,
+        "reason": entry.reason,
+    }

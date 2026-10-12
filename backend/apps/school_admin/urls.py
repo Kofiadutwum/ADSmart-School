@@ -24,4 +24,5 @@ urlpatterns = [
     path("staff/<int:pk>", staff.StaffDetailView.as_view()),
     path("staff/<int:pk>/reset-password", staff.StaffResetPasswordView.as_view()),
     path("staff/<int:pk>/make-real", staff.StaffMakeRealView.as_view()),
+    path("audit", views.AuditView.as_view()),
 ]

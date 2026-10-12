@@ -72,6 +72,7 @@ CLASSIFIED = {
     "api/platform/website/subscribers": PLATFORM_STAFF,
     "api/platform/website/subscribers.csv": PLATFORM_STAFF,
     "api/school/me": SCHOOL_STAFF,
+    "api/school/audit": SCHOOL_STAFF,
     "api/school/staff": SCHOOL_STAFF,
     "api/school/staff/<int:pk>": SCHOOL_STAFF,
     "api/school/staff/<int:pk>/reset-password": SCHOOL_STAFF,
