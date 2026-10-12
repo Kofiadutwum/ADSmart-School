@@ -1,6 +1,6 @@
 from django.urls import path
 
-from apps.school_admin import calendar_views, profile, views
+from apps.school_admin import calendar_views, classes, profile, views
 
 urlpatterns = [
     path("me", views.MeView.as_view()),
@@ -13,4 +13,11 @@ urlpatterns = [
     path("terms/<int:pk>", calendar_views.TermDetailView.as_view()),
     path("calendar", calendar_views.CalendarView.as_view()),
     path("calendar/<str:day>", calendar_views.CalendarDayView.as_view()),
+    path("classes", classes.ClassesView.as_view()),
+    path("classes/<int:pk>", classes.ClassDetailView.as_view()),
+    path("classes/<int:pk>/class-teacher", classes.ClassTeacherView.as_view()),
+    path("subjects", classes.SubjectsView.as_view()),
+    path("subjects/<int:pk>", classes.SubjectDetailView.as_view()),
+    path("teaching", classes.TeachingView.as_view()),
+    path("teaching/<int:pk>", classes.TeachingDetailView.as_view()),
 ]
