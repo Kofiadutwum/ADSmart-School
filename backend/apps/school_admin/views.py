@@ -137,8 +137,22 @@ class AuditView(SchoolView):
             {
                 "entries": [_entry(entry) for entry in entries[:AUDIT_LIMIT]],
                 "record_types": [name for name in types if name],
+                "people": _people(log),
             }
         )
+
+
+def _people(log) -> list[dict]:
+    """Everyone with an entry, for the person filter."""
+    actors = User.objects.filter(pk__in=log.exclude(actor=None).values("actor_id"))
+    rows = [
+        {
+            "id": user.pk,
+            "name": "Platform support" if user.kind == User.Kind.PLATFORM else str(user),
+        }
+        for user in actors
+    ]
+    return sorted(rows, key=lambda row: row["name"])
 
 
 def _entry(entry: AuditLog) -> dict:

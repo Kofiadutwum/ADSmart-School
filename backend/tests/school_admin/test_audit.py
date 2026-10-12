@@ -47,3 +47,13 @@ def test_platform_support_shows_without_a_personal_name(admin, school):
     record(AuditLog.Action.PASSWORD_RESET, actor=ops, entity=admin.staff.user)
     entry = admin.get(AUDIT).json()["entries"][0]
     assert entry["actor_name"] == "Platform support"
+
+
+def test_lists_the_people_in_the_log_for_the_person_filter(admin, school):
+    teacher = make_staff(school, username="teacher.one")
+    record(AuditLog.Action.UPDATED, actor=teacher.user, entity=school)
+    ops = make_platform_member("ops", "Platform Support", display_name="Kojo Ops")
+    record(AuditLog.Action.PASSWORD_RESET, actor=ops, entity=teacher.user)
+    people = admin.get(AUDIT).json()["people"]
+    assert {"id": teacher.user_id, "name": "Kofi Mensah"} in people
+    assert {"id": ops.pk, "name": "Platform support"} in people

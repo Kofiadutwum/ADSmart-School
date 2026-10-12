@@ -368,4 +368,4 @@ export type SchoolAuditEntry = {
   entity_id: string;
   reason: string;
 };
-export type SchoolAudit = { entries: SchoolAuditEntry[]; record_types: string[] };
+export type SchoolAudit = { entries: SchoolAuditEntry[]; record_types: string[]; people: Choice[] };

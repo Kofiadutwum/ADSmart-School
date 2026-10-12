@@ -9,7 +9,7 @@ import { formatDateTime } from "@/lib/dates";
 import { formatPhoneLocal } from "@/lib/identifiers";
 import { ROLE_LABELS, TEAM_ROLES } from "@/lib/platform-roles";
 import type { OneTimePassword, TeamMember } from "@/lib/types";
-import { OneTimePasswordNote } from "./one-time-password-note";
+import { OneTimePasswordNote } from "@/components/portal/one-time-password-note";
 
 const TEAM = "/api/platform/team";
 const CHECK_FORM = "Please check the highlighted fields.";
