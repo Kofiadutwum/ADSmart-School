@@ -145,6 +145,12 @@ def _keep_an_administrator(staff: Staff, roles_after: list[str], active_after: b
         )
 
 
+def _not_yourself(staff: Staff, request, message: str) -> None:
+    """Either change would sign the Administrator out mid-task (all their sessions end)."""
+    if staff.user_id == request.user.pk:
+        raise ApiError("own_account", message)
+
+
 class StaffDetailView(SchoolView):
     def get(self, request, pk):
         return Response(staff_detail(_staff(self.school, pk)))
@@ -162,6 +168,8 @@ class StaffDetailView(SchoolView):
         if data.get("employment_status") == Staff.EmploymentStatus.LEFT:
             active_after = False
         _keep_an_administrator(staff, roles_after, active_after)
+        if user.is_active and not active_after:
+            _not_yourself(staff, request, "You can't switch off your own sign-in.")
 
         old = {key: getattr(staff, key) for key in data if getattr(staff, key) != data[key]}
         if old:
@@ -208,6 +216,7 @@ class StaffResetPasswordView(SchoolView):
     @transaction.atomic
     def post(self, request, pk):
         staff = _staff(self.school, pk)
+        _not_yourself(staff, request, "Change your own password under Account.")
         password = issue_password(staff.user)
         end_other_sessions(staff.user, keep_key=None)
         record(

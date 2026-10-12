@@ -136,3 +136,13 @@ def test_another_schools_staff_are_not_found(admin, other_school):
     assert admin.get(f"/api/school/staff/{theirs.pk}").status_code == 404
     assert admin.patch(f"/api/school/staff/{theirs.pk}", {}, format="json").status_code == 404
     assert admin.post(f"/api/school/staff/{theirs.pk}/reset-password").status_code == 404
+
+
+def test_your_own_password_and_sign_in_are_changed_elsewhere(admin, school):
+    make_staff(school, username="second", roles_held=["Administrator"])
+    me = admin.staff.pk
+    reset = admin.post(f"/api/school/staff/{me}/reset-password")
+    assert reset.status_code == 400
+    assert reset.json()["code"] == "own_account"
+    off = admin.patch(f"/api/school/staff/{me}", {"is_active": False}, format="json")
+    assert off.json()["code"] == "own_account"
