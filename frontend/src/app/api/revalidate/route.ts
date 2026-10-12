@@ -9,9 +9,9 @@ function sameSecret(given: string | null, secret: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+/** Django calls this after the owner's website content or a school's profile changes, so the
  * change shows at once (business tools spec §5.7; Stage 7). Without the shared secret nothing
  * happens. */
- * change shows at once (business tools spec §5.7; Stage 7). Without the shared secret nothing happens. */
 export async function POST(request: Request) {
   const secret = process.env.REVALIDATE_SECRET ?? "";
   if (!secret || !sameSecret(request.headers.get("x-revalidate-secret"), secret)) {
