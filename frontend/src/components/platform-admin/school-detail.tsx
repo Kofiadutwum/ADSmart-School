@@ -9,7 +9,7 @@ import { errorMessage, fieldErrors, getJson, postJson } from "@/lib/client-api";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { formatPhoneLocal } from "@/lib/identifiers";
 import type { Administrator, OneTimePassword, SchoolDetail, SchoolStatus } from "@/lib/types";
-import { OneTimePasswordNote } from "./one-time-password-note";
+import { OneTimePasswordNote } from "@/components/portal/one-time-password-note";
 import { STATUS_LABEL, StatusBadge } from "./status-badge";
 
 const COUNTS = [

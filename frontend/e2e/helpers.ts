@@ -26,6 +26,14 @@ export async function signIn(page: Page, tab: string | null, username: string, p
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
 }
 
+/** The portal's main navigation: the sidebar on wide screens, the slide-out menu on phones. */
+export async function mainNav(page: Page) {
+  await expect(page.getByRole("button", { name: "Sign out", exact: true })).toBeVisible(); // the frame is up
+  const menu = page.getByRole("button", { name: "Open menu" });
+  if (await menu.isVisible()) await menu.click();
+  return page.getByRole("navigation", { name: "Main" });
+}
+
 /** 0244000001 → +233244000001. */
 export const e164 = (local: string) => `+233${local.replace(/\s/g, "").slice(1)}`;
 

@@ -8,7 +8,7 @@ export default function ActivatePage() {
     <>
       <h1 className="text-2xl font-semibold">First time, or forgot your password?</h1>
       <div className="mt-4">
-        <ActivateForm />
+        <ActivateForm home="/home" />
       </div>
     </>
   );

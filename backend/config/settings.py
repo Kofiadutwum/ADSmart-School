@@ -71,6 +71,7 @@ INSTALLED_APPS = [
     "apps.people",
     "apps.platform_admin",
     "apps.platform_content",
+    "apps.school_admin",
 ]
 
 MIDDLEWARE = [

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import accounts from "./accounts.json";
-import { ADMIN, confirmWithTextedCode, e164, expectAccessibleInBothThemes, openHydrated, signIn } from "./helpers";
+import { ADMIN, confirmWithTextedCode, e164, expectAccessibleInBothThemes, mainNav, openHydrated, signIn } from "./helpers";
 
 type Project = keyof typeof accounts.platform_writers;
 const PLATFORM = "http://localhost:3100";
@@ -19,7 +19,7 @@ test("a Content member publishes to the website, and it shows straight away", as
   await openHydrated(page, `${ADMIN}/sign-in`);
   await signIn(page, null, accounts.platform_writers[project], accounts.password);
   await confirmWithTextedCode(page, e164(accounts.phones.platform_writers[project]));
-  const nav = page.getByRole("navigation", { name: "Main" });
+  const nav = await mainNav(page);
   await expect(nav.getByRole("link")).toHaveText(["Website", "Account"]);
   await nav.getByRole("link", { name: "Website" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Articles and tips" })).toBeVisible();

@@ -10,6 +10,7 @@ NO_SCHOOL_DATA = "no school data"
 PENDING_USER = "the pending user at their own address (tests/accounts/test_second_factor.py)"
 PLATFORM_STAFF = "platform staff at the admin address only (tests/platform_admin/test_access.py)"
 OWN_SESSIONS = "the signed-in user's own sessions (tests/accounts/test_sessions.py)"
+SCHOOL_STAFF = "the signed-in staff member's own school only (tests/school_admin/test_access.py)"
 
 CLASSIFIED = {
     "api/health": NO_SCHOOL_DATA,
@@ -70,6 +71,28 @@ CLASSIFIED = {
     "api/public/platform/visit": PLATFORM_ONLY,
     "api/platform/website/subscribers": PLATFORM_STAFF,
     "api/platform/website/subscribers.csv": PLATFORM_STAFF,
+    "api/school/me": SCHOOL_STAFF,
+    "api/school/audit": SCHOOL_STAFF,
+    "api/school/staff": SCHOOL_STAFF,
+    "api/school/staff/<int:pk>": SCHOOL_STAFF,
+    "api/school/staff/<int:pk>/reset-password": SCHOOL_STAFF,
+    "api/school/staff/<int:pk>/make-real": SCHOOL_STAFF,
+    "api/school/classes": SCHOOL_STAFF,
+    "api/school/classes/<int:pk>": SCHOOL_STAFF,
+    "api/school/classes/<int:pk>/class-teacher": SCHOOL_STAFF,
+    "api/school/subjects": SCHOOL_STAFF,
+    "api/school/subjects/<int:pk>": SCHOOL_STAFF,
+    "api/school/teaching": SCHOOL_STAFF,
+    "api/school/teaching/<int:pk>": SCHOOL_STAFF,
+    "api/school/years": SCHOOL_STAFF,
+    "api/school/years/<int:pk>": SCHOOL_STAFF,
+    "api/school/years/<int:pk>/terms": SCHOOL_STAFF,
+    "api/school/terms/<int:pk>": SCHOOL_STAFF,
+    "api/school/calendar": SCHOOL_STAFF,
+    "api/school/calendar/<str:day>": SCHOOL_STAFF,
+    "api/school/dashboard": SCHOOL_STAFF,
+    "api/school/profile": SCHOOL_STAFF,
+    "api/school/profile/logo": SCHOOL_STAFF,
 }
 
 

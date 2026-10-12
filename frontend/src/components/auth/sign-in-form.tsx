@@ -32,9 +32,10 @@ const FORGOTTEN: Record<Exclude<AccountKind, "parent">, string> = {
  * Sign-in for the accounts this address accepts (spec §5.1, amendment §2.1): a school's
  * Parent, Student and Staff tabs, or platform staff alone at the admin address.
  */
-export function SignInForm({ kinds }: { kinds: readonly AccountKind[] }) {
+/** `home`: where to land when the sign-in page wasn't given a page to return to. */
+export function SignInForm({ kinds, home = "/account" }: { kinds: readonly AccountKind[]; home?: string }) {
   const router = useRouter();
-  const next = safeNext(useSearchParams().get("next"));
+  const next = safeNext(useSearchParams().get("next"), home);
   const [kind, setKind] = useState<AccountKind>(kinds[0]);
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");

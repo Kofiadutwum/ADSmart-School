@@ -252,3 +252,120 @@ export type AuditEntry = {
   school: string | null;
   reason: string;
 };
+
+/** The school portal (Stage 7): the shapes /api/school/… answers with. */
+export type ChecklistItem = { key: string; label: string; done: boolean; detail: string };
+export type SchoolDashboard = {
+  counts: {
+    students_by_level: { band: string; label: string; count: number }[];
+    not_in_class: number;
+    staff: number;
+    classes: number;
+    new_enquiries: number;
+  };
+  checklist: ChecklistItem[];
+};
+export type SchoolProfile = {
+  name: string;
+  slug: string;
+  motto: string;
+  founded_year: number | null;
+  address: string;
+  town: string;
+  region: string;
+  ghana_post_gps: string;
+  phone: string;
+  whatsapp: string;
+  email: string;
+  map_query: string;
+  levels_offered: string[];
+  brand_primary: string;
+  brand_accent: string;
+  logo: ImageData | null;
+  level_choices: { code: string; name: string }[];
+};
+export type SchoolTerm = { id: number; number: number; name: string; start_date: string; end_date: string };
+export type SchoolYear = {
+  id: number;
+  name: string;
+  start_date: string;
+  end_date: string;
+  is_current: boolean;
+  terms: SchoolTerm[];
+};
+export type CalendarDayType = "OPEN" | "HOLIDAY" | "CLOSING" | "REOPENING";
+export type CalendarDayRow = { date: string; type: CalendarDayType; note: string };
+export type CalendarMonth = { month: string; days: CalendarDayRow[]; terms: SchoolTerm[] };
+export type ClassTeacher = { term_id: number; term: number; staff_id: number; staff_name: string };
+export type SchoolClassRow = {
+  id: number;
+  name: string;
+  year_group: string;
+  stream: string;
+  band: string;
+  academic_year: number;
+  pupils: number;
+  class_teachers: ClassTeacher[];
+};
+export type Choice = { id: number; name: string };
+export type ClassesData = {
+  year: Choice | null;
+  years: (Choice & { is_current: boolean })[];
+  classes: SchoolClassRow[];
+  year_groups: { code: string; name: string }[];
+  terms: SchoolTerm[];
+  teachers: Choice[];
+};
+export type SubjectRow = { id: number; name: string; code: string; bands: string[]; is_learning_area: boolean };
+export type TeachingRow = {
+  id: number;
+  staff_id: number;
+  teacher: string;
+  school_class_id: number;
+  class: string;
+  subject_id: number;
+  subject: string;
+  term_id: number;
+  term: number;
+};
+export type EmploymentStatus = "ACTIVE" | "ON_LEAVE" | "LEFT";
+export type StaffRow = {
+  id: number;
+  name: string;
+  username: string;
+  staff_number: string;
+  roles: string[];
+  phone: string;
+  email: string;
+  employment_status: EmploymentStatus;
+  is_active: boolean;
+  is_demo: boolean;
+  needs_second_factor: boolean;
+  second_factor_ready: boolean;
+  last_sign_in: string | null;
+};
+export type MyClasses = {
+  teaching: { id: number; class: string; class_id: number; subject: string; term: number; term_id: number }[];
+  class_teacher_of: { id: number; class: string; class_id: number; term: number; term_id: number }[];
+};
+export type StaffDetail = StaffRow &
+  MyClasses & {
+    first_name: string;
+    surname: string;
+    qualifications: string;
+    licence_number: string;
+    emergency_contact: string;
+  };
+export type SchoolMe = MyClasses & { roles: string[]; staff: { id: number; name: string } | null };
+export type SchoolAuditEntry = {
+  id: number;
+  created_at: string;
+  actor_id: number | null;
+  actor_name: string;
+  action: string;
+  action_label: string;
+  entity_type: string;
+  entity_id: string;
+  reason: string;
+};
+export type SchoolAudit = { entries: SchoolAuditEntry[]; record_types: string[]; people: Choice[] };

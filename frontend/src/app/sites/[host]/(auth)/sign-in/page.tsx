@@ -13,7 +13,7 @@ export default async function SignInPage({ params }: { params: Promise<{ host: s
       <p className="mt-1 text-ink-muted">For parents, pupils and staff of {school.name}.</p>
       <div className="mt-6">
         <Suspense>
-          <SignInForm kinds={["parent", "student", "staff"]} />
+          <SignInForm kinds={["parent", "student", "staff"]} home="/home" />
         </Suspense>
       </div>
     </>

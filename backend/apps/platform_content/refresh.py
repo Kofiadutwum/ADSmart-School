@@ -31,3 +31,9 @@ def _post(tag: str) -> None:
 def refresh_platform_site() -> None:
     if settings.REVALIDATE_SECRET:
         transaction.on_commit(lambda: _post("platform"))
+
+
+def refresh_school_sites() -> None:
+    """A school changed its profile, logo or colours (Stage 7). Every school site shares a tag."""
+    if settings.REVALIDATE_SECRET:
+        transaction.on_commit(lambda: _post("sites"))

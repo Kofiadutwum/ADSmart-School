@@ -41,7 +41,7 @@ test("an administrator confirms each sign-in with a code", async ({ page }, test
   const project = testInfo.project.name as Project;
   await signIn(page, "Staff", accounts.staff[project], accounts.password);
   await confirmWithTextedCode(page, e164(accounts.phones.staff[project]));
-  await expect(page.getByRole("heading", { name: "Your account" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible(); // the Administrator's home
   await expectAccessibleInBothThemes(page);
 
   await page.getByRole("button", { name: "Sign out", exact: true }).click();

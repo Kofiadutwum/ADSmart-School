@@ -26,6 +26,11 @@ describe("POST /api/revalidate", () => {
     expect(revalidateTag).toHaveBeenCalledWith("platform", { expire: 0 });
   });
 
+  it("refreshes every school website after a school's profile changes", async () => {
+    expect((await call("s3cret", { tag: "sites" })).status).toBe(200);
+    expect(revalidateTag).toHaveBeenCalledWith("sites", { expire: 0 });
+  });
+
   it("refuses a wrong secret", async () => {
     expect((await call("guess", { tag: "platform" })).status).toBe(401);
     expect(revalidateTag).not.toHaveBeenCalled();

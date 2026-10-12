@@ -25,7 +25,7 @@ def one_time_password() -> str:
     return f"{raw[:4]}-{raw[4:8]}-{raw[8:]}"
 
 
-def _issue_password(user: User) -> str:
+def issue_password(user: User) -> str:
     password = one_time_password()
     user.set_password(password)
     user.must_change_password = True
@@ -47,7 +47,7 @@ def add_administrator(
         email=email,
         by=by,
     )
-    return staff.user, _issue_password(staff.user)
+    return staff.user, issue_password(staff.user)
 
 
 @transaction.atomic
@@ -97,7 +97,7 @@ def _tell(user: User, text: str) -> None:
 
 
 def reset_administrator_password(user: User, *, by, request=None) -> str:
-    password = _issue_password(user)
+    password = issue_password(user)
     end_other_sessions(user, keep_key=None)
     record(
         AuditLog.Action.PASSWORD_RESET,
@@ -142,7 +142,7 @@ def add_team_member(
         new={"roles": sorted(roles_held)},
         request=request,
     )
-    return user, _issue_password(user)
+    return user, issue_password(user)
 
 
 @transaction.atomic
@@ -181,7 +181,7 @@ def update_team_member(user: User, *, roles_held=None, is_active=None, by, reque
 
 
 def reset_team_password(user: User, *, by, request=None) -> str:
-    password = _issue_password(user)
+    password = issue_password(user)
     end_other_sessions(user, keep_key=None)
     record(
         AuditLog.Action.PASSWORD_RESET,
