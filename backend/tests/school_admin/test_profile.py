@@ -78,7 +78,9 @@ def test_a_file_that_is_not_a_photo_is_refused(admin):
     assert "logo" in response.json()["fields"]
 
 
-def test_changes_ask_the_website_to_refresh(admin, settings, monkeypatch, django_capture_on_commit_callbacks):
+def test_changes_ask_the_website_to_refresh(
+    admin, settings, monkeypatch, django_capture_on_commit_callbacks
+):
     settings.REVALIDATE_SECRET = "s"
     sent = []
     monkeypatch.setattr("apps.platform_content.refresh._post", sent.append)

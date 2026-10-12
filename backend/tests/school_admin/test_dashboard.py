@@ -31,7 +31,9 @@ def test_counts_pupils_by_level_staff_classes_and_new_enquiries(admin, school):
         data_consent=True,
     )
     counts = admin.get("/api/school/dashboard").json()["counts"]
-    assert counts["students_by_level"] == [{"band": "lower_primary", "label": "Basic 1–3", "count": 1}]
+    assert counts["students_by_level"] == [
+        {"band": "lower_primary", "label": "Basic 1–3", "count": 1}
+    ]
     assert counts["not_in_class"] == 1
     assert counts["classes"] == 2
     assert counts["staff"] == 1  # the Administrator
@@ -92,8 +94,12 @@ def test_pupils_need_two_emergency_contacts(admin, school):
     assert checklist(admin)["emergency_contacts"]["done"] is False
     for priority in (1, 2):
         EmergencyContact.objects.create(
-            school=school, student=pupil, name="Aunt", phone="+233241234567",
-            relationship="Aunt", priority=priority,
+            school=school,
+            student=pupil,
+            name="Aunt",
+            phone="+233241234567",
+            relationship="Aunt",
+            priority=priority,
         )
     assert checklist(admin)["emergency_contacts"]["done"] is True
 
