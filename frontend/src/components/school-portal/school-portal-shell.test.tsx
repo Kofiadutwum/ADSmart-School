@@ -39,29 +39,18 @@ describe("SchoolPortalShell", () => {
 
   it("starts with the first role that has screens and shows its pages", async () => {
     renderShell();
-    expect(
-      await screen.findByText("Active: Administrator"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Active: Administrator")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Staff" })).toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: "My teaching" }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "My teaching" })).not.toBeInTheDocument();
   });
 
   it("switches role, remembers it and opens that role's home", async () => {
     const user = userEvent.setup();
     renderShell();
-    await user.selectOptions(
-      await screen.findByLabelText("Viewing as"),
-      "Teacher",
-    );
+    await user.selectOptions(await screen.findByLabelText("Viewing as"), "Teacher");
     expect(screen.getByText("Active: Teacher")).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "My teaching" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: "Staff" }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "My teaching" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Staff" })).not.toBeInTheDocument();
     expect(useRouter().push).toHaveBeenCalledWith("/my-teaching");
     expect(window.localStorage.getItem("school-portal-role")).toBe("Teacher");
   });

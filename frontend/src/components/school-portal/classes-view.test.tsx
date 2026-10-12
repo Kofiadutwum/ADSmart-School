@@ -20,9 +20,7 @@ const BASIC_2A = {
   band: "lower_primary",
   academic_year: 2,
   pupils: 31,
-  class_teachers: [
-    { term_id: 4, term: 1, staff_id: 5, staff_name: "Abena Owusu" },
-  ],
+  class_teachers: [{ term_id: 4, term: 1, staff_id: 5, staff_name: "Abena Owusu" }],
 };
 const DATA: ClassesData = {
   year: { id: 2, name: "2026/2027" },
@@ -43,9 +41,7 @@ describe("ClassesView", () => {
   it("lists classes and changes a class teacher", async () => {
     const changed = {
       ...BASIC_2A,
-      class_teachers: [
-        { term_id: 4, term: 1, staff_id: 6, staff_name: "Yaw Boateng" },
-      ],
+      class_teachers: [{ term_id: 4, term: 1, staff_id: 6, staff_name: "Yaw Boateng" }],
     };
     const fetchMock = mockApi([
       ["GET", "/api/school/classes", 200, DATA],
@@ -55,14 +51,9 @@ describe("ClassesView", () => {
     render(<ClassesView canEdit />);
     const card = await screen.findByRole("article", { name: "Basic 2A" });
     expect(within(card).getByText("31 pupils")).toBeInTheDocument();
-    await user.selectOptions(
-      within(card).getByLabelText("Class teacher, Term 1"),
-      "Yaw Boateng",
-    );
+    await user.selectOptions(within(card).getByLabelText("Class teacher, Term 1"), "Yaw Boateng");
     expect(await within(card).findByRole("status")).toHaveTextContent("Saved");
-    expect(
-      bodyOf(fetchMock, "PUT", "/api/school/classes/9/class-teacher"),
-    ).toEqual({ term: 4, staff: 6 });
+    expect(bodyOf(fetchMock, "PUT", "/api/school/classes/9/class-teacher")).toEqual({ term: 4, staff: 6 });
   });
 
   it("adds a class to the year", async () => {
@@ -81,14 +72,9 @@ describe("ClassesView", () => {
     ]);
     const user = userEvent.setup();
     render(<ClassesView canEdit />);
-    await user.selectOptions(
-      await screen.findByLabelText(/^year group/i),
-      "Basic 1",
-    );
+    await user.selectOptions(await screen.findByLabelText(/^year group/i), "Basic 1");
     await user.click(screen.getByRole("button", { name: "Add class" }));
-    expect(
-      await screen.findByRole("article", { name: "Basic 1" }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("article", { name: "Basic 1" })).toBeInTheDocument();
     expect(bodyOf(fetchMock, "POST", "/api/school/classes")).toEqual({
       academic_year: 2,
       year_group: "basic_1",
@@ -101,23 +87,12 @@ describe("ClassesView", () => {
     render(<ClassesView canEdit={false} />);
     const card = await screen.findByRole("article", { name: "Basic 2A" });
     expect(within(card).getByText("Term 1: Abena Owusu")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Add class" }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add class" })).not.toBeInTheDocument();
   });
 
   it("asks for a school year first", async () => {
-    mockApi([
-      [
-        "GET",
-        "/api/school/classes",
-        200,
-        { ...DATA, year: null, years: [], classes: [], terms: [] },
-      ],
-    ]);
+    mockApi([["GET", "/api/school/classes", 200, { ...DATA, year: null, years: [], classes: [], terms: [] }]]);
     render(<ClassesView canEdit />);
-    expect(
-      await screen.findByText(/add a school year first/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/add a school year first/i)).toBeInTheDocument();
   });
 });

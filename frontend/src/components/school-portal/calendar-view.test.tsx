@@ -26,15 +26,9 @@ describe("CalendarView", () => {
   it("shows the month's days with their type in words", async () => {
     mockApi([["GET", "/api/school/calendar?month=2026-10", 200, OCTOBER]]);
     render(<CalendarView canEdit initialMonth="2026-10" />);
-    expect(
-      await screen.findByRole("heading", { name: "October 2026" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Friday 16 October: School open" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Saturday 17 October: not a school day"),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "October 2026" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Friday 16 October: School open" })).toBeInTheDocument();
+    expect(screen.getByText("Saturday 17 October: not a school day")).toBeInTheDocument();
   });
 
   it("moves between months with the buttons", async () => {
@@ -45,9 +39,7 @@ describe("CalendarView", () => {
     const user = userEvent.setup();
     render(<CalendarView canEdit initialMonth="2026-10" />);
     await user.click(await screen.findByRole("button", { name: "Next month" }));
-    expect(
-      await screen.findByRole("heading", { name: "November 2026" }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "November 2026" })).toBeInTheDocument();
   });
 
   it("moves to the next month with a swipe to the left", async () => {
@@ -61,20 +53,13 @@ describe("CalendarView", () => {
     });
     fireEvent.pointerDown(grid, { clientX: 300, pointerId: 1 });
     fireEvent.pointerUp(grid, { clientX: 200, pointerId: 1 });
-    expect(
-      await screen.findByRole("heading", { name: "November 2026" }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "November 2026" })).toBeInTheDocument();
   });
 
   it("sets a day as a holiday with a note", async () => {
     const fetchMock = mockApi([
       ["GET", "/api/school/calendar?month=2026-10", 200, OCTOBER],
-      [
-        "PUT",
-        "/api/school/calendar/2026-10-16",
-        200,
-        { date: "2026-10-16", type: "HOLIDAY", note: "Sports day" },
-      ],
+      ["PUT", "/api/school/calendar/2026-10-16", 200, { date: "2026-10-16", type: "HOLIDAY", note: "Sports day" }],
     ]);
     const user = userEvent.setup();
     render(<CalendarView canEdit initialMonth="2026-10" />);
@@ -92,19 +77,16 @@ describe("CalendarView", () => {
         name: "Friday 16 October: Holiday, Sports day",
       }),
     ).toBeInTheDocument();
-    expect(bodyOf(fetchMock, "PUT", "/api/school/calendar/2026-10-16")).toEqual(
-      { type: "HOLIDAY", note: "Sports day" },
-    );
+    expect(bodyOf(fetchMock, "PUT", "/api/school/calendar/2026-10-16")).toEqual({
+      type: "HOLIDAY",
+      note: "Sports day",
+    });
   });
 
   it("is read-only for the Head Teacher", async () => {
     mockApi([["GET", "/api/school/calendar?month=2026-10", 200, OCTOBER]]);
     render(<CalendarView canEdit={false} initialMonth="2026-10" />);
-    expect(
-      await screen.findByText("Friday 16 October: School open"),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /16 October/ }),
-    ).not.toBeInTheDocument();
+    expect(await screen.findByText("Friday 16 October: School open")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /16 October/ })).not.toBeInTheDocument();
   });
 });

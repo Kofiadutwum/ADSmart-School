@@ -1,15 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import {
-  ConfirmDelete,
-  firstProblem,
-  InputField,
-  LoadState,
-  Tick,
-  useLoad,
-  useSubmit,
-} from "@/components/portal/kit";
+import { ConfirmDelete, firstProblem, InputField, LoadState, Tick, useLoad, useSubmit } from "@/components/portal/kit";
 import { Button } from "@/components/ui/button";
 import { FormAlert } from "@/components/ui/form-alert";
 import { deleteJson, patchJson, postJson } from "@/lib/client-api";
@@ -35,10 +27,8 @@ const bandNames = (bands: string[]) =>
 export function SubjectsView({ canEdit }: { canEdit: boolean }) {
   const { data, setData, error } = useLoad<SubjectRow[]>(SUBJECTS);
   const rows = data ?? [];
-  const byName = (list: SubjectRow[]) =>
-    [...list].sort((a, b) => a.name.localeCompare(b.name));
-  const replace = (row: SubjectRow) =>
-    setData(byName([...rows.filter((each) => each.id !== row.id), row]));
+  const byName = (list: SubjectRow[]) => [...list].sort((a, b) => a.name.localeCompare(b.name));
+  const replace = (row: SubjectRow) => setData(byName([...rows.filter((each) => each.id !== row.id), row]));
 
   return (
     <div className="space-y-6">
@@ -52,12 +42,7 @@ export function SubjectsView({ canEdit }: { canEdit: boolean }) {
           resetAfter
         />
       )}
-      <LoadState
-        error={error}
-        loading={!data && !error}
-        empty={rows.length === 0}
-        emptyText="No subjects yet."
-      />
+      <LoadState error={error} loading={!data && !error} empty={rows.length === 0} emptyText="No subjects yet." />
       <ul className="grid gap-4 lg:grid-cols-2">
         {rows.map((row) => (
           <li key={row.id}>
@@ -65,9 +50,7 @@ export function SubjectsView({ canEdit }: { canEdit: boolean }) {
               row={row}
               canEdit={canEdit}
               onSaved={replace}
-              onDeleted={() =>
-                setData(rows.filter((each) => each.id !== row.id))
-              }
+              onDeleted={() => setData(rows.filter((each) => each.id !== row.id))}
             />
           </li>
         ))}
@@ -86,15 +69,7 @@ type FormProps = {
   resetAfter?: boolean;
 };
 
-function SubjectForm({
-  label,
-  submitLabel,
-  initial,
-  send,
-  onSaved,
-  onCancel,
-  resetAfter = false,
-}: FormProps) {
+function SubjectForm({ label, submitLabel, initial, send, onSaved, onCancel, resetAfter = false }: FormProps) {
   const [values, setValues] = useState(initial);
   const { error, errors, attempt, busy, run, fail } = useSubmit();
   const id = label.toLowerCase().replaceAll(" ", "-");
@@ -115,9 +90,7 @@ function SubjectForm({
   const toggle = (code: string, on: boolean) =>
     setValues({
       ...values,
-      bands: LEVELS.map((level) => level.code).filter((each) =>
-        each === code ? on : values.bands.includes(each),
-      ),
+      bands: LEVELS.map((level) => level.code).filter((each) => (each === code ? on : values.bands.includes(each))),
     });
 
   return (
@@ -148,16 +121,11 @@ function SubjectForm({
           error={errors.code}
         />
       </div>
-      <fieldset
-        aria-describedby={errors.bands ? `${id}-bands-error` : undefined}
-      >
+      <fieldset aria-describedby={errors.bands ? `${id}-bands-error` : undefined}>
         <legend className="font-medium">Levels that study it</legend>
         <div className="mt-1 flex flex-wrap gap-x-6">
           {LEVELS.map((level) => (
-            <label
-              key={level.code}
-              className="inline-flex min-h-11 cursor-pointer items-center gap-2"
-            >
+            <label key={level.code} className="inline-flex min-h-11 cursor-pointer items-center gap-2">
               <input
                 type="checkbox"
                 checked={values.bands.includes(level.code)}
@@ -177,9 +145,7 @@ function SubjectForm({
       <Tick
         label="A learning area (early years, assessed by description)"
         checked={values.is_learning_area}
-        onChange={(is_learning_area) =>
-          setValues({ ...values, is_learning_area })
-        }
+        onChange={(is_learning_area) => setValues({ ...values, is_learning_area })}
       />
       <div className="flex flex-wrap gap-3">
         <Button type="submit" disabled={busy}>
@@ -218,19 +184,12 @@ function SubjectCard({ row, canEdit, onSaved, onDeleted }: CardProps) {
   }
 
   return (
-    <article
-      aria-labelledby={titleId}
-      className="surface space-y-3 rounded-card p-5 shadow-elev-1"
-    >
+    <article aria-labelledby={titleId} className="surface space-y-3 rounded-card p-5 shadow-elev-1">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 id={titleId} className="text-lg font-semibold">
           {row.name}
         </h3>
-        {row.is_learning_area && (
-          <span className="rounded-full bg-ink/10 px-3 py-1 text-sm">
-            Learning area
-          </span>
-        )}
+        {row.is_learning_area && <span className="rounded-full bg-ink/10 px-3 py-1 text-sm">Learning area</span>}
       </div>
       <p className="text-sm text-ink-muted">
         {row.code} · {bandNames(row.bands)}
@@ -250,9 +209,7 @@ function SubjectCard({ row, canEdit, onSaved, onDeleted }: CardProps) {
             bands: row.bands,
             is_learning_area: row.is_learning_area,
           }}
-          send={(values) =>
-            patchJson<SubjectRow>(`${SUBJECTS}/${row.id}`, values)
-          }
+          send={(values) => patchJson<SubjectRow>(`${SUBJECTS}/${row.id}`, values)}
           onSaved={(saved) => {
             onSaved(saved);
             setEditing(false);

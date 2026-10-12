@@ -46,20 +46,11 @@ describe("ProfileForm", () => {
     ]);
     const user = userEvent.setup();
     render(<ProfileForm canEdit />);
-    await user.type(
-      await screen.findByLabelText(/^motto/i),
-      "Knowledge is light",
-    );
-    await user.click(
-      screen.getByRole("checkbox", { name: "Junior High School" }),
-    );
+    await user.type(await screen.findByLabelText(/^motto/i), "Knowledge is light");
+    await user.click(screen.getByRole("checkbox", { name: "Junior High School" }));
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(await screen.findByRole("status")).toHaveTextContent("Saved.");
-    const sent = bodyOf(
-      fetchMock,
-      "PATCH",
-      "/api/school/profile",
-    ) as Partial<SchoolProfile>;
+    const sent = bodyOf(fetchMock, "PATCH", "/api/school/profile") as Partial<SchoolProfile>;
     expect(sent.motto).toBe("Knowledge is light");
     expect(sent.levels_offered).toEqual(["kg", "lower_primary", "jhs"]);
   });
@@ -75,9 +66,7 @@ describe("ProfileForm", () => {
           code: "validation_error",
           message: "Please check the highlighted fields.",
           fields: {
-            brand_primary: [
-              "#ffff00 is too light for white text and links (1.1:1; it needs 4.5:1). Try #6b6b00.",
-            ],
+            brand_primary: ["#ffff00 is too light for white text and links (1.1:1; it needs 4.5:1). Try #6b6b00."],
           },
         },
       ],
@@ -88,9 +77,7 @@ describe("ProfileForm", () => {
     await user.clear(primary);
     await user.type(primary, "#ffff00");
     await user.click(screen.getByRole("button", { name: "Save" }));
-    expect(
-      await screen.findByText(/too light for white text/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/too light for white text/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Use #6b6b00" }));
     expect(primary).toHaveValue("#6b6b00");
   });
@@ -99,8 +86,6 @@ describe("ProfileForm", () => {
     mockApi([["GET", "/api/school/profile", 200, PROFILE]]);
     render(<ProfileForm canEdit={false} />);
     expect(await screen.findByLabelText(/^town/i)).toBeDisabled();
-    expect(
-      screen.queryByRole("button", { name: "Save" }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
   });
 });

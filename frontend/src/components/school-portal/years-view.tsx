@@ -1,15 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import {
-  ConfirmDelete,
-  firstProblem,
-  InputField,
-  LoadState,
-  Tick,
-  useLoad,
-  useSubmit,
-} from "@/components/portal/kit";
+import { ConfirmDelete, firstProblem, InputField, LoadState, Tick, useLoad, useSubmit } from "@/components/portal/kit";
 import { Field, inputClasses } from "@/components/site/field";
 import { Button } from "@/components/ui/button";
 import { FormAlert } from "@/components/ui/form-alert";
@@ -18,8 +10,7 @@ import { formatDate } from "@/lib/dates";
 import type { SchoolTerm, SchoolYear } from "@/lib/types";
 
 const YEARS = "/api/school/years";
-const byStart = (a: SchoolYear, b: SchoolYear) =>
-  b.start_date.localeCompare(a.start_date);
+const byStart = (a: SchoolYear, b: SchoolYear) => b.start_date.localeCompare(a.start_date);
 
 /** School years and their terms (Phase 1 spec §3.1). Adding a term fills its weekdays in the
  * calendar, with Ghana's public holidays marked. */
@@ -38,13 +29,8 @@ export function YearsView({ canEdit }: { canEdit: boolean }) {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <p className="text-ink-muted">
-          Set up each school year and its terms. Mark the year you are in as
-          current.
-        </p>
-        {canEdit && !adding && (
-          <Button onClick={() => setAdding(true)}>Add a year</Button>
-        )}
+        <p className="text-ink-muted">Set up each school year and its terms. Mark the year you are in as current.</p>
+        {canEdit && !adding && <Button onClick={() => setAdding(true)}>Add a year</Button>}
       </div>
       {adding && (
         <YearForm
@@ -55,12 +41,7 @@ export function YearsView({ canEdit }: { canEdit: boolean }) {
           onCancel={() => setAdding(false)}
         />
       )}
-      <LoadState
-        error={error}
-        loading={!data && !error}
-        empty={rows.length === 0}
-        emptyText="No school years yet."
-      />
+      <LoadState error={error} loading={!data && !error} empty={rows.length === 0} emptyText="No school years yet." />
       <ul className="grid gap-4">
         {rows.map((year) => (
           <li key={year.id}>
@@ -68,9 +49,7 @@ export function YearsView({ canEdit }: { canEdit: boolean }) {
               year={year}
               canEdit={canEdit}
               onSaved={saved}
-              onDeleted={() =>
-                setData(rows.filter((row) => row.id !== year.id))
-              }
+              onDeleted={() => setData(rows.filter((row) => row.id !== year.id))}
             />
           </li>
         ))}
@@ -79,13 +58,7 @@ export function YearsView({ canEdit }: { canEdit: boolean }) {
   );
 }
 
-function YearForm({
-  onSaved,
-  onCancel,
-}: {
-  onSaved: (year: SchoolYear) => void;
-  onCancel: () => void;
-}) {
+function YearForm({ onSaved, onCancel }: { onSaved: (year: SchoolYear) => void; onCancel: () => void }) {
   const [values, setValues] = useState({
     name: "",
     start_date: "",
@@ -93,8 +66,7 @@ function YearForm({
     is_current: false,
   });
   const { error, errors, attempt, busy, run } = useSubmit();
-  const set = (name: keyof typeof values) => (value: string | boolean) =>
-    setValues({ ...values, [name]: value });
+  const set = (name: keyof typeof values) => (value: string | boolean) => setValues({ ...values, [name]: value });
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -139,11 +111,7 @@ function YearForm({
         onChange={set("end_date")}
         error={errors.end_date}
       />
-      <Tick
-        label="This is the current year"
-        checked={values.is_current}
-        onChange={set("is_current")}
-      />
+      <Tick label="This is the current year" checked={values.is_current} onChange={set("is_current")} />
       <div className="flex flex-wrap gap-3">
         <Button type="submit" disabled={busy}>
           Save year
@@ -181,8 +149,7 @@ function YearCard({ year, canEdit, onSaved, onDeleted }: CardProps) {
     }
   }
 
-  const withTerms = (next: SchoolTerm[]) =>
-    onSaved({ ...year, terms: next.sort((a, b) => a.number - b.number) });
+  const withTerms = (next: SchoolTerm[]) => onSaved({ ...year, terms: next.sort((a, b) => a.number - b.number) });
   const deleteTerm = (term: SchoolTerm) =>
     act(async () => {
       await deleteJson(`/api/school/terms/${term.id}`);
@@ -203,18 +170,13 @@ function YearCard({ year, canEdit, onSaved, onDeleted }: CardProps) {
     });
 
   return (
-    <article
-      aria-labelledby={titleId}
-      className="surface space-y-3 rounded-card p-5 shadow-elev-1"
-    >
+    <article aria-labelledby={titleId} className="surface space-y-3 rounded-card p-5 shadow-elev-1">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 id={titleId} className="text-lg font-semibold">
           {year.name}
         </h2>
         {year.is_current && (
-          <span className="rounded-full bg-success/15 px-3 py-1 text-sm font-medium">
-            Current year
-          </span>
+          <span className="rounded-full bg-success/15 px-3 py-1 text-sm font-medium">Current year</span>
         )}
       </div>
       <p className="text-sm text-ink-muted">
@@ -225,13 +187,9 @@ function YearCard({ year, canEdit, onSaved, onDeleted }: CardProps) {
       ) : (
         <ul className="divide-y divide-line">
           {year.terms.map((term) => (
-            <li
-              key={term.id}
-              className="flex flex-wrap items-center justify-between gap-2 py-2"
-            >
+            <li key={term.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
               <span>
-                <strong>Term {term.number}</strong>:{" "}
-                {formatDate(term.start_date)} to {formatDate(term.end_date)}
+                <strong>Term {term.number}</strong>: {formatDate(term.start_date)} to {formatDate(term.end_date)}
               </span>
               {canEdit && (
                 <ConfirmDelete
@@ -267,19 +225,11 @@ function YearCard({ year, canEdit, onSaved, onDeleted }: CardProps) {
             </Button>
           )}
           {!year.is_current && (
-            <Button
-              variant="outline"
-              disabled={busy}
-              onClick={() => void makeCurrent()}
-            >
+            <Button variant="outline" disabled={busy} onClick={() => void makeCurrent()}>
               Make current
             </Button>
           )}
-          <ConfirmDelete
-            label="Delete year"
-            busy={busy}
-            onConfirm={() => void deleteYear()}
-          />
+          <ConfirmDelete label="Delete year" busy={busy} onConfirm={() => void deleteYear()} />
         </div>
       )}
     </article>
@@ -293,25 +243,20 @@ type TermFormProps = {
 };
 
 function TermForm({ year, onSaved, onCancel }: TermFormProps) {
-  const free = [1, 2, 3].filter(
-    (number) => !year.terms.some((term) => term.number === number),
-  );
+  const free = [1, 2, 3].filter((number) => !year.terms.some((term) => term.number === number));
   const [values, setValues] = useState({
     number: String(free[0] ?? 1),
     start_date: "",
     end_date: "",
   });
   const { error, errors, attempt, busy, run } = useSubmit();
-  const set = (name: keyof typeof values) => (value: string) =>
-    setValues({ ...values, [name]: value });
+  const set = (name: keyof typeof values) => (value: string) => setValues({ ...values, [name]: value });
   const id = `term-${year.id}`;
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const body = { ...values, number: Number(values.number) };
-    void run(async () =>
-      onSaved(await postJson<SchoolTerm>(`${YEARS}/${year.id}/terms`, body)),
-    );
+    void run(async () => onSaved(await postJson<SchoolTerm>(`${YEARS}/${year.id}/terms`, body)));
   }
 
   return (
@@ -357,8 +302,7 @@ function TermForm({ year, onSaved, onCancel }: TermFormProps) {
         error={errors.end_date}
       />
       <p className="text-sm text-ink-muted">
-        Every weekday becomes a school day, with public holidays marked. Change
-        single days in the calendar.
+        Every weekday becomes a school day, with public holidays marked. Change single days in the calendar.
       </p>
       <div className="flex flex-wrap gap-3">
         <Button type="submit" disabled={busy}>

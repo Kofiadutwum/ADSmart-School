@@ -31,13 +31,7 @@ type OrderProps = {
 };
 
 /** Up and down buttons: the keyboard-friendly way to reorder (business tools spec §5.2). */
-export function OrderButtons({
-  label,
-  index,
-  count,
-  disabled = false,
-  onMove,
-}: OrderProps) {
+export function OrderButtons({ label, index, count, disabled = false, onMove }: OrderProps) {
   return (
     <span className="inline-flex gap-2">
       <Button

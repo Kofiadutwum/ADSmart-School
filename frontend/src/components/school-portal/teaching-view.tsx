@@ -1,12 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import {
-  firstProblem,
-  LoadState,
-  useLoad,
-  useSubmit,
-} from "@/components/portal/kit";
+import { firstProblem, LoadState, useLoad, useSubmit } from "@/components/portal/kit";
 import { Field, inputClasses } from "@/components/site/field";
 import { Button } from "@/components/ui/button";
 import { FormAlert } from "@/components/ui/form-alert";
@@ -23,28 +18,16 @@ export function TeachingView({ canEdit }: { canEdit: boolean }) {
   const [termId, setTermId] = useState<number | null>(null);
   const error = classes.error ?? subjects.error;
 
-  if (!classes.data || !subjects.data)
-    return (
-      <LoadState error={error} loading={!error} empty={false} emptyText="" />
-    );
+  if (!classes.data || !subjects.data) return <LoadState error={error} loading={!error} empty={false} emptyText="" />;
   const data = classes.data;
   if (!data.year || data.terms.length === 0) {
-    return (
-      <p className="text-ink-muted">
-        Add the current school year and its terms first, under Years and terms.
-      </p>
-    );
+    return <p className="text-ink-muted">Add the current school year and its terms first, under Years and terms.</p>;
   }
   const term = termId ?? data.terms[0].id;
 
   return (
     <div className="space-y-6">
-      <Field
-        id="teaching-term"
-        label="Term"
-        required
-        className="w-full max-w-xs"
-      >
+      <Field id="teaching-term" label="Term" required className="w-full max-w-xs">
         {(props) => (
           <select
             {...props}
@@ -60,13 +43,7 @@ export function TeachingView({ canEdit }: { canEdit: boolean }) {
           </select>
         )}
       </Field>
-      <TermTeaching
-        key={term}
-        term={term}
-        data={data}
-        subjects={subjects.data}
-        canEdit={canEdit}
-      />
+      <TermTeaching key={term} term={term} data={data} subjects={subjects.data} canEdit={canEdit} />
     </div>
   );
 }
@@ -79,11 +56,7 @@ type TermProps = {
 };
 
 function TermTeaching({ term, data, subjects, canEdit }: TermProps) {
-  const {
-    data: rows,
-    setData,
-    error,
-  } = useLoad<TeachingRow[]>(`${TEACHING}?term=${term}`);
+  const { data: rows, setData, error } = useLoad<TeachingRow[]>(`${TEACHING}?term=${term}`);
   const [problem, setProblem] = useState<string | null>(null);
 
   async function remove(row: TeachingRow) {
@@ -99,12 +72,7 @@ function TermTeaching({ term, data, subjects, canEdit }: TermProps) {
   return (
     <div className="space-y-6">
       {canEdit && (
-        <AssignForm
-          term={term}
-          data={data}
-          subjects={subjects}
-          onAdded={(row) => setData([...(rows ?? []), row])}
-        />
+        <AssignForm term={term} data={data} subjects={subjects} onAdded={(row) => setData([...(rows ?? []), row])} />
       )}
       <LoadState
         error={error}
@@ -180,12 +148,8 @@ function AssignForm({ term, data, subjects, onAdded }: AssignProps) {
     subject: "",
   });
   const { error, errors, attempt, busy, run, fail } = useSubmit();
-  const chosenClass = data.classes.find(
-    (each) => String(each.id) === values.school_class,
-  );
-  const studied = chosenClass
-    ? subjects.filter((subject) => subject.bands.includes(chosenClass.band))
-    : [];
+  const chosenClass = data.classes.find((each) => String(each.id) === values.school_class);
+  const studied = chosenClass ? subjects.filter((subject) => subject.bands.includes(chosenClass.band)) : [];
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -217,11 +181,7 @@ function AssignForm({ term, data, subjects, onAdded }: AssignProps) {
     });
   }
 
-  const select = (
-    name: keyof Choices,
-    label: string,
-    options: { id: number; name: string }[],
-  ) => (
+  const select = (name: keyof Choices, label: string, options: { id: number; name: string }[]) => (
     <Field id={`assign-${name}`} label={label} required error={errors[name]}>
       {(props) => (
         <select
@@ -251,9 +211,7 @@ function AssignForm({ term, data, subjects, onAdded }: AssignProps) {
       <h2 className="text-lg font-semibold">Assign teaching</h2>
       <FormAlert message={error} focusKey={attempt} />
       {data.teachers.length === 0 && (
-        <p className="text-sm text-ink-muted">
-          Give staff the Teacher role first, under Staff.
-        </p>
+        <p className="text-sm text-ink-muted">Give staff the Teacher role first, under Staff.</p>
       )}
       <div className="grid gap-4 lg:grid-cols-3">
         {select("staff", "Teacher", data.teachers)}

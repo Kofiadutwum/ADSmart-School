@@ -28,9 +28,7 @@ describe("YearsView", () => {
     const year = await screen.findByRole("article", { name: "2026/2027" });
     expect(within(year).getByText("Current year")).toBeInTheDocument();
     expect(within(year).getByText(/Term 1/)).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Add a year" }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add a year" })).not.toBeInTheDocument();
   });
 
   it("adds a year", async () => {
@@ -46,9 +44,7 @@ describe("YearsView", () => {
     await user.type(screen.getByLabelText(/^last day/i), "2027-07-31");
     await user.click(screen.getByRole("checkbox", { name: /current year/i }));
     await user.click(screen.getByRole("button", { name: "Save year" }));
-    expect(
-      await screen.findByRole("article", { name: "2026/2027" }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("article", { name: "2026/2027" })).toBeInTheDocument();
     expect(bodyOf(fetchMock, "POST", "/api/school/years")).toEqual({
       name: "2026/2027",
       start_date: "2026-09-01",
@@ -78,8 +74,6 @@ describe("YearsView", () => {
     await user.type(within(year).getByLabelText(/^first day/i), "2026-08-01");
     await user.type(within(year).getByLabelText(/^last day/i), "2026-12-18");
     await user.click(within(year).getByRole("button", { name: "Save term" }));
-    expect(
-      await within(year).findByText("A term must fall inside its school year."),
-    ).toBeInTheDocument();
+    expect(await within(year).findByText("A term must fall inside its school year.")).toBeInTheDocument();
   });
 });

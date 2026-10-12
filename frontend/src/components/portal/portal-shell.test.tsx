@@ -7,8 +7,14 @@ import { AuthProvider } from "./auth-provider";
 import { PortalShell } from "./portal-shell";
 
 const ME = {
-  id: 1, kind: "platform", username: "ops", display_name: "Kojo Ops", roles: ["Platform Owner"],
-  must_change_password: false, has_authenticator: true, school: null,
+  id: 1,
+  kind: "platform",
+  username: "ops",
+  display_name: "Kojo Ops",
+  roles: ["Platform Owner"],
+  must_change_password: false,
+  has_authenticator: true,
+  school: null,
 };
 const NAV = [
   { href: "/schools", label: "Schools" },

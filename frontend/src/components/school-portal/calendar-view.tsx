@@ -3,27 +3,15 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useRef, useState, type FormEvent, type PointerEvent } from "react";
-import {
-  InputField,
-  LoadState,
-  useLoad,
-  useSubmit,
-} from "@/components/portal/kit";
+import { InputField, LoadState, useLoad, useSubmit } from "@/components/portal/kit";
 import { Button } from "@/components/ui/button";
 import { FormAlert } from "@/components/ui/form-alert";
 import { deleteJson, putJson } from "@/lib/client-api";
 import { cn } from "@/lib/cn";
 import { todayInAccra } from "@/lib/dates";
-import type {
-  CalendarDayRow,
-  CalendarDayType,
-  CalendarMonth,
-} from "@/lib/types";
+import type { CalendarDayRow, CalendarDayType, CalendarMonth } from "@/lib/types";
 
-const TYPES: Record<
-  CalendarDayType,
-  { label: string; short: string; tone: string }
-> = {
+const TYPES: Record<CalendarDayType, { label: string; short: string; tone: string }> = {
   OPEN: { label: "School open", short: "Open", tone: "bg-success/15" },
   HOLIDAY: { label: "Holiday", short: "Hol.", tone: "bg-copper/20" },
   CLOSING: { label: "Closing day", short: "Close", tone: "bg-indigo/15" },
@@ -85,25 +73,17 @@ type Props = { canEdit: boolean; initialMonth?: string };
 /** The school calendar, a month at a time (Phase 1 spec §7.2, §8.5): tap a day in a term to set
  * it; swipe or use the buttons to change month. */
 export function CalendarView({ canEdit, initialMonth }: Props) {
-  const [month, setMonth] = useState(
-    initialMonth ?? todayInAccra().slice(0, 7),
-  );
-  const { data, setData, error } = useLoad<CalendarMonth>(
-    `/api/school/calendar?month=${month}`,
-  );
+  const [month, setMonth] = useState(initialMonth ?? todayInAccra().slice(0, 7));
+  const { data, setData, error } = useLoad<CalendarMonth>(`/api/school/calendar?month=${month}`);
   const [editing, setEditing] = useState<string | null>(null);
   const start = useRef<number | null>(null);
   const shown = data?.month === month ? data : null;
   const rows = new Map(shown?.days.map((day) => [day.date, day]));
-  const inTerm = (iso: string) =>
-    shown?.terms.some(
-      (term) => term.start_date <= iso && iso <= term.end_date,
-    ) ?? false;
+  const inTerm = (iso: string) => shown?.terms.some((term) => term.start_date <= iso && iso <= term.end_date) ?? false;
   const lead = (utc(month).getUTCDay() + 6) % 7; // weeks start on Monday
 
   function onPointerDown(event: PointerEvent<HTMLDivElement>) {
-    const nearEdge =
-      event.clientX < EDGE || event.clientX > window.innerWidth - EDGE;
+    const nearEdge = event.clientX < EDGE || event.clientX > window.innerWidth - EDGE;
     start.current = nearEdge ? null : event.clientX;
   }
 
@@ -111,16 +91,13 @@ export function CalendarView({ canEdit, initialMonth }: Props) {
     if (start.current === null) return;
     const moved = event.clientX - start.current;
     start.current = null;
-    if (Math.abs(moved) >= SWIPE)
-      setMonth((current) => shift(current, moved < 0 ? 1 : -1));
+    if (Math.abs(moved) >= SWIPE) setMonth((current) => shift(current, moved < 0 ? 1 : -1));
   }
 
   function saved(iso: string, row: CalendarDayRow | null) {
     if (!shown) return;
     const others = shown.days.filter((day) => day.date !== iso);
-    const days = row
-      ? [...others, row].sort((a, b) => a.date.localeCompare(b.date))
-      : others;
+    const days = row ? [...others, row].sort((a, b) => a.date.localeCompare(b.date)) : others;
     setData({ ...shown, days });
     setEditing(null);
   }
@@ -139,25 +116,13 @@ export function CalendarView({ canEdit, initialMonth }: Props) {
         <h2 className="text-xl font-semibold" aria-live="polite">
           {monthName(month)}
         </h2>
-        <Button
-          variant="outline"
-          className="px-3"
-          aria-label="Next month"
-          onClick={() => setMonth(shift(month, 1))}
-        >
+        <Button variant="outline" className="px-3" aria-label="Next month" onClick={() => setMonth(shift(month, 1))}>
           <ChevronRight aria-hidden className="size-5" />
         </Button>
       </div>
-      <LoadState
-        error={error}
-        loading={!shown && !error}
-        empty={false}
-        emptyText=""
-      />
+      <LoadState error={error} loading={!shown && !error} empty={false} emptyText="" />
       {shown && shown.terms.length === 0 && (
-        <p className="text-ink-muted">
-          No term falls in this month. Add terms under Years and terms.
-        </p>
+        <p className="text-ink-muted">No term falls in this month. Add terms under Years and terms.</p>
       )}
       <div
         role="group"
@@ -167,11 +132,7 @@ export function CalendarView({ canEdit, initialMonth }: Props) {
         className="grid touch-pan-y grid-cols-7 gap-1 select-none"
       >
         {WEEKDAYS.map((name) => (
-          <span
-            key={name}
-            aria-hidden
-            className="py-1 text-center text-xs font-semibold text-ink-muted"
-          >
+          <span key={name} aria-hidden className="py-1 text-center text-xs font-semibold text-ink-muted">
             {name}
           </span>
         ))}
@@ -187,10 +148,7 @@ export function CalendarView({ canEdit, initialMonth }: Props) {
                 {Number(iso.slice(8))}
               </span>
               {row && (
-                <span
-                  aria-hidden
-                  className="block truncate text-[0.7rem] leading-tight"
-                >
+                <span aria-hidden className="block truncate text-[0.7rem] leading-tight">
                   {TYPES[row.type].short}
                 </span>
               )}
@@ -205,10 +163,7 @@ export function CalendarView({ canEdit, initialMonth }: Props) {
               key={iso}
               type="button"
               onClick={() => setEditing(iso)}
-              className={cn(
-                classes,
-                "press cursor-pointer hover:ring-2 hover:ring-indigo/40",
-              )}
+              className={cn(classes, "press cursor-pointer hover:ring-2 hover:ring-indigo/40")}
             >
               {content}
             </button>
@@ -248,9 +203,7 @@ type DayProps = {
 };
 
 function DayDialog({ iso, row, onSaved, onClose }: DayProps) {
-  const [type, setType] = useState<CalendarDayType | "NONE">(
-    row?.type ?? "OPEN",
-  );
+  const [type, setType] = useState<CalendarDayType | "NONE">(row?.type ?? "OPEN");
   const [note, setNote] = useState(row?.note ?? "");
   const { error, errors, attempt, busy, run } = useSubmit();
   const url = `/api/school/calendar/${iso}`;
@@ -276,9 +229,7 @@ function DayDialog({ iso, row, onSaved, onClose }: DayProps) {
           className="surface fixed inset-x-4 bottom-4 z-50 mx-auto max-w-md space-y-4 rounded-card p-5 shadow-elev-2 sm:top-1/2 sm:bottom-auto sm:-translate-y-1/2"
         >
           <div className="flex items-center justify-between gap-3">
-            <Dialog.Title className="text-lg font-semibold">
-              {dayName(iso)}
-            </Dialog.Title>
+            <Dialog.Title className="text-lg font-semibold">{dayName(iso)}</Dialog.Title>
             <Dialog.Close asChild>
               <button
                 type="button"
@@ -295,10 +246,7 @@ function DayDialog({ iso, row, onSaved, onClose }: DayProps) {
               <legend className="font-medium">This day is</legend>
               <div className="mt-1 grid gap-1">
                 {CHOICES.map(([value, label]) => (
-                  <label
-                    key={value}
-                    className="flex min-h-11 cursor-pointer items-center gap-3"
-                  >
+                  <label key={value} className="flex min-h-11 cursor-pointer items-center gap-3">
                     <input
                       type="radio"
                       name="day-type"

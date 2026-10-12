@@ -1,14 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import {
-  ConfirmDelete,
-  firstProblem,
-  InputField,
-  LoadState,
-  useLoad,
-  useSubmit,
-} from "@/components/portal/kit";
+import { ConfirmDelete, firstProblem, InputField, LoadState, useLoad, useSubmit } from "@/components/portal/kit";
 import { Field, inputClasses } from "@/components/site/field";
 import { Button } from "@/components/ui/button";
 import { FormAlert } from "@/components/ui/form-alert";
@@ -21,47 +14,28 @@ const CLASSES = "/api/school/classes";
  * §3.1, §7.2). */
 export function ClassesView({ canEdit }: { canEdit: boolean }) {
   const [yearId, setYearId] = useState<number | null>(null);
-  const { data, setData, error } = useLoad<ClassesData>(
-    yearId ? `${CLASSES}?year=${yearId}` : CLASSES,
-  );
+  const { data, setData, error } = useLoad<ClassesData>(yearId ? `${CLASSES}?year=${yearId}` : CLASSES);
 
-  if (!data)
-    return (
-      <LoadState error={error} loading={!error} empty={false} emptyText="" />
-    );
+  if (!data) return <LoadState error={error} loading={!error} empty={false} emptyText="" />;
   if (!data.year) {
-    return (
-      <p className="text-ink-muted">
-        Add a school year first, under Years and terms.
-      </p>
-    );
+    return <p className="text-ink-muted">Add a school year first, under Years and terms.</p>;
   }
   const year = data.year;
   const order = data.year_groups.map((group) => group.code);
   const sorted = (rows: SchoolClassRow[]) =>
     [...rows].sort(
-      (a, b) =>
-        order.indexOf(a.year_group) - order.indexOf(b.year_group) ||
-        a.stream.localeCompare(b.stream),
+      (a, b) => order.indexOf(a.year_group) - order.indexOf(b.year_group) || a.stream.localeCompare(b.stream),
     );
   const replace = (row: SchoolClassRow) =>
     setData({
       ...data,
-      classes: sorted([
-        ...data.classes.filter((each) => each.id !== row.id),
-        row,
-      ]),
+      classes: sorted([...data.classes.filter((each) => each.id !== row.id), row]),
     });
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end gap-4">
-        <Field
-          id="classes-year"
-          label="School year"
-          required
-          className="w-full max-w-xs"
-        >
+        <Field id="classes-year" label="School year" required className="w-full max-w-xs">
           {(props) => (
             <select
               {...props}
@@ -108,13 +82,7 @@ export function ClassesView({ canEdit }: { canEdit: boolean }) {
   );
 }
 
-function AddClass({
-  data,
-  onAdded,
-}: {
-  data: ClassesData;
-  onAdded: (row: SchoolClassRow) => void;
-}) {
+function AddClass({ data, onAdded }: { data: ClassesData; onAdded: (row: SchoolClassRow) => void }) {
   const [group, setGroup] = useState(data.year_groups[0]?.code ?? "");
   const [stream, setStream] = useState("");
   const { error, errors, attempt, busy, run } = useSubmit();
@@ -138,12 +106,7 @@ function AddClass({
       <h2 className="text-lg font-semibold">Add a class</h2>
       <FormAlert message={error} focusKey={attempt} />
       <div className="grid gap-4 sm:grid-cols-[1fr_10rem_auto] sm:items-end">
-        <Field
-          id="class-group"
-          label="Year group"
-          required
-          error={errors.year_group}
-        >
+        <Field id="class-group" label="Year group" required error={errors.year_group}>
           {(props) => (
             <select
               {...props}
@@ -206,37 +169,21 @@ function ClassCard({ row, data, canEdit, onSaved, onDeleted }: CardProps) {
   const setTeacher = (term: number, staff: string) =>
     act(async () => {
       const body = { term, staff: staff ? Number(staff) : null };
-      onSaved(
-        await putJson<SchoolClassRow>(
-          `${CLASSES}/${row.id}/class-teacher`,
-          body,
-        ),
-      );
+      onSaved(await putJson<SchoolClassRow>(`${CLASSES}/${row.id}/class-teacher`, body));
     }, "Saved.");
 
   return (
-    <article
-      aria-labelledby={titleId}
-      className="surface space-y-3 rounded-card p-5 shadow-elev-1"
-    >
+    <article aria-labelledby={titleId} className="surface space-y-3 rounded-card p-5 shadow-elev-1">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 id={titleId} className="text-lg font-semibold">
           {row.name}
         </h3>
-        <span className="text-sm text-ink-muted">
-          {row.pupils === 1 ? "1 pupil" : `${row.pupils} pupils`}
-        </span>
+        <span className="text-sm text-ink-muted">{row.pupils === 1 ? "1 pupil" : `${row.pupils} pupils`}</span>
       </div>
-      {data.terms.length === 0 && (
-        <p className="text-sm text-ink-muted">
-          Add terms to choose class teachers.
-        </p>
-      )}
+      {data.terms.length === 0 && <p className="text-sm text-ink-muted">Add terms to choose class teachers.</p>}
       <ul className="space-y-2">
         {data.terms.map((term) => {
-          const current = row.class_teachers.find(
-            (each) => each.term_id === term.id,
-          );
+          const current = row.class_teachers.find((each) => each.term_id === term.id);
           return (
             <li key={term.id}>
               {canEdit ? (
@@ -245,9 +192,7 @@ function ClassCard({ row, data, canEdit, onSaved, onDeleted }: CardProps) {
                   <select
                     value={current?.staff_id ?? ""}
                     disabled={busy}
-                    onChange={(event) =>
-                      void setTeacher(term.id, event.target.value)
-                    }
+                    onChange={(event) => void setTeacher(term.id, event.target.value)}
                     className={`${inputClasses} mt-1 min-h-11 py-2`}
                   >
                     <option value="">Nobody yet</option>

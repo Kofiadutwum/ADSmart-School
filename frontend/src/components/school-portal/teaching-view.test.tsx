@@ -70,23 +70,13 @@ describe("TeachingView", () => {
     const user = userEvent.setup();
     render(<TeachingView canEdit />);
     const form = await screen.findByRole("form", { name: "Assign teaching" });
-    await user.selectOptions(
-      within(form).getByLabelText(/^teacher/i),
-      "Abena Owusu",
-    );
-    await user.selectOptions(
-      within(form).getByLabelText(/^class/i),
-      "Basic 2A",
-    );
+    await user.selectOptions(within(form).getByLabelText(/^teacher/i), "Abena Owusu");
+    await user.selectOptions(within(form).getByLabelText(/^class/i), "Basic 2A");
     const subject = within(form).getByLabelText(/^subject/i);
-    expect(
-      within(subject).queryByRole("option", { name: "Social Studies" }),
-    ).not.toBeInTheDocument();
+    expect(within(subject).queryByRole("option", { name: "Social Studies" })).not.toBeInTheDocument();
     await user.selectOptions(subject, "Mathematics");
     await user.click(within(form).getByRole("button", { name: "Assign" }));
-    expect(
-      await screen.findByRole("cell", { name: "Abena Owusu" }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("cell", { name: "Abena Owusu" })).toBeInTheDocument();
     expect(bodyOf(fetchMock, "POST", "/api/school/teaching")).toEqual({
       staff: 5,
       school_class: 9,

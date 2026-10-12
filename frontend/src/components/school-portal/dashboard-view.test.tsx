@@ -5,9 +5,7 @@ import { DashboardView } from "./dashboard-view";
 
 const DASHBOARD = {
   counts: {
-    students_by_level: [
-      { band: "lower_primary", label: "Basic 1–3", count: 42 },
-    ],
+    students_by_level: [{ band: "lower_primary", label: "Basic 1–3", count: 42 }],
     not_in_class: 3,
     staff: 12,
     classes: 6,

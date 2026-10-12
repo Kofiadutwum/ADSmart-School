@@ -32,13 +32,9 @@ describe("SubjectsView", () => {
     await user.type(within(form).getByLabelText(/^name/i), "Numeracy");
     await user.type(within(form).getByLabelText(/^code/i), "NUM");
     await user.click(within(form).getByRole("checkbox", { name: "KG" }));
-    await user.click(
-      within(form).getByRole("checkbox", { name: /learning area/i }),
-    );
+    await user.click(within(form).getByRole("checkbox", { name: /learning area/i }));
     await user.click(within(form).getByRole("button", { name: "Add subject" }));
-    expect(
-      await screen.findByRole("article", { name: "Numeracy" }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("article", { name: "Numeracy" })).toBeInTheDocument();
     expect(bodyOf(fetchMock, "POST", "/api/school/subjects")).toEqual({
       name: "Numeracy",
       code: "NUM",
@@ -60,9 +56,7 @@ describe("SubjectsView", () => {
     await user.clear(name);
     await user.type(name, "Maths");
     await user.click(within(card).getByRole("button", { name: "Save" }));
-    expect(
-      await screen.findByRole("article", { name: "Maths" }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("article", { name: "Maths" })).toBeInTheDocument();
     expect(bodyOf(fetchMock, "PATCH", "/api/school/subjects/1")).toMatchObject({
       name: "Maths",
     });
@@ -72,12 +66,8 @@ describe("SubjectsView", () => {
     mockApi([["GET", "/api/school/subjects", 200, [MATHS]]]);
     render(<SubjectsView canEdit={false} />);
     const card = await screen.findByRole("article", { name: "Mathematics" });
-    expect(
-      within(card).getByText("MATH · Basic 1–3, Basic 4–6"),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("form", { name: "Add a subject" }),
-    ).not.toBeInTheDocument();
+    expect(within(card).getByText("MATH · Basic 1–3, Basic 4–6")).toBeInTheDocument();
+    expect(screen.queryByRole("form", { name: "Add a subject" })).not.toBeInTheDocument();
     expect(within(card).queryByRole("button")).not.toBeInTheDocument();
   });
 });
