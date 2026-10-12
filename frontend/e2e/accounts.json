@@ -32,10 +32,18 @@
     "platform_writers": {
       "phone": "0244000031",
       "desktop": "0244000032"
+    },
+    "head_teachers": {
+      "phone": "0244000041",
+      "desktop": "0244000042"
     }
   },
   "platform_writers": {
     "phone": "e2e-writer-phone",
     "desktop": "e2e-writer-desktop"
+  },
+  "head_teachers": {
+    "phone": "e2e-head-phone",
+    "desktop": "e2e-head-desktop"
   }
 }

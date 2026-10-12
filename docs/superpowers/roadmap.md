@@ -21,7 +21,7 @@ browser tests, accessibility checks and Lighthouse budget pass, and it is merged
 
 ---
 
-## Built (stages 1–6A, merged)
+## Built (stages 1–7, merged)
 
 | Area | Source |
 |---|---|
@@ -33,6 +33,7 @@ browser tests, accessibility checks and Lighthouse budget pass, and it is merged
 | Platform admin: schools, add a school, Administrators, suspend, leads, audit, team roles and Team page | MS §5, BT §2 |
 | Your own website: gallery, articles and tips, comments, questions, tip sign-up, WhatsApp link, visit counts, instant refresh | BT §5 |
 | Going live: Vercel, Neon, Cloudinary, SMTP email, signed forwarding, cron, `ADMIN_HOST`, deploy guide | CHAT, P1 §13 |
+| School portal I (Stage 7): role homes and switcher, sidebar and phone menu, dashboard with go-live checklist, school profile, levels, logo and colours, years, terms, month calendar, classes and class teachers, subjects, teaching assignments, staff (add, roles, switch off, reset password, demo), school audit log, Head Teacher read-only, My teaching | P1 §7.2–7.5, SMS §7, §28 |
 
 ---
 
@@ -40,7 +41,7 @@ browser tests, accessibility checks and Lighthouse budget pass, and it is merged
 
 Each stage gets a plan, test-first code, a full check and a local merge.
 
-### Stage 7: school portal I (setup and staff)
+### Stage 7: school portal I (setup and staff), built
 - **Role home screens and switcher:** every role lands on its own home screen, and a role switcher appears for people with several roles (P1 §1.1(3), §5.1).
 - **Portal layout:** glass sidebar, top bar with menu on phones, sticky Save bar (P1 §7.5).
 - **Administrator dashboard:** counts of students by level, staff, classes and new enquiries; the **go-live checklist** (placeholder photos, demo records, SMS provider, second factor set up, profile complete, students missing two emergency contacts, site live) (P1 §7.2, MS §5).

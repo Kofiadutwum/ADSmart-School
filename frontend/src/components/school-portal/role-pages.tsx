@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { canEdit } from "@/lib/school-roles";
 import { CalendarView } from "./calendar-view";
 import { ClassesView } from "./classes-view";
@@ -10,6 +11,8 @@ import { StaffView } from "./staff-view";
 import { SubjectsView } from "./subjects-view";
 import { TeachingView } from "./teaching-view";
 import { YearsView } from "./years-view";
+
+const MONTH = /^\d{4}-\d{2}$/;
 
 /** Page bodies that change with the active role: the Administrator edits, the Head Teacher
  * reads (Phase 1 spec §4.3). The server enforces the same rule. */
@@ -26,7 +29,8 @@ export function YearsSetup() {
 }
 
 export function CalendarSetup() {
-  return <CalendarView canEdit={useCanEdit()} />;
+  const month = useSearchParams().get("month"); // a link can open a given month, e.g. ?month=2026-12
+  return <CalendarView canEdit={useCanEdit()} initialMonth={month && MONTH.test(month) ? month : undefined} />;
 }
 
 export function ClassesSetup() {
