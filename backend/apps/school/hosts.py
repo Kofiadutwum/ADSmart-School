@@ -42,12 +42,14 @@ def resolve_host(host: str) -> Site | None:
     return Site(SCHOOL, school) if school else None
 
 
-def school_for_host(host: str) -> School:
-    """The school at this address: 404 if there is none, 503 while it is suspended."""
+def school_for_host(host: str, *, for_portal: bool = False) -> School:
+    """The school at this address: 404 if there is none, 503 while it is suspended. A school
+    paused for an unpaid bill is unavailable too, except to its portal's frame, so its staff
+    can still reach Billing and pay (business tools spec §3.7)."""
     site = resolve_host(host)
     if site is None or site.school is None:
         raise Http404("No school is registered at this address.")
-    if site.school.is_suspended or site.school.billing_paused:
+    if site.school.is_suspended or (site.school.billing_paused and not for_portal):
         raise ApiError("suspended", UNAVAILABLE, 503)
     return site.school
 

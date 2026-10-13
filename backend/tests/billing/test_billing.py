@@ -80,3 +80,11 @@ def test_a_school_sees_only_its_own_bills(school, other_school, client_for):
     numbers = [row["number"] for row in admin.get("/api/school/billing").json()["bills"]]
     assert numbers == [mine.number]
     assert admin.get(f"/api/school/billing/bills/{theirs.pk}").status_code == 404
+
+
+def test_a_paused_schools_website_is_off_but_its_portal_frame_still_loads(school, api):
+    school.billing_paused = True
+    school.save()
+    site = f"/api/public/sites/{school.slug}.localhost/site"
+    assert api.get(site).json()["code"] == "suspended"
+    assert api.get(f"{site}?portal=1").status_code == 200

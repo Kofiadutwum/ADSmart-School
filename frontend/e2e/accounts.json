@@ -36,6 +36,10 @@
     "head_teachers": {
       "phone": "0244000041",
       "desktop": "0244000042"
+    },
+    "accountants": {
+      "phone": "0244000051",
+      "desktop": "0244000052"
     }
   },
   "platform_writers": {
@@ -45,5 +49,9 @@
   "head_teachers": {
     "phone": "e2e-head-phone",
     "desktop": "e2e-head-desktop"
+  },
+  "accountants": {
+    "phone": "e2e-accountant-phone",
+    "desktop": "e2e-accountant-desktop"
   }
 }

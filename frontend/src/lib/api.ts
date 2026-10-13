@@ -40,6 +40,12 @@ export async function getSite(host: string): Promise<SiteData> {
   return (await fetchJson<SiteData>(`${sitePath(host)}/site`, SITE_TAGS)) ?? notFound();
 }
 
+/** The same, for the portal's frame: it still loads while the school is paused for an unpaid
+ * bill, so staff can reach Billing (business tools spec §3.7). */
+export async function getPortalSite(host: string): Promise<SiteData> {
+  return (await fetchJson<SiteData>(`${sitePath(host)}/site?portal=1`, SITE_TAGS)) ?? notFound();
+}
+
 export async function getNewsList(host: string, limit = 20): Promise<NewsSummary[]> {
   return (await fetchJson<NewsSummary[]>(`${sitePath(host)}/news?limit=${limit}`)) ?? [];
 }

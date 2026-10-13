@@ -221,7 +221,7 @@ class InvoicesView(MoneyView):
             invoices = invoices.filter(
                 student__enrolments__school_class_id=params["class"],
                 student__enrolments__end_date__isnull=True,
-            )
+            ).distinct()
         return Response([invoice_row(row) for row in invoices[:500]])
 
     def post(self, request):
