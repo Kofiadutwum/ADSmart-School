@@ -2,8 +2,10 @@ from django.urls import path
 
 from apps.school_admin import (
     calendar_views,
+    class_lists,
     classes,
     consents,
+    enrolment,
     parents,
     pickups,
     profile,
@@ -58,4 +60,11 @@ urlpatterns = [
     path("pupils/<int:pk>/consents/<str:kind>", consents.PupilConsentView.as_view()),
     path("parents/<int:pk>/consents", consents.ParentConsentsView.as_view()),
     path("parents/<int:pk>/consents/<str:kind>", consents.ParentConsentView.as_view()),
+    path("enrolments", enrolment.EnrolmentsView.as_view()),
+    path("pupils/<int:pk>/enrolments", enrolment.PupilEnrolmentsView.as_view()),
+    path("enrolment-overview", enrolment.EnrolmentOverviewView.as_view()),
+    path("classes/<int:pk>/pupils", class_lists.ClassPupilsView.as_view()),
+    path("classes/<int:pk>/pupils/<int:student>", class_lists.ClassPupilView.as_view()),
+    path("classes/<int:pk>/pupils/<int:student>/photo", class_lists.ClassPupilPhotoView.as_view()),
+    path("pupils/<int:pk>/login", class_lists.PupilLoginView.as_view()),
 ]

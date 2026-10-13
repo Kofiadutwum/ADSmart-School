@@ -87,13 +87,30 @@ class MeView(SchoolView):
         staff = Staff.objects.for_school(self.school).filter(user=request.user).first()
         year = dashboard.current_year(self.school)
         empty = {"teaching": [], "class_teacher_of": []}
+        mine = assignments(staff, year) if staff and year else empty
         return Response(
             {
                 "roles": roles.roles_of(request.user),
                 "staff": staff_profile(staff) if staff else None,
-                **(assignments(staff, year) if staff and year else empty),
+                **mine,
+                "classes": classes_of(mine),
             }
         )
+
+
+def classes_of(mine: dict) -> list[dict]:
+    """Each class the person teaches or looks after this year, once (P1 §7.3 "My classes")."""
+    classes: dict[int, dict] = {}
+    for row in mine["teaching"]:
+        classes.setdefault(
+            row["class_id"],
+            {"id": row["class_id"], "name": row["class"], "is_class_teacher": False},
+        )
+    for row in mine["class_teacher_of"]:
+        classes.setdefault(row["class_id"], {"id": row["class_id"], "name": row["class"]})[
+            "is_class_teacher"
+        ] = True
+    return list(classes.values())
 
 
 class DashboardView(SchoolView):
