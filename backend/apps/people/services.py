@@ -7,6 +7,7 @@ enrolments, pick-up people, guardians and new accounts.
 from django.contrib.auth.models import Group
 from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
+from django.db.models import Max
 
 from apps.academics.structure import BANDS
 from apps.accounts import roles
@@ -166,7 +167,7 @@ def add_emergency_contact(student, *, name, phone, relationship) -> EmergencyCon
         name=name,
         phone=normalise_gh_phone(phone, mobile_only=False),
         relationship=relationship,
-        priority=student.emergency_contacts.count() + 1,
+        priority=(student.emergency_contacts.aggregate(top=Max("priority"))["top"] or 0) + 1,
     )
 
 

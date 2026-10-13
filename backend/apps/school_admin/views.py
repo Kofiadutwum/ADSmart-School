@@ -135,7 +135,7 @@ class AuditView(SchoolView):
         types = log.order_by("entity_type").values_list("entity_type", flat=True).distinct()
         return Response(
             {
-                "entries": [_entry(entry) for entry in entries[:AUDIT_LIMIT]],
+                "entries": [audit_row(entry) for entry in entries[:AUDIT_LIMIT]],
                 "record_types": [name for name in types if name],
                 "people": _people(log),
             }
@@ -155,7 +155,7 @@ def _people(log) -> list[dict]:
     return sorted(rows, key=lambda row: row["name"])
 
 
-def _entry(entry: AuditLog) -> dict:
+def audit_row(entry: AuditLog) -> dict:
     platform = entry.actor is not None and entry.actor.kind == User.Kind.PLATFORM
     return {
         "id": entry.pk,
