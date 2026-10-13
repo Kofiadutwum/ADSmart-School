@@ -178,3 +178,26 @@ export function InputField({
     </Field>
   );
 }
+
+/** One-button actions: their own busy flag and the server's reason when they fail. */
+export function useAction() {
+  const [problem, setProblem] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  async function act(action: () => Promise<void>) {
+    setBusy(true);
+    setProblem(null);
+    try {
+      await action();
+    } catch (caught) {
+      setProblem(firstProblem(caught));
+    } finally {
+      setBusy(false);
+    }
+  }
+  const alert = problem ? (
+    <p role="alert" className="text-sm text-danger">
+      {problem}
+    </p>
+  ) : null;
+  return { act, busy, alert };
+}

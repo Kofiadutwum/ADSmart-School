@@ -105,7 +105,9 @@ def test_the_photo_is_served_only_with_consent(admin, school):
     url = f"{PUPILS}/{pupil.pk}/photo"
     assert admin.post(url, {"photo": jpeg_upload()}).status_code == 200
     assert admin.get(url).status_code == 404  # no PHOTO_USE consent yet
-    assert admin.get(f"{PUPILS}/{pupil.pk}").json()["has_photo"] is False
+    detail = admin.get(f"{PUPILS}/{pupil.pk}").json()
+    assert detail["has_photo"] is False  # kept, but not shown without consent
+    assert detail["photo_on_file"] is True
     set_consent(pupil, Consent.Type.PHOTO_USE, True)
     photo = admin.get(url)
     assert photo.status_code == 200

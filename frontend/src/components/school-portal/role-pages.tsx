@@ -5,6 +5,8 @@ import { canEdit } from "@/lib/school-roles";
 import { CalendarView } from "./calendar-view";
 import { ClassesView } from "./classes-view";
 import { ProfileForm } from "./profile-form";
+import { PupilDetailView } from "./pupil-detail";
+import { PupilsView } from "./pupils-view";
 import { useActiveRole } from "./school-portal-shell";
 import { StaffDetailView } from "./staff-detail";
 import { StaffView } from "./staff-view";
@@ -51,4 +53,12 @@ export function StaffPage() {
 
 export function StaffMemberPage({ id }: { id: number }) {
   return <StaffDetailView id={id} canEdit={useCanEdit()} />;
+}
+
+export function PupilsPage() {
+  return <PupilsView canEdit={useCanEdit()} />;
+}
+
+export function PupilPage({ id }: { id: number }) {
+  return <PupilDetailView id={id} canEdit={useCanEdit()} />;
 }

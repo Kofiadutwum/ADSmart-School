@@ -83,6 +83,7 @@ def pupil_detail(student: Student) -> dict:
         **row,
         **{name: getattr(pupil, name) for name in PROFILE},
         "admission_date": pupil.admission_date,
+        "photo_on_file": bool(pupil.photo),
         "login": pupil.user.login if pupil.user_id else None,
         "can_have_login": bool(row["band"]) and BANDS[row["band"]].student_login,
     }

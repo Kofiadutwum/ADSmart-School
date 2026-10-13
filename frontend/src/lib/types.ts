@@ -356,7 +356,11 @@ export type StaffDetail = StaffRow &
     licence_number: string;
     emergency_contact: string;
   };
-export type SchoolMe = MyClasses & { roles: string[]; staff: { id: number; name: string } | null };
+export type SchoolMe = MyClasses & {
+  roles: string[];
+  staff: { id: number; name: string } | null;
+  classes: { id: number; name: string; is_class_teacher: boolean }[];
+};
 export type SchoolAuditEntry = {
   id: number;
   created_at: string;
@@ -369,3 +373,151 @@ export type SchoolAuditEntry = {
   reason: string;
 };
 export type SchoolAudit = { entries: SchoolAuditEntry[]; record_types: string[]; people: Choice[] };
+
+/** Stage 8: pupils, parents and enrolment. */
+export type PupilStatus = "ACTIVE" | "TRANSFERRED" | "COMPLETED" | "WITHDRAWN" | "SUSPENDED";
+export type PupilRow = {
+  id: number;
+  student_id: string;
+  name: string;
+  class: string;
+  class_id: number | null;
+  band: string;
+  status: PupilStatus;
+  is_demo: boolean;
+  contacts_incomplete: boolean;
+  initials: string;
+  has_photo: boolean;
+};
+export type PupilDetail = PupilRow & {
+  first_name: string;
+  middle_name: string;
+  surname: string;
+  date_of_birth: string;
+  gender: "F" | "M";
+  previous_school: string;
+  address: string;
+  pickup_point: string;
+  admission_date: string;
+  photo_on_file: boolean;
+  login: string | null;
+  can_have_login: boolean;
+};
+export type EmergencyContactRow = { id: number; name: string; phone: string; relationship: string; priority: number };
+export type Relationship = "MOTHER" | "FATHER" | "GUARDIAN" | "OTHER";
+export type GuardianRow = {
+  id: number;
+  parent: number;
+  name: string;
+  phone: string;
+  relationship: Relationship;
+  is_payer: boolean;
+  is_primary_contact: boolean;
+  activated: boolean;
+  is_demo: boolean;
+};
+export type ParentRow = {
+  id: number;
+  name: string;
+  title: string;
+  first_name: string;
+  surname: string;
+  phone: string;
+  alt_phone: string;
+  email: string;
+  address: string;
+  activated: boolean;
+  is_demo: boolean;
+  children: {
+    guardianship: number;
+    student: number;
+    name: string;
+    relationship: Relationship;
+    is_payer: boolean;
+    is_primary_contact: boolean;
+  }[];
+};
+export type ActivationResult = { sent: boolean; reason: "" | "demo" | "failed" };
+export type PickupRow = {
+  id: number;
+  name: string;
+  phone: string;
+  relationship: string;
+  valid_from: string;
+  valid_to: string | null;
+  is_current: boolean;
+  has_photo: boolean;
+  is_demo: boolean;
+};
+export type ConsentRow = {
+  type: string;
+  label: string;
+  given: boolean | null;
+  given_at: string | null;
+  withdrawn_at: string | null;
+  notice_version: string | null;
+};
+export type PlaceRow = {
+  id: number;
+  class: string;
+  year: string;
+  start_date: string;
+  end_date: string | null;
+  outcome: string;
+};
+export type HistoryEntry = SchoolAuditEntry & {
+  old: Record<string, unknown> | null;
+  new: Record<string, unknown> | null;
+};
+export type ClassPupils = { class: { id: number; name: string; is_class_teacher: boolean }; pupils: PupilRow[] };
+export type TeacherPupilView = {
+  id: number;
+  student_id: string;
+  name: string;
+  first_name: string;
+  surname: string;
+  gender: "F" | "M";
+  date_of_birth: string;
+  class: string;
+  class_id: number | null;
+  status: PupilStatus;
+  initials: string;
+  has_photo: boolean;
+  login: string | null;
+  can_have_login: boolean;
+  can_issue_login: boolean;
+  parents?: { name: string; relationship: string; phone: string; alt_phone: string; is_primary_contact: boolean }[];
+  emergency_contacts?: { name: string; phone: string; relationship: string }[];
+};
+export type EnrolmentOverview = {
+  year: string | null;
+  levels: { band: string; label: string; count: number; classes: { id: number; name: string; count: number }[] }[];
+  total: number;
+  not_in_class: number;
+};
+export type WardCard = {
+  id: number;
+  student_id: string;
+  name: string;
+  first_name: string;
+  class: string;
+  initials: string;
+  has_photo: boolean;
+  class_teacher: string | null;
+  pickups: { id: number; name: string; relationship: string; phone: string; valid_to: string | null; has_photo: boolean }[];
+};
+export type FamilyConsents = {
+  notice: { title: string; version: string; effective_from: string; body: string } | null;
+  wards: { id: number; name: string; consents: ConsentRow[] }[];
+  own: ConsentRow[];
+};
+export type PupilMe = {
+  student_id: string;
+  name: string;
+  first_name: string;
+  class: string;
+  initials: string;
+  has_photo: boolean;
+  status: PupilStatus;
+  class_teacher: string | null;
+};
