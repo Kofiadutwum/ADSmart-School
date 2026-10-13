@@ -37,3 +37,28 @@ class MemoryBackend:
     def send(self, to: str, body: str) -> str:
         self.outbox.append({"to": to, "body": body})
         return ""
+
+
+class ArkeselBackend:
+    """Arkesel SMS (SMS spec §24): returns the provider's message id for delivery reports."""
+
+    URL = "https://sms.arkesel.com/api/v2/sms/send"
+
+    def send(self, to: str, body: str) -> str:
+        import urllib.request
+
+        payload = json.dumps(
+            {"sender": settings.SMS_SENDER_ID, "message": body, "recipients": [to.lstrip("+")]}
+        ).encode()
+        request = urllib.request.Request(
+            self.URL,
+            data=payload,
+            headers={"api-key": settings.SMS_API_KEY, "Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(request, timeout=10) as response:  # noqa: S310 - fixed URL
+            answer = json.loads(response.read() or b"{}")
+        if answer.get("status") != "success":
+            raise RuntimeError(f"Arkesel refused the message: {answer.get('message', 'unknown')}")
+        data = answer.get("data") or [{}]
+        return str(data[0].get("id", "")) if isinstance(data, list) else ""

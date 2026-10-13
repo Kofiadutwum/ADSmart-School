@@ -1,5 +1,10 @@
 from django.urls import path
 
+from apps.school_admin import options, website_editor as web
+from apps.finance import api as finance
+from apps.support import api as support
+from apps.school_admin.views import SchoolView
+
 from apps.school_admin import (
     calendar_views,
     class_lists,
@@ -67,4 +72,44 @@ urlpatterns = [
     path("classes/<int:pk>/pupils/<int:student>", class_lists.ClassPupilView.as_view()),
     path("classes/<int:pk>/pupils/<int:student>/photo", class_lists.ClassPupilPhotoView.as_view()),
     path("pupils/<int:pk>/login", class_lists.PupilLoginView.as_view()),
+    path("options/<str:kind>", options.OptionsView.as_view()),
+    path("website/blocks", web.BlocksView.as_view()),
+    path("website/blocks/<int:pk>", web.BlockDetailView.as_view()),
+    *web.FactResource.urls("website/facts", SchoolView),
+    *web.FeatureResource.urls("website/features", SchoolView),
+    path("website/photos", web.PhotosView.as_view()),
+    path("website/photos/<int:pk>", web.PhotoDetailView.as_view()),
+    *web.NewsResource.urls("website/news", SchoolView),
+    path("website/news/<int:pk>/publish", web.NewsPublishView.as_view(), {"action": "publish"}),
+    path("website/news/<int:pk>/unpublish", web.NewsPublishView.as_view(), {"action": "unpublish"}),
+    path("website/news/<int:pk>/cover", web.NewsCoverView.as_view()),
+    *web.EnquiryResource.urls("website/enquiries", SchoolView),
+    path("website/notices", web.SchoolNoticesView.as_view()),
+    path("website/notices/<int:pk>", web.SchoolNoticeDetailView.as_view()),
+    path("website/live", web.LiveView.as_view()),
+    path("support/access", support.SupportAccessView.as_view()),
+    path("support/threads", support.SchoolThreadsView.as_view()),
+    path("support/threads/<int:pk>", support.SchoolThreadView.as_view()),
+    path("support/announcements", support.SchoolAnnouncementsView.as_view()),
+    *support.DataRequestResource.urls("data-requests", SchoolView),
+    *support.BreachResource.urls("breaches", SchoolView),
+    path("retention", support.RetentionView.as_view()),
+    *finance.FeeResource.urls("finance/fees", SchoolView),
+    *finance.OptionalChargeResource.urls("finance/optional-charges", SchoolView),
+    *finance.DiscountResource.urls("finance/discounts", SchoolView),
+    path("finance/discounts/<int:pk>/decide", finance.DiscountDecideView.as_view()),
+    *finance.RefundResource.urls("finance/refunds", SchoolView),
+    path("finance/refunds/<int:pk>/decide", finance.RefundDecideView.as_view()),
+    path("finance/invoices", finance.InvoicesView.as_view()),
+    path("finance/invoices/<int:pk>", finance.InvoiceDetailView.as_view()),
+    path("finance/invoices/<int:pk>/cancel", finance.InvoiceCancelView.as_view()),
+    path("finance/invoices/<int:pk>/instalments", finance.InstalmentsView.as_view()),
+    path("finance/payments", finance.PaymentsView.as_view()),
+    path("finance/payments/<int:pk>", finance.PaymentDetailView.as_view()),
+    path("finance/pupils/<int:pk>", finance.PupilAccountView.as_view()),
+    path("finance/pupils/<int:pk>/adjust", finance.AdjustView.as_view()),
+    path("finance/summary", finance.SummaryView.as_view()),
+    path("finance/debtors", finance.DebtorsView.as_view()),
+    path("finance/classes", finance.ClassFinanceView.as_view()),
+    path("finance/wallets", finance.WalletsView.as_view()),
 ]

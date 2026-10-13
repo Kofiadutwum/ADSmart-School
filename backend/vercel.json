@@ -6,5 +6,5 @@
       "excludeFiles": "{tests/**,media/**,e2e-media/**,staticfiles/**,*.sqlite3,e2e-sms.jsonl}"
     }
   },
-  "crons": [{ "path": "/api/cron/article-emails", "schedule": "0 7 * * *" }]
+  "crons": [{ "path": "/api/cron/jobs", "schedule": "0 6 * * *" }]
 }

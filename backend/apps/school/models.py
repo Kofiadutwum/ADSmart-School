@@ -1,5 +1,6 @@
 """Schools on the platform (multi-school amendment §3). Every school-owned record points here."""
 
+import secrets
 from datetime import date
 
 from django.conf import settings
@@ -123,6 +124,7 @@ class SchoolDomain(models.Model):
     domain = models.CharField(max_length=253, unique=True)
     verified_at = models.DateTimeField(null=True, blank=True)
     is_primary = models.BooleanField(default=False)
+    verification_token = models.CharField(max_length=40, blank=True)
 
     class Meta:
         constraints = [
@@ -136,6 +138,8 @@ class SchoolDomain(models.Model):
 
     def save(self, *args, **kwargs):
         self.domain = self.domain.strip().lower().rstrip(".")
+        if not self.verification_token:
+            self.verification_token = secrets.token_hex(16)
         super().save(*args, **kwargs)
 
 
