@@ -64,6 +64,8 @@ test("a parent activates their account with an SMS code from their school", asyn
   await page.getByLabel(/type it again/i).fill(accounts.password);
   await page.getByRole("button", { name: /set password/i }).click();
 
+  await expect(page.getByRole("heading", { name: "Welcome" })).toBeVisible(); // the parent's home
+  await openHydrated(page, "/account");
   await expect(page.getByRole("heading", { name: "Your account" })).toBeVisible();
   await expect(page.getByText(`${local.slice(0, 3)} ${local.slice(3, 6)} ${local.slice(6)}`)).toBeVisible();
   await expectAccessibleInBothThemes(page);

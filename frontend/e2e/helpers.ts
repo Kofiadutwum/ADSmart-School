@@ -34,6 +34,13 @@ export async function mainNav(page: Page) {
   return page.getByRole("navigation", { name: "Main" });
 }
 
+/** Where a parent's pages are: the bottom tab bar on phones, the sidebar on wide screens. */
+export async function portalNav(page: Page) {
+  await expect(page.getByRole("button", { name: "Sign out", exact: true })).toBeVisible();
+  const tabs = page.getByRole("navigation", { name: "Tabs" });
+  return (await tabs.isVisible()) ? tabs : page.getByRole("navigation", { name: "Main" });
+}
+
 /** 0244000001 → +233244000001. */
 export const e164 = (local: string) => `+233${local.replace(/\s/g, "").slice(1)}`;
 
