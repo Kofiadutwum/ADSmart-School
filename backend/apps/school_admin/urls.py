@@ -1,6 +1,6 @@
 from django.urls import path
 
-from apps.school_admin import calendar_views, classes, profile, pupils, staff, views
+from apps.school_admin import calendar_views, classes, parents, profile, pupils, staff, views
 
 urlpatterns = [
     path("me", views.MeView.as_view()),
@@ -33,4 +33,11 @@ urlpatterns = [
     path("pupils/<int:pk>/contacts", pupils.ContactsView.as_view()),
     path("contacts/<int:pk>", pupils.ContactDetailView.as_view()),
     path("pupils/<int:pk>/history", pupils.PupilHistoryView.as_view()),
+    path("parents", parents.ParentsView.as_view()),
+    path("parents/<int:pk>", parents.ParentDetailView.as_view()),
+    path("parents/<int:pk>/activation", parents.ParentActivationView.as_view()),
+    path("parents/<int:pk>/reset", parents.ParentResetView.as_view()),
+    path("parents/<int:pk>/make-real", parents.ParentMakeRealView.as_view()),
+    path("pupils/<int:pk>/guardians", parents.GuardiansView.as_view()),
+    path("guardians/<int:pk>", parents.GuardianDetailView.as_view()),
 ]
