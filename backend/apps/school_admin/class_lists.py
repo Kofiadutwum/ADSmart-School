@@ -5,6 +5,7 @@ those assignments; a class teacher also sees the class's parent and emergency co
 from django.db import transaction
 from django.http import Http404
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework.response import Response
 
 from apps.academics.models import ClassTeacherAssignment, SchoolClass, TeachingAssignment
@@ -63,6 +64,18 @@ def class_access(request, school, pk) -> tuple[SchoolClass, bool, bool]:
     if not teaches:
         raise Http404
     return school_class, class_teacher, class_teacher
+
+
+def class_teacher_name(school_class: SchoolClass) -> str | None:
+    """This term's class teacher; between terms, the next term's, else the last one's."""
+    today = timezone.localdate()
+    rows = list(
+        ClassTeacherAssignment.objects.filter(school_class=school_class)
+        .select_related("staff", "term")
+        .order_by("term__start_date")
+    )
+    chosen = next((row for row in rows if row.term.end_date >= today), rows[-1] if rows else None)
+    return f"{chosen.staff.first_name} {chosen.staff.surname}" if chosen else None
 
 
 def pupils_in(school_class: SchoolClass):

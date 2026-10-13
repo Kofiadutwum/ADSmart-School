@@ -10,6 +10,8 @@ NO_SCHOOL_DATA = "no school data"
 PENDING_USER = "the pending user at their own address (tests/accounts/test_second_factor.py)"
 PLATFORM_STAFF = "platform staff at the admin address only (tests/platform_admin/test_access.py)"
 OWN_SESSIONS = "the signed-in user's own sessions (tests/accounts/test_sessions.py)"
+OWN_WARDS = "the signed-in parent's own wards only (tests/family/test_wards.py)"
+OWN_PUPIL = "the signed-in pupil's own record only (tests/pupil/test_me.py)"
 SCHOOL_STAFF = "the signed-in staff member's own school only (tests/school_admin/test_access.py)"
 
 CLASSIFIED = {
@@ -72,6 +74,12 @@ CLASSIFIED = {
     "api/platform/website/subscribers": PLATFORM_STAFF,
     "api/platform/website/subscribers.csv": PLATFORM_STAFF,
     "api/school/me": SCHOOL_STAFF,
+    "api/parent/wards": OWN_WARDS,
+    "api/parent/wards/<int:pk>/photo": OWN_WARDS,
+    "api/parent/pickups/<int:pk>/photo": OWN_WARDS,
+    "api/parent/consents": OWN_WARDS,
+    "api/student/me": OWN_PUPIL,
+    "api/student/photo": OWN_PUPIL,
     "api/school/classes/<int:pk>/pupils": SCHOOL_STAFF,
     "api/school/classes/<int:pk>/pupils/<int:student>": SCHOOL_STAFF,
     "api/school/classes/<int:pk>/pupils/<int:student>/photo": SCHOOL_STAFF,
