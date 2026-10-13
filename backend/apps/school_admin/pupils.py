@@ -131,6 +131,9 @@ def _filtered(pupils, params, year):
     open_places = {"enrolments__end_date__isnull": True, "enrolments__academic_year": year}
     if params.get("class", "").isdigit():
         pupils = pupils.filter(enrolments__school_class_id=params["class"], **open_places)
+    elif params.get("class") == "none":  # not yet placed this year (Enrolment, P1 §7.2)
+        placed = Enrolment.objects.filter(academic_year=year, end_date__isnull=True)
+        pupils = pupils.exclude(pk__in=placed.values("student_id"))
     if params.get("level") in BANDS:
         groups = [group.code for group in year_groups_for([params["level"]])]
         pupils = pupils.filter(enrolments__school_class__year_group__in=groups, **open_places)

@@ -24,6 +24,7 @@ describe("MyTeachingView", () => {
             },
           ],
           class_teacher_of: [{ id: 2, class: "Basic 2A", class_id: 5, term: 1, term_id: 9 }],
+          classes: [{ id: 5, name: "Basic 2A", is_class_teacher: true }],
         },
       ],
     ]);
@@ -31,10 +32,11 @@ describe("MyTeachingView", () => {
     expect(await screen.findByText("Mathematics")).toBeInTheDocument();
     expect(screen.getByText(/class teacher of/i)).toHaveTextContent("Basic 2A");
     expect(screen.getByRole("heading", { name: "Term 1" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Basic 2A/ })).toHaveAttribute("href", "/my-teaching/5");
   });
 
   it("says plainly when nothing is assigned yet", async () => {
-    mockApi([["GET", "/api/school/me", 200, { roles: ["Teacher"], staff: null, teaching: [], class_teacher_of: [] }]]);
+    mockApi([["GET", "/api/school/me", 200, { roles: ["Teacher"], staff: null, teaching: [], class_teacher_of: [], classes: [] }]]);
     render(<MyTeachingView />);
     expect(await screen.findByText(/no classes are assigned to you/i)).toBeInTheDocument();
   });

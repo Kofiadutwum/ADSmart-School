@@ -9,10 +9,12 @@ import { errorMessage, fieldErrors, getJson } from "@/lib/client-api";
 export const CHECK_FORM = "Please check the highlighted fields.";
 export const textareaClasses = `${inputClasses} min-h-28`;
 
-/** Loads a list or record once; `setData` keeps it in step with later changes. */
+/** Loads a list or record once; `setData` keeps it in step with later changes and `reload`
+ * fetches it again. */
 export function useLoad<T>(path: string) {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [version, setVersion] = useState(0);
   useEffect(() => {
     let cancelled = false;
     getJson<T>(path).then(
@@ -26,8 +28,9 @@ export function useLoad<T>(path: string) {
     return () => {
       cancelled = true;
     };
-  }, [path]);
-  return { data, setData, error };
+  }, [path, version]);
+  const reload = () => setVersion((count) => count + 1);
+  return { data, setData, error, reload };
 }
 
 /** For one-button actions: the field's own reason when the server gives one. */

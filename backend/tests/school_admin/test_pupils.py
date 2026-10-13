@@ -63,6 +63,7 @@ def test_lists_and_searches_pupils_by_name_or_id_with_filters(head, school):
     assert [row["id"] for row in head.get(f"{PUPILS}?class={basic.pk}").json()] == [ama.pk]
     assert [row["id"] for row in head.get(f"{PUPILS}?level=lower_primary").json()] == [ama.pk]
     assert [row["id"] for row in head.get(f"{PUPILS}?demo=1").json()] == [yaw.pk]
+    assert [row["id"] for row in head.get(f"{PUPILS}?class=none").json()] == [yaw.pk]
 
 
 def test_edits_the_profile_with_audit(admin, school):

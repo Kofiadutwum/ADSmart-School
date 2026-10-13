@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { canEdit } from "@/lib/school-roles";
 import { CalendarView } from "./calendar-view";
 import { ClassesView } from "./classes-view";
+import { ParentsView } from "./parents-view";
 import { ProfileForm } from "./profile-form";
 import { PupilDetailView } from "./pupil-detail";
 import { PupilsView } from "./pupils-view";
@@ -61,4 +62,8 @@ export function PupilsPage() {
 
 export function PupilPage({ id }: { id: number }) {
   return <PupilDetailView id={id} canEdit={useCanEdit()} />;
+}
+
+export function ParentsPage() {
+  return <ParentsView canEdit={useCanEdit()} />;
 }
