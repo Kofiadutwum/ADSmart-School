@@ -611,7 +611,7 @@ class PricesView(PublicView):
 SCHOOL_BILLING = (roles.ADMINISTRATOR, roles.PROPRIETOR, roles.ACCOUNTANT)
 
 
-class SchoolBillingView(SchoolView):
+class SchoolBillingBase(SchoolView):
     """The school's own Billing page; it works while the school is paused, so it can pay."""
 
     read_roles = write_roles = SCHOOL_BILLING
@@ -624,6 +624,8 @@ class SchoolBillingView(SchoolView):
             query |= Q(group_id=subscription.group_id)
         return PlatformBill.objects.filter(query).select_related("school", "group")
 
+
+class SchoolBillingView(SchoolBillingBase):
     def get(self, request):
         bills = list(self.bills())
         settings = BillingSettings.current()
@@ -641,12 +643,12 @@ class SchoolBillingView(SchoolView):
         )
 
 
-class SchoolBillView(SchoolBillingView):
+class SchoolBillView(SchoolBillingBase):
     def get(self, request, pk):
         return Response(bill_row(get_object_or_404(self.bills(), pk=pk), detail=True))
 
 
-class SchoolBillPayView(SchoolBillingView):
+class SchoolBillPayView(SchoolBillingBase):
     """Pay now: Paystack's page opens; the bill is marked paid only after Paystack confirms."""
 
     def post(self, request, pk):

@@ -48,6 +48,12 @@ from apps.school.models import School
 from apps.school_admin.views import SchoolView
 
 API = "https://api.paystack.co"
+
+
+class PayIpThrottle(AnonRateThrottle):
+    scope = "pay_ip"
+
+
 PAYER_EMAIL = (
     "payments@adsmartschool.com"  # Paystack needs an email; the payer's own is used when known
 )
@@ -199,7 +205,7 @@ class VerifyView(APIView):
     """Where Paystack sends the payer back. It only triggers our own check with Paystack."""
 
     permission_classes = [AllowAny]
-    throttle_classes = [AnonRateThrottle]
+    throttle_classes = [PayIpThrottle]
 
     def get(self, request):
         reference = request.query_params.get("reference", "")[:40]
@@ -335,7 +341,7 @@ class PublicLinkView(APIView):
 
     permission_classes = [AllowAny]
     authentication_classes = []
-    throttle_classes = [AnonRateThrottle]
+    throttle_classes = [PayIpThrottle]
 
     def link(self, token) -> PaymentLink:
         link = PaymentLink.objects.filter(token=token).select_related("student", "school").first()

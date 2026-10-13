@@ -231,6 +231,7 @@ REST_FRAMEWORK = {
         "tips_ip": "30/hour",
         "visit_ip": "600/hour",
         "sms_code_ip": "10/hour",
+        "pay_ip": "120/hour",
     },
 }
 
