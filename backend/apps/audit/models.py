@@ -45,6 +45,7 @@ class AuditLog(models.Model):
         CONSENT_WITHDRAWN = "CONSENT_WITHDRAWN", "Consent withdrawn"
         DEMO_CONVERTED = "DEMO_CONVERTED", "Demo record made real"
         DEMO_PURGED = "DEMO_PURGED", "Demo records deleted"
+        ACTIVATION_SENT = "ACTIVATION_SENT", "Activation text sent"
 
     # No database constraints: entries must outlive any user or school they mention.
     school = models.ForeignKey(

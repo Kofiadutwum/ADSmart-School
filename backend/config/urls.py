@@ -14,6 +14,8 @@ urlpatterns = [
     path("api/auth/", include("apps.accounts.urls")),
     path("api/platform/", include("apps.platform_admin.urls")),
     path("api/school/", include("apps.school_admin.urls")),
+    path("api/parent/", include("apps.family.urls")),
+    path("api/student/", include("apps.pupil.urls")),
 ]
 
 if settings.DEBUG:

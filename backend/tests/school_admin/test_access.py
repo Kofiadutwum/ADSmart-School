@@ -9,7 +9,7 @@ from tests.test_tenancy_matrix import _routes
 
 pytestmark = pytest.mark.django_db
 
-FILL = {"<int:pk>": "1", "<str:day>": "2026-10-12"}
+FILL = {"<int:pk>": "1", "<int:student>": "1", "<str:day>": "2026-10-12", "<str:kind>": "PHOTO_USE"}
 
 
 def school_paths() -> list[str]:
@@ -33,11 +33,24 @@ def test_signed_out_visitors_are_refused(school):
         assert visitor.get(path).json()["code"] == "not_authenticated", path
 
 
+# What each role reaches beyond its own details. Class lists answer 404 to a teacher who does
+# not teach the class (none exists here); issuing pupil sign-ins is POST only.
+REACHES = {
+    "Teacher": {
+        "/api/school/classes/1/pupils": 404,
+        "/api/school/classes/1/pupils/1": 404,
+        "/api/school/classes/1/pupils/1/photo": 404,
+        "/api/school/pupils/1/login": 405,
+    },
+    "Proprietor": {"/api/school/enrolment-overview": 200},
+}
+
+
 @pytest.mark.parametrize("role", ["Teacher", "Accountant", "Proprietor"])
 def test_other_staff_roles_only_reach_their_own_details(client_for, role):
     client = client_for(role)
     for path in school_paths():
-        expected = 200 if path == "/api/school/me" else 403
+        expected = 200 if path == "/api/school/me" else REACHES.get(role, {}).get(path, 403)
         assert client.get(path).status_code == expected, path
 
 

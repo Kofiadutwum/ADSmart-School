@@ -21,7 +21,7 @@ browser tests, accessibility checks and Lighthouse budget pass, and it is merged
 
 ---
 
-## Built (stages 1–7, merged)
+## Built (stages 1–8, merged)
 
 | Area | Source |
 |---|---|
@@ -34,6 +34,7 @@ browser tests, accessibility checks and Lighthouse budget pass, and it is merged
 | Your own website: gallery, articles and tips, comments, questions, tip sign-up, WhatsApp link, visit counts, instant refresh | BT §5 |
 | Going live: Vercel, Neon, Cloudinary, SMTP email, signed forwarding, cron, `ADMIN_HOST`, deploy guide | CHAT, P1 §13 |
 | School portal I (Stage 7): role homes and switcher, sidebar and phone menu, dashboard with go-live checklist, school profile, levels, logo and colours, years, terms, month calendar, classes and class teachers, subjects, teaching assignments, staff (add, roles, switch off, reset password, demo), school audit log, Head Teacher read-only, My teaching | P1 §7.2–7.5, SMS §7, §28 |
+| School portal II (Stage 8): pupils (search, admission, record tabs, status with reason, emergency contacts, photo with consent, demo), parents (link, activation text, reset), pick-up persons, consents against the privacy notice, enrolment in bulk with history, pupil sign-ins from Basic 4, teachers' class lists (contacts for the class teacher), Proprietor overview, parent portal (Home, My wards, Consent, bottom tabs), pupil My school | P1 §3.2, §3.5, §5, §7.2–7.5; SMS §5, §6, §30 |
 
 ---
 
@@ -61,7 +62,7 @@ Each stage gets a plan, test-first code, a full check and a local merge.
 - **School audit log**, filtered by person, record type, record and date (P1 §7.2, MS §4).
 - **Head Teacher:** read-only school summary, classes, staff and calendar, plus the audit log (P1 §7.3).
 
-### Stage 8: school portal II (pupils, parents, enrolment)
+### Stage 8: school portal II (pupils, parents, enrolment), built
 - **Students:**
   - search by name or Student ID; filter by class, level, status or demo;
   - add (admission with Student ID);

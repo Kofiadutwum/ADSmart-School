@@ -1,19 +1,35 @@
 "use client";
 
+import Link from "next/link";
 import { LoadState, useLoad } from "@/components/portal/kit";
 import type { SchoolMe } from "@/lib/types";
 
-/** A teacher's home (Phase 1 spec §7.3): what they teach and which class they look after, this
- * year, from their assignments. Class lists open from here once pupils arrive (Stage 8). */
+/** A teacher's home, "My classes" (Phase 1 spec §7.3): their classes this year, from their
+ * assignments, each opening its class list, then what they teach term by term. */
 export function MyTeachingView() {
   const { data, error } = useLoad<SchoolMe>("/api/school/me");
   const terms = data ? [...new Set([...data.teaching, ...data.class_teacher_of].map((row) => row.term))].sort() : [];
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-semibold">My teaching</h1>
+        <h1 className="text-3xl font-semibold">My classes</h1>
         <p className="mt-1 text-ink-muted">Your classes and subjects this school year.</p>
       </div>
+      {data && data.classes.length > 0 && (
+        <ul aria-label="Classes" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {data.classes.map((row) => (
+            <li key={row.id}>
+              <Link
+                href={`/my-teaching/${row.id}`}
+                className="surface flex min-h-16 flex-col justify-center rounded-card p-4 shadow-elev-1 hover:ring-2 hover:ring-indigo/40"
+              >
+                <span className="font-semibold">{row.name}</span>
+                {row.is_class_teacher && <span className="text-sm text-ink-muted">Class teacher</span>}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
       <LoadState
         error={error}
         loading={!data && !error}
