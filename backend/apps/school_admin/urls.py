@@ -1,6 +1,16 @@
 from django.urls import path
 
-from apps.school_admin import calendar_views, classes, parents, profile, pupils, staff, views
+from apps.school_admin import (
+    calendar_views,
+    classes,
+    consents,
+    parents,
+    pickups,
+    profile,
+    pupils,
+    staff,
+    views,
+)
 
 urlpatterns = [
     path("me", views.MeView.as_view()),
@@ -40,4 +50,12 @@ urlpatterns = [
     path("parents/<int:pk>/make-real", parents.ParentMakeRealView.as_view()),
     path("pupils/<int:pk>/guardians", parents.GuardiansView.as_view()),
     path("guardians/<int:pk>", parents.GuardianDetailView.as_view()),
+    path("pupils/<int:pk>/pickups", pickups.PickupsView.as_view()),
+    path("pickups/<int:pk>", pickups.PickupDetailView.as_view()),
+    path("pickups/<int:pk>/end", pickups.PickupEndView.as_view()),
+    path("pickups/<int:pk>/photo", pickups.PickupPhotoView.as_view()),
+    path("pupils/<int:pk>/consents", consents.PupilConsentsView.as_view()),
+    path("pupils/<int:pk>/consents/<str:kind>", consents.PupilConsentView.as_view()),
+    path("parents/<int:pk>/consents", consents.ParentConsentsView.as_view()),
+    path("parents/<int:pk>/consents/<str:kind>", consents.ParentConsentView.as_view()),
 ]
