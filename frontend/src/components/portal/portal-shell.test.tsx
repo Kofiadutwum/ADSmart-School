@@ -75,4 +75,26 @@ describe("PortalShell", () => {
     await user.click(within(menu).getByRole("link", { name: "Leads" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
+
+  it("shows parents a bottom tab bar instead of the menu", async () => {
+    vi.mocked(usePathname).mockReturnValue("/sites/sample.localhost/wards");
+    mockApi([["GET", "/api/auth/me", 200, { ...ME, kind: "parent", roles: ["Parent"] }]]);
+    render(
+      <AuthProvider>
+        <PortalShell
+          name="Sample School"
+          nav={[
+            { href: "/wards", label: "My wards" },
+            { href: "/account", label: "Account" },
+          ]}
+          tabs
+        >
+          <p>page</p>
+        </PortalShell>
+      </AuthProvider>,
+    );
+    const tabs = await screen.findByRole("navigation", { name: "Tabs" });
+    expect(within(tabs).getByRole("link", { name: "My wards" })).toHaveAttribute("aria-current", "page");
+    expect(screen.queryByRole("button", { name: "Open menu" })).not.toBeInTheDocument();
+  });
 });

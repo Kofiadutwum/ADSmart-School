@@ -22,6 +22,8 @@ type Props = {
   nav?: NavItem[];
   /** Shown above the navigation, e.g. the school portal's role switcher. */
   aside?: ReactNode;
+  /** Phones show the navigation as a bottom tab bar instead of a menu (parents, P1 §7.5). */
+  tabs?: boolean;
   children: ReactNode;
 };
 
@@ -29,7 +31,7 @@ type Props = {
  * The signed-in frame (Phase 1 spec §7.5): brand, who is signed in and Sign out on top; the
  * navigation in a glass sidebar on wide screens and in a slide-out menu on phones.
  */
-export function PortalShell({ name, logo = null, nav, aside, children }: Props) {
+export function PortalShell({ name, logo = null, nav, aside, tabs = false, children }: Props) {
   const { me, signOut } = useAuth();
   const items = nav?.filter((item) => canUse(me, item.roles));
   return (
@@ -38,7 +40,7 @@ export function PortalShell({ name, logo = null, nav, aside, children }: Props) 
       <header className="glass-frosted sticky top-0 z-30 border-b border-line">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2 sm:px-6">
           <div className="flex min-w-0 items-center gap-1">
-            {items && <MenuButton items={items} aside={aside} />}
+            {items && !tabs && <MenuButton items={items} aside={aside} />}
             <BrandLink name={name} logo={logo} />
           </div>
           <div className="flex items-center gap-3">
@@ -57,10 +59,12 @@ export function PortalShell({ name, logo = null, nav, aside, children }: Props) 
             <NavList items={items} />
           </aside>
         )}
-        <main id="main" tabIndex={-1} className="min-w-0 flex-1 py-8 outline-none">
+        <main id="main" tabIndex={-1} className={cn("min-w-0 flex-1 py-8 outline-none", tabs && "pb-28 lg:pb-8")}>
+          {tabs && aside && <div className="mb-6 lg:hidden">{aside}</div>}
           {children}
         </main>
       </div>
+      {items && tabs && <TabBar items={items} />}
     </>
   );
 }
@@ -129,5 +133,35 @@ function MenuButton({ items, aside }: { items: NavItem[]; aside?: ReactNode }) {
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
+  );
+}
+
+function TabBar({ items }: { items: NavItem[] }) {
+  const path = publicPath(usePathname());
+  return (
+    <nav
+      aria-label="Tabs"
+      className="glass-frosted fixed inset-x-0 bottom-0 z-30 border-t border-line pb-[env(safe-area-inset-bottom)] lg:hidden"
+    >
+      <ul className="grid" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
+        {items.map((item) => {
+          const current = path === item.href || path.startsWith(`${item.href}/`);
+          return (
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                aria-current={current ? "page" : undefined}
+                className={cn(
+                  "flex min-h-14 items-center justify-center px-1 text-center text-sm font-semibold",
+                  current ? "text-indigo" : "text-ink-muted hover:text-ink",
+                )}
+              >
+                {item.label}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
   );
 }

@@ -5,7 +5,7 @@ import { createContext, useContext, useState, type ReactNode } from "react";
 import { useAuth } from "@/components/portal/auth-provider";
 import { PortalShell } from "@/components/portal/portal-shell";
 import { inputClasses } from "@/components/site/field";
-import { homeFor, navFor, rolesWithScreens } from "@/lib/school-roles";
+import { homeFor, navFor, rolesWithScreens, usesTabs } from "@/lib/school-roles";
 import type { ImageData } from "@/lib/types";
 
 const STORED = "school-portal-role";
@@ -66,7 +66,7 @@ export function SchoolPortalShell({ name, logo = null, children }: Props) {
 
   return (
     <ActiveRole value={active}>
-      <PortalShell name={name} logo={logo} nav={navFor(active)} aside={switcher}>
+      <PortalShell name={name} logo={logo} nav={navFor(active)} aside={switcher} tabs={usesTabs(active)}>
         {children}
       </PortalShell>
     </ActiveRole>
