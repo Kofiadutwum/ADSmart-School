@@ -262,3 +262,18 @@ class AuditView(OwnerView):
                 for entry in entries
             ]
         )
+
+
+class AuditExportView(OwnerView):
+    """The whole audit log as CSV for the Owner (SMS spec §38)."""
+
+    def get(self, request):
+        from apps.billing.api import csv_response
+        from apps.school_admin.reports import AUDIT_HEADER, audit_rows
+
+        logs = AuditLog.objects.select_related("actor", "school").order_by("-created_at")[:50000]
+        rows = [
+            [log.school.name if log.school_id else "", *row]
+            for log, row in zip(logs, audit_rows(logs), strict=True)
+        ]
+        return csv_response("audit-log", ["School", *AUDIT_HEADER], rows)

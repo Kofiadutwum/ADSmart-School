@@ -11,7 +11,9 @@ USER = settings.AUTH_USER_MODEL
 
 
 class DailyCare(SchoolOwned):
-    student = models.ForeignKey("people.Student", on_delete=models.CASCADE, related_name="daily_care")
+    student = models.ForeignKey(
+        "people.Student", on_delete=models.CASCADE, related_name="daily_care"
+    )
     date = models.DateField()
     arrival = models.TimeField(null=True, blank=True)
     departure = models.TimeField(null=True, blank=True)
@@ -24,11 +26,15 @@ class DailyCare(SchoolOwned):
     incident = models.CharField(max_length=500, blank=True)
     staff_signed = models.BooleanField(default=False)
     supplies_needed = models.CharField(max_length=200, blank=True)
-    recorded_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    recorded_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
 
     class Meta:
         ordering = ["-date"]
-        constraints = [models.UniqueConstraint(fields=["student", "date"], name="care_one_report_a_day")]
+        constraints = [
+            models.UniqueConstraint(fields=["student", "date"], name="care_one_report_a_day")
+        ]
 
     def __str__(self):
         return f"Daily care for {self.student}, {self.date}"
@@ -42,7 +48,9 @@ class CareNote(SchoolOwned):
     from_parent = models.BooleanField(default=False)
     text = models.CharField(max_length=500)
     approved = models.BooleanField(default=False)
-    approved_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    approved_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -74,8 +82,12 @@ class Release(SchoolOwned):
     student = models.ForeignKey("people.Student", on_delete=models.CASCADE, related_name="releases")
     at = models.DateTimeField(auto_now_add=True)
     collector_name = models.CharField(max_length=120)
-    pickup_person = models.ForeignKey("people.PickupPerson", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
-    approval = models.ForeignKey(OneTimeApproval, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    pickup_person = models.ForeignKey(
+        "people.PickupPerson", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    approval = models.ForeignKey(
+        OneTimeApproval, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     status = models.CharField(max_length=8, choices=Status.choices)
     released_by = models.ForeignKey(USER, on_delete=models.PROTECT, related_name="+")
     note = models.CharField(max_length=200, blank=True)
@@ -94,7 +106,9 @@ class Visitor(SchoolOwned):
     host = models.CharField(max_length=120, blank=True)
     time_in = models.DateTimeField(auto_now_add=True)
     time_out = models.DateTimeField(null=True, blank=True)
-    recorded_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    recorded_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
 
     class Meta:
         ordering = ["-time_in"]
@@ -112,7 +126,9 @@ class GateEvent(SchoolOwned):
     kind = models.CharField(max_length=15, choices=Kind.choices)
     at = models.DateTimeField(auto_now_add=True)
     reason = models.CharField(max_length=200, blank=True)
-    recorded_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    recorded_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
 
     class Meta:
         ordering = ["-at"]
@@ -122,7 +138,9 @@ class GateEvent(SchoolOwned):
 
 
 class MedicalRecord(SchoolOwned):
-    student = models.OneToOneField("people.Student", on_delete=models.CASCADE, related_name="medical")
+    student = models.OneToOneField(
+        "people.Student", on_delete=models.CASCADE, related_name="medical"
+    )
     allergies = models.CharField(max_length=300, blank=True)
     conditions = models.CharField(max_length=300, blank=True)
     medication = models.CharField(max_length=300, blank=True)
@@ -142,7 +160,9 @@ class SickbayVisit(SchoolOwned):
     action = models.CharField(max_length=300, blank=True)
     time_out = models.DateTimeField(null=True, blank=True)
     parent_informed = models.BooleanField(default=False)
-    recorded_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    recorded_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
 
     class Meta:
         ordering = ["-time_in"]
@@ -163,7 +183,9 @@ class IncidentLog(SchoolOwned):
     description = models.TextField(max_length=2000)
     action_taken = models.CharField(max_length=500, blank=True)
     parent_informed = models.BooleanField(default=False)
-    recorded_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    recorded_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
 
     class Meta:
         ordering = ["-date"]
@@ -176,7 +198,9 @@ class SpecialNeed(SchoolOwned):
     student = models.ForeignKey("people.Student", on_delete=models.CASCADE, related_name="+")
     need = models.CharField(max_length=200)
     support_plan = models.TextField(max_length=2000, blank=True)
-    recorded_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    recorded_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
 
     def __str__(self):
         return f"{self.student}: {self.need}"

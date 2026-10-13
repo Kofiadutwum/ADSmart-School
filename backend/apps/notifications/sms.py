@@ -69,7 +69,9 @@ def send_sms(
             message.status, message.error = SmsMessage.Status.FAILED, str(exc)[:500]
     message.save()
     if billable and message.status == SmsMessage.Status.SENT:
-        SmsCreditEntry.objects.create(school=school, change=-segments(body), reason=f"Text: {purpose}")
+        SmsCreditEntry.objects.create(
+            school=school, change=-segments(body), reason=f"Text: {purpose}"
+        )
     return message
 
 

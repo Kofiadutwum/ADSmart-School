@@ -40,11 +40,23 @@ def next_number(school, kind: str, prefix: str, year: int | None = None) -> str:
 
 
 def balance(student, account: str = Account.FEES) -> int:
-    total = LedgerEntry.objects.filter(student=student, account=account).aggregate(total=Sum("amount"))
+    total = LedgerEntry.objects.filter(student=student, account=account).aggregate(
+        total=Sum("amount")
+    )
     return total["total"] or 0
 
 
-def post(student, account: str, kind: str, amount: int, description: str, *, by=None, school=None, **links):
+def post(
+    student,
+    account: str,
+    kind: str,
+    amount: int,
+    description: str,
+    *,
+    by=None,
+    school=None,
+    **links,
+):
     return LedgerEntry.objects.create(
         school=school or student.school,
         student=student,
@@ -73,9 +85,9 @@ def category_of(school_class) -> str:
 
 def fees_for(student, term) -> list[FeeStructure]:
     klass = current_class(student)
-    fees = FeeStructure.objects.filter(school=student.school, academic_year=term.academic_year).filter(
-        Q(term=term) | Q(term__isnull=True)
-    )
+    fees = FeeStructure.objects.filter(
+        school=student.school, academic_year=term.academic_year
+    ).filter(Q(term=term) | Q(term__isnull=True))
     if klass:
         fees = fees.filter(Q(band="") | Q(band=klass.band)).filter(
             Q(school_class__isnull=True) | Q(school_class=klass)
@@ -95,8 +107,13 @@ def issue_invoice(student, term, *, by=None, due_on=None) -> Invoice:
     fees = fees_for(student, term)
     charges = sum(fee.amount for fee in fees)
     discounts = []
-    for discount in Discount.objects.filter(student=student, status=Discount.Status.APPROVED, active=True):
-        value = min(charges * discount.percent // 100 + discount.amount, charges - sum(v for _, v in discounts))
+    for discount in Discount.objects.filter(
+        student=student, status=Discount.Status.APPROVED, active=True
+    ):
+        value = min(
+            charges * discount.percent // 100 + discount.amount,
+            charges - sum(v for _, v in discounts),
+        )
         if value > 0:
             discounts.append((discount, value))
     total = charges - sum(value for _, value in discounts)
@@ -111,14 +128,36 @@ def issue_invoice(student, term, *, by=None, due_on=None) -> Invoice:
         arrears=arrears,
     )
     for fee in fees:
-        InvoiceLine.objects.create(school=invoice.school, invoice=invoice, description=fee.name, amount=fee.amount, fee=fee)
-        post(student, Account.FEES, LedgerEntry.Kind.CHARGE, fee.amount, f"{fee.name}, {term}", by=by, invoice=invoice)
+        InvoiceLine.objects.create(
+            school=invoice.school, invoice=invoice, description=fee.name, amount=fee.amount, fee=fee
+        )
+        post(
+            student,
+            Account.FEES,
+            LedgerEntry.Kind.CHARGE,
+            fee.amount,
+            f"{fee.name}, {term}",
+            by=by,
+            invoice=invoice,
+        )
     for discount, value in discounts:
         label = f"{discount.get_kind_display()} discount"
         InvoiceLine.objects.create(
-            school=invoice.school, invoice=invoice, description=label, amount=-value, kind=InvoiceLine.Kind.DISCOUNT
+            school=invoice.school,
+            invoice=invoice,
+            description=label,
+            amount=-value,
+            kind=InvoiceLine.Kind.DISCOUNT,
         )
-        post(student, Account.FEES, LedgerEntry.Kind.DISCOUNT, -value, f"{label}, {term}", by=by, invoice=invoice)
+        post(
+            student,
+            Account.FEES,
+            LedgerEntry.Kind.DISCOUNT,
+            -value,
+            f"{label}, {term}",
+            by=by,
+            invoice=invoice,
+        )
     if arrears:
         InvoiceLine.objects.create(
             school=invoice.school,
@@ -134,9 +173,13 @@ def issue_invoice(student, term, *, by=None, due_on=None) -> Invoice:
 def settle_invoices(student) -> None:
     """Open invoices are marked paid once nothing is owed, and reopened if a debt returns."""
     if balance(student) <= 0:
-        Invoice.objects.filter(student=student, status=Invoice.Status.OPEN).update(status=Invoice.Status.PAID)
+        Invoice.objects.filter(student=student, status=Invoice.Status.OPEN).update(
+            status=Invoice.Status.PAID
+        )
     else:
-        latest = Invoice.objects.filter(student=student).exclude(status=Invoice.Status.CANCELLED).first()
+        latest = (
+            Invoice.objects.filter(student=student).exclude(status=Invoice.Status.CANCELLED).first()
+        )
         if latest and latest.status == Invoice.Status.PAID:
             latest.status = Invoice.Status.OPEN
             latest.save(update_fields=["status"])
@@ -149,16 +192,21 @@ def set_instalments(invoice: Invoice, plan: list[dict]) -> list[Instalment]:
         raise ApiError("plan_total", f"The instalments must add up to GHS {money(owed)}.")
     invoice.instalments.all().delete()
     return [
-        Instalment.objects.create(school=invoice.school, invoice=invoice, due_on=item["due_on"], amount=item["amount"])
+        Instalment.objects.create(
+            school=invoice.school, invoice=invoice, due_on=item["due_on"], amount=item["amount"]
+        )
         for item in sorted(plan, key=lambda item: item["due_on"])
     ]
 
 
 def outstanding_on(instalment: Instalment) -> int:
     """What is still owed toward this and earlier instalments: the balance less later ones."""
-    later = Instalment.objects.filter(invoice=instalment.invoice, due_on__gt=instalment.due_on).aggregate(
-        total=Sum("amount")
-    )["total"] or 0
+    later = (
+        Instalment.objects.filter(
+            invoice=instalment.invoice, due_on__gt=instalment.due_on
+        ).aggregate(total=Sum("amount"))["total"]
+        or 0
+    )
     return max(0, min(instalment.amount, balance(instalment.invoice.student) - later))
 
 
@@ -220,17 +268,33 @@ def record_payment(
     )
     label = f"{payment.get_method_display()} payment {payment.receipt_number}"
     if method == Payment.Method.WALLET:
-        post(student, Account.WALLET, LedgerEntry.Kind.SPEND, -amount, label, by=by, payment=payment)
+        post(
+            student, Account.WALLET, LedgerEntry.Kind.SPEND, -amount, label, by=by, payment=payment
+        )
     if purpose == Payment.Purpose.WALLET:
-        post(student, Account.WALLET, LedgerEntry.Kind.TOP_UP, amount, label, by=by, payment=payment)
+        post(
+            student, Account.WALLET, LedgerEntry.Kind.TOP_UP, amount, label, by=by, payment=payment
+        )
     else:
-        post(student, PURPOSE_ACCOUNT[purpose], LedgerEntry.Kind.PAYMENT, -amount, label, by=by, payment=payment)
+        post(
+            student,
+            PURPOSE_ACCOUNT[purpose],
+            LedgerEntry.Kind.PAYMENT,
+            -amount,
+            label,
+            by=by,
+            payment=payment,
+        )
     if purpose == Payment.Purpose.FEES:
         settle_invoices(student)
     if notify:
         transaction.on_commit(
             lambda: text_family(
-                student, "RECEIPT", Purpose.RECEIPT, amount=money(amount), receipt=payment.receipt_number
+                student,
+                "RECEIPT",
+                Purpose.RECEIPT,
+                amount=money(amount),
+                receipt=payment.receipt_number,
             )
         )
     return payment
@@ -266,11 +330,24 @@ def decide_refund(refund: RefundRequest, *, by, approve: bool) -> RefundRequest:
         raise ApiError("decided", "This refund has already been decided.")
     if approve:
         wallet = refund.account == Account.WALLET
-        held = balance(refund.student, refund.account) if wallet else -balance(refund.student, refund.account)
+        held = (
+            balance(refund.student, refund.account)
+            if wallet
+            else -balance(refund.student, refund.account)
+        )
         if held < refund.amount:
-            raise ApiError("not_enough_credit", f"Only GHS {money(max(held, 0))} is held to refund.")
+            raise ApiError(
+                "not_enough_credit", f"Only GHS {money(max(held, 0))} is held to refund."
+            )
         amount = -refund.amount if wallet else refund.amount
-        post(refund.student, refund.account, LedgerEntry.Kind.REFUND, amount, f"Refund: {refund.reason}", by=by)
+        post(
+            refund.student,
+            refund.account,
+            LedgerEntry.Kind.REFUND,
+            amount,
+            f"Refund: {refund.reason}",
+            by=by,
+        )
     refund.status = RefundRequest.Status.APPROVED if approve else RefundRequest.Status.REJECTED
     refund.decided_by, refund.decided_at = by, timezone.now()
     refund.save()
@@ -282,7 +359,9 @@ def adjust(student, account: str, amount: int, reason: str, *, by) -> LedgerEntr
     """A correction, positive or negative, with its reason (never an edit of an old entry)."""
     if not amount:
         raise ApiError("bad_amount", "Enter an amount.")
-    entry = post(student, account, LedgerEntry.Kind.ADJUSTMENT, amount, f"Adjustment: {reason}", by=by)
+    entry = post(
+        student, account, LedgerEntry.Kind.ADJUSTMENT, amount, f"Adjustment: {reason}", by=by
+    )
     if account == Account.FEES:
         settle_invoices(student)
     return entry

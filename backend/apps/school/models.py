@@ -42,6 +42,9 @@ class School(ImageRenditionsMixin):
         help_text="The school's web address: <slug>.<platform domain>. Fixed once created.",
     )
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.TRIAL)
+    billing_paused = models.BooleanField(
+        default=False, help_text="Paused for an unpaid bill: website off, Billing page only"
+    )
     name = models.CharField(max_length=120)
     motto = models.CharField(max_length=200, blank=True)
     founded_year = models.PositiveSmallIntegerField(null=True, blank=True)

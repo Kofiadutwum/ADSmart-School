@@ -32,8 +32,12 @@ class Bus(SchoolOwned):
     plate = models.CharField(max_length=20)
     capacity = models.PositiveSmallIntegerField(default=30)
     insurance_expiry = models.DateField(null=True, blank=True)
-    driver = models.ForeignKey(Crew, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
-    attendant = models.ForeignKey(Crew, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    driver = models.ForeignKey(
+        Crew, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    attendant = models.ForeignKey(
+        Crew, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
 
     class Meta:
         ordering = ["name"]
@@ -45,8 +49,12 @@ class Bus(SchoolOwned):
 
 class Route(SchoolOwned):
     name = models.CharField(max_length=80)
-    bus = models.ForeignKey(Bus, null=True, blank=True, on_delete=models.SET_NULL, related_name="routes")
-    daily_fee = models.PositiveIntegerField(default=0, help_text="Pesewas a day, added to the daily list")
+    bus = models.ForeignKey(
+        Bus, null=True, blank=True, on_delete=models.SET_NULL, related_name="routes"
+    )
+    daily_fee = models.PositiveIntegerField(
+        default=0, help_text="Pesewas a day, added to the daily list"
+    )
 
     class Meta:
         ordering = ["name"]
@@ -69,7 +77,9 @@ class Stop(SchoolOwned):
 
 
 class BusAssignment(SchoolOwned):
-    student = models.ForeignKey("people.Student", on_delete=models.CASCADE, related_name="bus_assignments")
+    student = models.ForeignKey(
+        "people.Student", on_delete=models.CASCADE, related_name="bus_assignments"
+    )
     route = models.ForeignKey(Route, on_delete=models.PROTECT, related_name="riders")
     stop = models.ForeignKey(Stop, on_delete=models.PROTECT, related_name="riders")
     active = models.BooleanField(default=True)
@@ -96,7 +106,9 @@ class StopChangeRequest(SchoolOwned):
 
     student = models.ForeignKey("people.Student", on_delete=models.CASCADE, related_name="+")
     new_stop = models.ForeignKey(Stop, on_delete=models.CASCADE, related_name="+")
-    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
+    )
     status = models.CharField(max_length=9, choices=Status.choices, default=Status.WAITING)
     decided_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -114,7 +126,9 @@ class BoardingLog(SchoolOwned):
     route = models.ForeignKey(Route, on_delete=models.PROTECT, related_name="+")
     kind = models.CharField(max_length=11, choices=Kind.choices)
     at = models.DateTimeField(auto_now_add=True)
-    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    recorded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
+    )
 
     class Meta:
         ordering = ["-at"]

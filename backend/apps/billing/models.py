@@ -15,6 +15,8 @@ class Plan(models.Model):
     audience = models.CharField(max_length=200, blank=True)
     includes = models.TextField(blank=True, help_text="One item per line")
     order = models.PositiveSmallIntegerField(default=0)
+    trial_days = models.PositiveSmallIntegerField(default=30)
+    show_on_website = models.BooleanField(default=True)
     active = models.BooleanField(default=True)
 
     class Meta:
@@ -46,13 +48,23 @@ class Subscription(models.Model):
         PAUSED = "PAUSED", "Paused for non-payment"
         CANCELLED = "CANCELLED", "Cancelled"
 
-    school = models.OneToOneField("school.School", on_delete=models.CASCADE, related_name="subscription")
+    school = models.OneToOneField(
+        "school.School", on_delete=models.CASCADE, related_name="subscription"
+    )
     plan = models.ForeignKey(Plan, on_delete=models.PROTECT, related_name="subscriptions")
     price = models.PositiveIntegerField(help_text="Kept when the plan's price changes")
     status = models.CharField(max_length=9, choices=Status.choices, default=Status.TRIAL)
     starts_on = models.DateField()
     ends_on = models.DateField()
-    group = models.ForeignKey(SchoolGroup, null=True, blank=True, on_delete=models.SET_NULL, related_name="subscriptions")
+    group = models.ForeignKey(
+        SchoolGroup, null=True, blank=True, on_delete=models.SET_NULL, related_name="subscriptions"
+    )
+    next_bill_on = models.DateField(null=True, blank=True)
+    discount_percent = models.PositiveSmallIntegerField(default=0)
+    discount_amount = models.PositiveIntegerField(default=0)
+    discount_reason = models.CharField(max_length=200, blank=True)
+    reminders_off = models.BooleanField(default=False)
+    paused_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.school}: {self.plan}"
@@ -73,8 +85,12 @@ class PlatformBill(models.Model):
         VOID = "VOID", "Void"
 
     number = models.CharField(max_length=20, unique=True)
-    school = models.ForeignKey("school.School", null=True, blank=True, on_delete=models.PROTECT, related_name="bills")
-    group = models.ForeignKey(SchoolGroup, null=True, blank=True, on_delete=models.PROTECT, related_name="bills")
+    school = models.ForeignKey(
+        "school.School", null=True, blank=True, on_delete=models.PROTECT, related_name="bills"
+    )
+    group = models.ForeignKey(
+        SchoolGroup, null=True, blank=True, on_delete=models.PROTECT, related_name="bills"
+    )
     period_start = models.DateField()
     period_end = models.DateField()
     amount = models.PositiveIntegerField()
@@ -82,7 +98,11 @@ class PlatformBill(models.Model):
     issued_on = models.DateField()
     due_on = models.DateField()
     reminded_on = models.DateField(null=True, blank=True)
-    created_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    reminders_sent = models.JSONField(default=list, blank=True)
+    cancel_reason = models.CharField(max_length=300, blank=True)
+    created_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
 
     class Meta:
         ordering = ["-issued_on", "-id"]
@@ -113,7 +133,9 @@ class BillPayment(models.Model):
     method = models.CharField(max_length=8, choices=Method.choices)
     reference = models.CharField(max_length=80, blank=True)
     received_on = models.DateField()
-    recorded_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    recorded_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -130,7 +152,9 @@ class BillAdjustment(models.Model):
     kind = models.CharField(max_length=8, choices=Kind.choices)
     amount = models.PositiveIntegerField()
     reason = models.CharField(max_length=300)
-    recorded_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    recorded_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -141,12 +165,19 @@ class BillingSettings(models.Model):
     """One row. Pausing for non-payment is off until the owner switches it on (BT §3.7)."""
 
     pause_for_non_payment = models.BooleanField(default=False)
-    grace_days = models.PositiveSmallIntegerField(default=30)
+    grace_days = models.PositiveSmallIntegerField(default=21, help_text="Days after the due date")
     reminder_days = models.PositiveSmallIntegerField(default=7)
+    bill_days_before = models.PositiveSmallIntegerField(default=14)
+    trial_days = models.PositiveSmallIntegerField(default=30)
+    business_name = models.CharField(max_length=120, default="ADsmartschool")
+    business_address = models.CharField(max_length=300, blank=True)
+    tax_number = models.CharField(max_length=40, blank=True)
+    bank_details = models.CharField(max_length=300, blank=True)
+    momo_details = models.CharField(max_length=200, blank=True)
 
     def __str__(self):
         return "Billing settings"
 
     @classmethod
-    def current(cls) -> "BillingSettings":
+    def current(cls) -> BillingSettings:
         return cls.objects.first() or cls.objects.create()

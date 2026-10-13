@@ -11,9 +11,13 @@ USER = settings.AUTH_USER_MODEL
 
 class Book(SchoolOwned):
     title = models.CharField(max_length=200)
-    subject = models.ForeignKey("academics.Subject", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    subject = models.ForeignKey(
+        "academics.Subject", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     year_group = models.CharField(max_length=12, blank=True)
-    academic_year = models.ForeignKey("academics.AcademicYear", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    academic_year = models.ForeignKey(
+        "academics.AcademicYear", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     price = models.PositiveIntegerField()
     stock = models.IntegerField(default=0)
     low_stock_at = models.PositiveIntegerField(default=5)
@@ -29,7 +33,9 @@ class Book(SchoolOwned):
 class BookPrice(SchoolOwned):
     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name="prices")
     price = models.PositiveIntegerField()
-    changed_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    changed_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     changed_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -40,11 +46,15 @@ class BookPrice(SchoolOwned):
 
 
 class RequiredBook(SchoolOwned):
-    school_class = models.ForeignKey("academics.SchoolClass", on_delete=models.CASCADE, related_name="required_books")
+    school_class = models.ForeignKey(
+        "academics.SchoolClass", on_delete=models.CASCADE, related_name="required_books"
+    )
     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name="+")
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["school_class", "book"], name="shop_one_required_book")]
+        constraints = [
+            models.UniqueConstraint(fields=["school_class", "book"], name="shop_one_required_book")
+        ]
 
     def __str__(self):
         return f"{self.book} for {self.school_class}"
@@ -52,7 +62,7 @@ class RequiredBook(SchoolOwned):
 
 class UniformItem(SchoolOwned):
     name = models.CharField(max_length=120)
-    sizes = models.JSONField(default=list, help_text="For example [\"S\", \"M\", \"L\"]")
+    sizes = models.JSONField(default=list, help_text='For example ["S", "M", "L"]')
     price = models.PositiveIntegerField()
     low_stock_at = models.PositiveIntegerField(default=5)
     active = models.BooleanField(default=True)
@@ -98,13 +108,19 @@ class StockMovement(SchoolOwned):
         ADJUSTED = "ADJUSTED", "Adjusted"
         RETURNED = "RETURNED", "Returned"
 
-    book = models.ForeignKey(Book, null=True, blank=True, on_delete=models.CASCADE, related_name="movements")
-    uniform = models.ForeignKey(UniformItem, null=True, blank=True, on_delete=models.CASCADE, related_name="movements")
+    book = models.ForeignKey(
+        Book, null=True, blank=True, on_delete=models.CASCADE, related_name="movements"
+    )
+    uniform = models.ForeignKey(
+        UniformItem, null=True, blank=True, on_delete=models.CASCADE, related_name="movements"
+    )
     size = models.CharField(max_length=20, blank=True)
     change = models.IntegerField()
     reason = models.CharField(max_length=8, choices=Reason.choices)
     note = models.CharField(max_length=200, blank=True)
-    recorded_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    recorded_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -131,7 +147,9 @@ class Order(SchoolOwned):
     student = models.ForeignKey("people.Student", on_delete=models.PROTECT, related_name="orders")
     ordered_by = models.ForeignKey(USER, on_delete=models.PROTECT, related_name="+")
     kind = models.CharField(max_length=8, choices=Kind.choices)
-    status = models.CharField(max_length=16, choices=Status.choices, default=Status.AWAITING_PAYMENT)
+    status = models.CharField(
+        max_length=16, choices=Status.choices, default=Status.AWAITING_PAYMENT
+    )
     total = models.PositiveIntegerField(default=0)
     collection_code = models.CharField(max_length=8)
     paid_at = models.DateTimeField(null=True, blank=True)
@@ -147,8 +165,12 @@ class Order(SchoolOwned):
 
 class OrderLine(SchoolOwned):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="lines")
-    book = models.ForeignKey(Book, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
-    uniform = models.ForeignKey(UniformItem, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    book = models.ForeignKey(
+        Book, null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )
+    uniform = models.ForeignKey(
+        UniformItem, null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )
     size = models.CharField(max_length=20, blank=True)
     quantity = models.PositiveSmallIntegerField(default=1)
     price = models.PositiveIntegerField()

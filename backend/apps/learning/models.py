@@ -17,19 +17,25 @@ class StudentAttendance(SchoolOwned):
         LATE = "LATE", "Late"
         EXCUSED = "EXCUSED", "Excused"
 
-    student = models.ForeignKey("people.Student", on_delete=models.CASCADE, related_name="attendance")
+    student = models.ForeignKey(
+        "people.Student", on_delete=models.CASCADE, related_name="attendance"
+    )
     date = models.DateField()
     status = models.CharField(max_length=7, choices=Status.choices)
     arrival_time = models.TimeField(null=True, blank=True)
     departure_time = models.TimeField(null=True, blank=True)
     collected_by = models.CharField(max_length=120, blank=True)
     note = models.CharField(max_length=200, blank=True)
-    marked_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    marked_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     absence_texted = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["-date"]
-        constraints = [models.UniqueConstraint(fields=["student", "date"], name="learning_one_mark_a_day")]
+        constraints = [
+            models.UniqueConstraint(fields=["student", "date"], name="learning_one_mark_a_day")
+        ]
 
     def __str__(self):
         return f"{self.student} {self.date} {self.status}"
@@ -47,11 +53,15 @@ class StaffAttendance(SchoolOwned):
     status = models.CharField(max_length=8, choices=Status.choices)
     time_in = models.TimeField(null=True, blank=True)
     note = models.CharField(max_length=200, blank=True)
-    marked_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    marked_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
 
     class Meta:
         ordering = ["-date"]
-        constraints = [models.UniqueConstraint(fields=["staff", "date"], name="learning_one_staff_mark")]
+        constraints = [
+            models.UniqueConstraint(fields=["staff", "date"], name="learning_one_staff_mark")
+        ]
 
     def __str__(self):
         return f"{self.staff} {self.date} {self.status}"
@@ -69,13 +79,17 @@ class LeaveRequest(SchoolOwned):
         APPROVED = "APPROVED", "Approved"
         REJECTED = "REJECTED", "Rejected"
 
-    staff = models.ForeignKey("people.Staff", on_delete=models.CASCADE, related_name="leave_requests")
+    staff = models.ForeignKey(
+        "people.Staff", on_delete=models.CASCADE, related_name="leave_requests"
+    )
     kind = models.CharField(max_length=9, choices=Kind.choices)
     start = models.DateField()
     end = models.DateField()
     reason = models.CharField(max_length=300, blank=True)
     status = models.CharField(max_length=8, choices=Status.choices, default=Status.PENDING)
-    decided_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    decided_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
 
     class Meta:
         ordering = ["-start"]
@@ -88,12 +102,16 @@ class GradingScale(SchoolOwned):
     """Rows of {min, max, grade, remark}, per level and year (configurable, not coded)."""
 
     band = models.CharField(max_length=20)
-    academic_year = models.ForeignKey("academics.AcademicYear", on_delete=models.CASCADE, related_name="+")
+    academic_year = models.ForeignKey(
+        "academics.AcademicYear", on_delete=models.CASCADE, related_name="+"
+    )
     rows = models.JSONField(default=list)
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["school", "band", "academic_year"], name="learning_one_scale")
+            models.UniqueConstraint(
+                fields=["school", "band", "academic_year"], name="learning_one_scale"
+            )
         ]
 
     def __str__(self):
@@ -102,7 +120,9 @@ class GradingScale(SchoolOwned):
 
 class AssessmentComponent(SchoolOwned):
     band = models.CharField(max_length=20)
-    academic_year = models.ForeignKey("academics.AcademicYear", on_delete=models.CASCADE, related_name="+")
+    academic_year = models.ForeignKey(
+        "academics.AcademicYear", on_delete=models.CASCADE, related_name="+"
+    )
     name = models.CharField(max_length=60)
     weight = models.PositiveSmallIntegerField(help_text="Percent of the total")
     max_score = models.PositiveSmallIntegerField(default=100)
@@ -121,14 +141,18 @@ class ResultRules(SchoolOwned):
         DENSE = "DENSE", "Tied pupils share the position, the next follows (1, 1, 2)"
 
     band = models.CharField(max_length=20)
-    academic_year = models.ForeignKey("academics.AcademicYear", on_delete=models.CASCADE, related_name="+")
+    academic_year = models.ForeignKey(
+        "academics.AcademicYear", on_delete=models.CASCADE, related_name="+"
+    )
     pass_mark = models.PositiveSmallIntegerField(default=50)
     positions_enabled = models.BooleanField(default=False)
     tie_rule = models.CharField(max_length=6, choices=TieRule.choices, default=TieRule.SHARED)
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["school", "band", "academic_year"], name="learning_one_rules")
+            models.UniqueConstraint(
+                fields=["school", "band", "academic_year"], name="learning_one_rules"
+            )
         ]
 
     def __str__(self):
@@ -139,9 +163,13 @@ class Mark(SchoolOwned):
     student = models.ForeignKey("people.Student", on_delete=models.CASCADE, related_name="marks")
     subject = models.ForeignKey("academics.Subject", on_delete=models.PROTECT, related_name="+")
     term = models.ForeignKey("academics.Term", on_delete=models.CASCADE, related_name="+")
-    component = models.ForeignKey(AssessmentComponent, on_delete=models.PROTECT, related_name="marks")
+    component = models.ForeignKey(
+        AssessmentComponent, on_delete=models.PROTECT, related_name="marks"
+    )
     score = models.DecimalField(max_digits=6, decimal_places=2)
-    entered_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    entered_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
 
     class Meta:
         constraints = [
@@ -171,7 +199,9 @@ class DescriptiveResult(SchoolOwned):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["student", "subject", "term"], name="learning_one_description")
+            models.UniqueConstraint(
+                fields=["student", "subject", "term"], name="learning_one_description"
+            )
         ]
 
     def __str__(self):
@@ -188,18 +218,28 @@ class ResultSheet(SchoolOwned):
         APPROVED = "APPROVED", "Approved"
         PUBLISHED = "PUBLISHED", "Published"
 
-    school_class = models.ForeignKey("academics.SchoolClass", on_delete=models.CASCADE, related_name="+")
+    school_class = models.ForeignKey(
+        "academics.SchoolClass", on_delete=models.CASCADE, related_name="+"
+    )
     subject = models.ForeignKey("academics.Subject", on_delete=models.PROTECT, related_name="+")
     term = models.ForeignKey("academics.Term", on_delete=models.CASCADE, related_name="+")
     status = models.CharField(max_length=9, choices=Status.choices, default=Status.DRAFT)
-    submitted_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
-    reviewed_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
-    approved_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    submitted_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    reviewed_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    approved_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     published_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["school_class", "subject", "term"], name="learning_one_sheet")
+            models.UniqueConstraint(
+                fields=["school_class", "subject", "term"], name="learning_one_sheet"
+            )
         ]
 
     def __str__(self):
@@ -233,7 +273,9 @@ class ReportCardEntry(SchoolOwned):
     reopening_date = models.DateField(null=True, blank=True)
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["student", "term"], name="learning_one_report_entry")]
+        constraints = [
+            models.UniqueConstraint(fields=["student", "term"], name="learning_one_report_entry")
+        ]
 
     def __str__(self):
         return f"Report for {self.student}, {self.term}"
@@ -243,7 +285,9 @@ class ReportSettings(SchoolOwned):
     withhold_for_arrears = models.BooleanField(default=False)
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["school"], name="learning_one_report_settings")]
+        constraints = [
+            models.UniqueConstraint(fields=["school"], name="learning_one_report_settings")
+        ]
 
     def __str__(self):
         return "Report card settings"
@@ -280,14 +324,20 @@ class LessonNote(SchoolOwned):
         APPROVED = "APPROVED", "Approved"
 
     staff = models.ForeignKey("people.Staff", on_delete=models.CASCADE, related_name="lesson_notes")
-    school_class = models.ForeignKey("academics.SchoolClass", on_delete=models.CASCADE, related_name="+")
+    school_class = models.ForeignKey(
+        "academics.SchoolClass", on_delete=models.CASCADE, related_name="+"
+    )
     subject = models.ForeignKey("academics.Subject", on_delete=models.PROTECT, related_name="+")
     week_start = models.DateField()
-    template = models.ForeignKey(LessonNoteTemplate, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    template = models.ForeignKey(
+        LessonNoteTemplate, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     content = models.JSONField(default=dict)
     status = models.CharField(max_length=9, choices=Status.choices, default=Status.DRAFT)
     review_comment = models.CharField(max_length=500, blank=True)
-    reviewed_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    reviewed_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -319,16 +369,22 @@ class TimetableSlot(SchoolOwned):
         FRIDAY = 5, "Friday"
 
     term = models.ForeignKey("academics.Term", on_delete=models.CASCADE, related_name="+")
-    school_class = models.ForeignKey("academics.SchoolClass", on_delete=models.CASCADE, related_name="+")
+    school_class = models.ForeignKey(
+        "academics.SchoolClass", on_delete=models.CASCADE, related_name="+"
+    )
     day = models.PositiveSmallIntegerField(choices=Day.choices)
     period = models.ForeignKey(Period, on_delete=models.CASCADE, related_name="slots")
     subject = models.ForeignKey("academics.Subject", on_delete=models.PROTECT, related_name="+")
-    staff = models.ForeignKey("people.Staff", null=True, blank=True, on_delete=models.SET_NULL, related_name="timetable")
+    staff = models.ForeignKey(
+        "people.Staff", null=True, blank=True, on_delete=models.SET_NULL, related_name="timetable"
+    )
 
     class Meta:
         ordering = ["day", "period__order"]
         constraints = [
-            models.UniqueConstraint(fields=["term", "school_class", "day", "period"], name="learning_one_slot")
+            models.UniqueConstraint(
+                fields=["term", "school_class", "day", "period"], name="learning_one_slot"
+            )
         ]
 
     def __str__(self):
@@ -354,14 +410,20 @@ class LearningResource(SchoolOwned):
         LINK = "LINK", "Link"
 
     title = models.CharField(max_length=160)
-    subject = models.ForeignKey("academics.Subject", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    subject = models.ForeignKey(
+        "academics.Subject", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     band = models.CharField(max_length=20, blank=True)
-    school_class = models.ForeignKey("academics.SchoolClass", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    school_class = models.ForeignKey(
+        "academics.SchoolClass", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     kind = models.CharField(max_length=4, choices=Kind.choices, default=Kind.LINK)
     file = models.FileField(upload_to="resources/", blank=True)
     url = models.URLField(blank=True)
     description = models.CharField(max_length=300, blank=True)
-    uploaded_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    uploaded_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -378,7 +440,9 @@ class Quiz(SchoolOwned):
         CLOSED = "CLOSED", "Closed"
 
     teacher = models.ForeignKey("people.Staff", on_delete=models.CASCADE, related_name="quizzes")
-    school_class = models.ForeignKey("academics.SchoolClass", on_delete=models.CASCADE, related_name="+")
+    school_class = models.ForeignKey(
+        "academics.SchoolClass", on_delete=models.CASCADE, related_name="+"
+    )
     subject = models.ForeignKey("academics.Subject", on_delete=models.PROTECT, related_name="+")
     title = models.CharField(max_length=160)
     topic = models.CharField(max_length=160)
@@ -422,7 +486,9 @@ class QuizAttempt(SchoolOwned):
     score = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["quiz", "student"], name="learning_one_attempt")]
+        constraints = [
+            models.UniqueConstraint(fields=["quiz", "student"], name="learning_one_attempt")
+        ]
 
     def __str__(self):
         return f"{self.student} on {self.quiz}"
@@ -436,7 +502,9 @@ class QuizAnswer(SchoolOwned):
     marks_awarded = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["attempt", "question"], name="learning_one_answer")]
+        constraints = [
+            models.UniqueConstraint(fields=["attempt", "question"], name="learning_one_answer")
+        ]
 
     def __str__(self):
         return f"Answer to {self.question}"

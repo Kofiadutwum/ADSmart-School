@@ -49,13 +49,21 @@ class FeeStructure(SchoolOwned):
         UNIFORM = "UNIFORM", "Uniform"
         OTHER = "OTHER", "Other"
 
-    academic_year = models.ForeignKey("academics.AcademicYear", on_delete=models.CASCADE, related_name="+")
+    academic_year = models.ForeignKey(
+        "academics.AcademicYear", on_delete=models.CASCADE, related_name="+"
+    )
     term = models.ForeignKey(
-        "academics.Term", null=True, blank=True, on_delete=models.CASCADE, related_name="+",
+        "academics.Term",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="+",
         help_text="Empty: charged every term",
     )
     name = models.CharField(max_length=80)
-    charge_type = models.CharField(max_length=8, choices=ChargeType.choices, default=ChargeType.TUITION)
+    charge_type = models.CharField(
+        max_length=8, choices=ChargeType.choices, default=ChargeType.TUITION
+    )
     band = models.CharField(max_length=20, blank=True, help_text="Empty: every level")
     school_class = models.ForeignKey(
         "academics.SchoolClass", null=True, blank=True, on_delete=models.CASCADE, related_name="+"
@@ -73,11 +81,15 @@ class FeeStructure(SchoolOwned):
 class OptionalCharge(SchoolOwned):
     """A pupil opted into an optional charge such as the bus or BECE."""
 
-    student = models.ForeignKey("people.Student", on_delete=models.CASCADE, related_name="optional_charges")
+    student = models.ForeignKey(
+        "people.Student", on_delete=models.CASCADE, related_name="optional_charges"
+    )
     fee = models.ForeignKey(FeeStructure, on_delete=models.CASCADE, related_name="takers")
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["student", "fee"], name="finance_one_option")]
+        constraints = [
+            models.UniqueConstraint(fields=["student", "fee"], name="finance_one_option")
+        ]
 
     def __str__(self):
         return f"{self.student} takes {self.fee.name}"
@@ -95,13 +107,17 @@ class Discount(SchoolOwned):
         APPROVED = "APPROVED", "Approved"
         REJECTED = "REJECTED", "Rejected"
 
-    student = models.ForeignKey("people.Student", on_delete=models.CASCADE, related_name="discounts")
+    student = models.ForeignKey(
+        "people.Student", on_delete=models.CASCADE, related_name="discounts"
+    )
     kind = models.CharField(max_length=12, choices=Kind.choices)
     percent = models.PositiveSmallIntegerField(default=0, help_text="Of the term's charges")
     amount = models.PositiveIntegerField(default=0, help_text="Fixed, in pesewas")
     reason = models.CharField(max_length=300)
     status = models.CharField(max_length=8, choices=Status.choices, default=Status.PENDING)
-    approved_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    approved_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     active = models.BooleanField(default=True)
 
     def __str__(self):
@@ -116,7 +132,9 @@ class Counter(SchoolOwned):
     last = models.PositiveIntegerField(default=0)
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["school", "kind", "year"], name="finance_one_counter")]
+        constraints = [
+            models.UniqueConstraint(fields=["school", "kind", "year"], name="finance_one_counter")
+        ]
 
     def __str__(self):
         return f"{self.kind} {self.year}: {self.last}"
@@ -141,7 +159,9 @@ class Invoice(SchoolOwned):
         ordering = ["-issued_on", "-id"]
         constraints = [
             models.UniqueConstraint(fields=["school", "number"], name="finance_invoice_number"),
-            models.UniqueConstraint(fields=["student", "term"], name="finance_one_invoice_per_term"),
+            models.UniqueConstraint(
+                fields=["student", "term"], name="finance_one_invoice_per_term"
+            ),
         ]
 
     def __str__(self):
@@ -162,7 +182,9 @@ class InvoiceLine(SchoolOwned):
     description = models.CharField(max_length=160)
     amount = models.IntegerField()
     kind = models.CharField(max_length=8, choices=Kind.choices, default=Kind.CHARGE)
-    fee = models.ForeignKey(FeeStructure, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    fee = models.ForeignKey(
+        FeeStructure, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
 
     def __str__(self):
         return f"{self.description}: {self.amount / 100:.2f}"
@@ -211,10 +233,14 @@ class Payment(SchoolOwned):
     note = models.CharField(max_length=200, blank=True)
     status = models.CharField(max_length=9, choices=Status.choices, default=Status.CONFIRMED)
     receipt_number = models.CharField(max_length=20, blank=True)
-    received_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    received_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     received_at = models.DateTimeField(auto_now_add=True)
     confirmed_at = models.DateTimeField(null=True, blank=True)
-    order = models.ForeignKey("shop.Order", null=True, blank=True, on_delete=models.SET_NULL, related_name="payments")
+    order = models.ForeignKey(
+        "shop.Order", null=True, blank=True, on_delete=models.SET_NULL, related_name="payments"
+    )
 
     class Meta:
         ordering = ["-received_at", "-id"]
@@ -247,15 +273,25 @@ class LedgerEntry(SchoolOwned):
         SPEND = "SPEND", "Wallet spend"
         COLLECTED = "COLLECTED", "Collected"
 
-    student = models.ForeignKey("people.Student", null=True, blank=True, on_delete=models.PROTECT, related_name="ledger")
+    student = models.ForeignKey(
+        "people.Student", null=True, blank=True, on_delete=models.PROTECT, related_name="ledger"
+    )
     account = models.CharField(max_length=7, choices=Account.choices)
     kind = models.CharField(max_length=10, choices=Kind.choices)
     amount = models.IntegerField(help_text="Pesewas; see the module note for the sign")
     description = models.CharField(max_length=200)
-    invoice = models.ForeignKey(Invoice, null=True, blank=True, on_delete=models.PROTECT, related_name="ledger")
-    payment = models.ForeignKey(Payment, null=True, blank=True, on_delete=models.PROTECT, related_name="ledger")
-    reverses = models.OneToOneField("self", null=True, blank=True, on_delete=models.PROTECT, related_name="reversed_by")
-    created_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    invoice = models.ForeignKey(
+        Invoice, null=True, blank=True, on_delete=models.PROTECT, related_name="ledger"
+    )
+    payment = models.ForeignKey(
+        Payment, null=True, blank=True, on_delete=models.PROTECT, related_name="ledger"
+    )
+    reverses = models.OneToOneField(
+        "self", null=True, blank=True, on_delete=models.PROTECT, related_name="reversed_by"
+    )
+    created_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     objects = LedgerQuerySet.as_manager()
@@ -290,7 +326,9 @@ class RefundRequest(SchoolOwned):
     reason = models.CharField(max_length=300)
     status = models.CharField(max_length=8, choices=Status.choices, default=Status.PENDING)
     raised_by = models.ForeignKey(USER, on_delete=models.PROTECT, related_name="+")
-    decided_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    decided_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     decided_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -312,11 +350,17 @@ class CategoryRate(SchoolOwned):
     daily_amount = models.PositiveIntegerField()
     canteen_amount = models.PositiveIntegerField()
     status = models.CharField(max_length=8, choices=Status.choices, default=Status.PENDING)
-    set_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
-    approved_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    set_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    approved_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["school", "category"], name="finance_one_rate")]
+        constraints = [
+            models.UniqueConstraint(fields=["school", "category"], name="finance_one_rate")
+        ]
 
     def __str__(self):
         return f"{self.get_category_display()}: {self.daily_amount / 100:.2f} a day"
@@ -327,7 +371,9 @@ class ChargeExemption(SchoolOwned):
         FULL = "FULL", "Exempt"
         REDUCED = "REDUCED", "Reduced daily amount"
 
-    student = models.ForeignKey("people.Student", on_delete=models.CASCADE, related_name="charge_exemptions")
+    student = models.ForeignKey(
+        "people.Student", on_delete=models.CASCADE, related_name="charge_exemptions"
+    )
     kind = models.CharField(max_length=7, choices=Kind.choices)
     daily_amount = models.PositiveIntegerField(default=0, help_text="For a reduced amount")
     reason = models.CharField(max_length=200)
@@ -344,15 +390,21 @@ class DailyList(SchoolOwned):
         OPEN = "OPEN", "Open"
         CLOSED = "CLOSED", "Closed"
 
-    school_class = models.ForeignKey("academics.SchoolClass", on_delete=models.CASCADE, related_name="daily_lists")
+    school_class = models.ForeignKey(
+        "academics.SchoolClass", on_delete=models.CASCADE, related_name="daily_lists"
+    )
     date = models.DateField()
     status = models.CharField(max_length=6, choices=Status.choices, default=Status.OPEN)
-    closed_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    closed_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     closed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-date"]
-        constraints = [models.UniqueConstraint(fields=["school_class", "date"], name="finance_one_daily_list")]
+        constraints = [
+            models.UniqueConstraint(fields=["school_class", "date"], name="finance_one_daily_list")
+        ]
 
     def __str__(self):
         return f"{self.school_class} {self.date}"
@@ -367,17 +419,23 @@ class DailyCharge(SchoolOwned):
         EXEMPT = "EXEMPT", "Exempt"
 
     daily_list = models.ForeignKey(DailyList, on_delete=models.CASCADE, related_name="charges")
-    student = models.ForeignKey("people.Student", on_delete=models.CASCADE, related_name="daily_charges")
+    student = models.ForeignKey(
+        "people.Student", on_delete=models.CASCADE, related_name="daily_charges"
+    )
     canteen = models.PositiveIntegerField(default=0)
     extra = models.PositiveIntegerField(default=0)
     bus = models.PositiveIntegerField(default=0)
     status = models.CharField(max_length=6, choices=Status.choices, default=Status.UNPAID)
     paid = models.PositiveIntegerField(default=0)
     method = models.CharField(max_length=6, blank=True)
-    marked_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    marked_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["daily_list", "student"], name="finance_one_charge")]
+        constraints = [
+            models.UniqueConstraint(fields=["daily_list", "student"], name="finance_one_charge")
+        ]
 
     def __str__(self):
         return f"{self.student} {self.daily_list.date}"
@@ -400,7 +458,9 @@ class LateEdit(SchoolOwned):
     reason = models.CharField(max_length=200)
     status = models.CharField(max_length=8, choices=Status.choices, default=Status.PENDING)
     requested_by = models.ForeignKey(USER, on_delete=models.PROTECT, related_name="+")
-    decided_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    decided_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
 
     def __str__(self):
         return f"Late edit for {self.charge}"
@@ -410,12 +470,16 @@ class Handover(SchoolOwned):
     """The Canteen Officer's daily count of what a class teacher hands over."""
 
     date = models.DateField()
-    school_class = models.ForeignKey("academics.SchoolClass", on_delete=models.CASCADE, related_name="+")
+    school_class = models.ForeignKey(
+        "academics.SchoolClass", on_delete=models.CASCADE, related_name="+"
+    )
     collector = models.ForeignKey(USER, on_delete=models.PROTECT, related_name="+")
     expected = models.PositiveIntegerField()
     counted = models.PositiveIntegerField()
     note = models.CharField(max_length=200, blank=True)
-    signed_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    signed_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
 
     class Meta:
         ordering = ["-date"]
@@ -436,12 +500,16 @@ class CashUp(SchoolOwned):
     expected = models.PositiveIntegerField()
     counted = models.PositiveIntegerField()
     note = models.CharField(max_length=200, blank=True)
-    signed_off_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    signed_off_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["-date"]
-        constraints = [models.UniqueConstraint(fields=["collector", "date"], name="finance_one_cash_up")]
+        constraints = [
+            models.UniqueConstraint(fields=["collector", "date"], name="finance_one_cash_up")
+        ]
 
     def __str__(self):
         return f"Cash-up {self.date} by {self.collector}"
@@ -457,17 +525,23 @@ class WeeklyStatement(SchoolOwned):
         APPROVED = "APPROVED", "Approved"
         SENT = "SENT", "Sent"
 
-    school_class = models.ForeignKey("academics.SchoolClass", on_delete=models.CASCADE, related_name="+")
+    school_class = models.ForeignKey(
+        "academics.SchoolClass", on_delete=models.CASCADE, related_name="+"
+    )
     week_start = models.DateField()
     totals = models.JSONField(default=dict)
     status = models.CharField(max_length=8, choices=Status.choices, default=Status.DRAFT)
-    approved_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    approved_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     sent_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-week_start"]
         constraints = [
-            models.UniqueConstraint(fields=["school_class", "week_start"], name="finance_one_statement")
+            models.UniqueConstraint(
+                fields=["school_class", "week_start"], name="finance_one_statement"
+            )
         ]
 
     def __str__(self):
@@ -488,7 +562,9 @@ class PayRule(SchoolOwned):
 
     name = models.CharField(max_length=80)
     scope = models.CharField(max_length=8, choices=Scope.choices, default=Scope.CLASS)
-    school_class = models.ForeignKey("academics.SchoolClass", null=True, blank=True, on_delete=models.CASCADE, related_name="+")
+    school_class = models.ForeignKey(
+        "academics.SchoolClass", null=True, blank=True, on_delete=models.CASCADE, related_name="+"
+    )
     category = models.CharField(max_length=11, choices=Category.choices, blank=True)
     method = models.CharField(max_length=13, choices=Method.choices, default=Method.PERCENT)
     value = models.PositiveIntegerField(help_text="Percent, or pesewas")
@@ -509,13 +585,17 @@ class PayRun(SchoolOwned):
 
     week_start = models.DateField()
     status = models.CharField(max_length=8, choices=Status.choices, default=Status.DRAFT)
-    approved_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    approved_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     paid_at = models.DateTimeField(null=True, blank=True)
     reference = models.CharField(max_length=80, blank=True)
 
     class Meta:
         ordering = ["-week_start"]
-        constraints = [models.UniqueConstraint(fields=["school", "week_start"], name="finance_one_pay_run")]
+        constraints = [
+            models.UniqueConstraint(fields=["school", "week_start"], name="finance_one_pay_run")
+        ]
 
     def __str__(self):
         return f"Extra-class pay, week of {self.week_start}"
@@ -546,18 +626,32 @@ class OnlinePayment(models.Model):
         SUCCESS = "SUCCESS", "Paid"
         FAILED = "FAILED", "Failed"
 
-    school = models.ForeignKey("school.School", null=True, blank=True, on_delete=models.CASCADE, related_name="+")
+    school = models.ForeignKey(
+        "school.School", null=True, blank=True, on_delete=models.CASCADE, related_name="+"
+    )
     reference = models.CharField(max_length=40, unique=True)
     channel = models.CharField(max_length=8, default="PAYSTACK")
     purpose = models.CharField(max_length=6, choices=Purpose.choices)
-    student = models.ForeignKey("people.Student", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
-    bill = models.ForeignKey("billing.PlatformBill", null=True, blank=True, on_delete=models.PROTECT, related_name="online_payments")
-    order = models.ForeignKey("shop.Order", null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    student = models.ForeignKey(
+        "people.Student", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )
+    bill = models.ForeignKey(
+        "billing.PlatformBill",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="online_payments",
+    )
+    order = models.ForeignKey(
+        "shop.Order", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )
     amount = models.PositiveIntegerField()
     phone = models.CharField(max_length=16, blank=True)
     status = models.CharField(max_length=7, choices=Status.choices, default=Status.PENDING)
     provider_id = models.CharField(max_length=80, blank=True)
-    payment = models.ForeignKey(Payment, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    payment = models.ForeignKey(
+        Payment, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     verified_at = models.DateTimeField(null=True, blank=True)
 
@@ -573,10 +667,14 @@ class PaymentLink(SchoolOwned):
 
     token = models.CharField(max_length=40, unique=True)
     student = models.ForeignKey("people.Student", on_delete=models.CASCADE, related_name="+")
-    purpose = models.CharField(max_length=6, choices=OnlinePayment.Purpose.choices, default=OnlinePayment.Purpose.FEES)
+    purpose = models.CharField(
+        max_length=6, choices=OnlinePayment.Purpose.choices, default=OnlinePayment.Purpose.FEES
+    )
     amount = models.PositiveIntegerField()
     expires_at = models.DateTimeField()
-    created_by = models.ForeignKey(USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    created_by = models.ForeignKey(
+        USER, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -624,7 +722,9 @@ class StatementLine(SchoolOwned):
     reference = models.CharField(max_length=120, blank=True)
     description = models.CharField(max_length=200, blank=True)
     status = models.CharField(max_length=9, choices=Status.choices, default=Status.UNMATCHED)
-    payment = models.ForeignKey(Payment, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    payment = models.ForeignKey(
+        Payment, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
 
     class Meta:
         ordering = ["date", "id"]

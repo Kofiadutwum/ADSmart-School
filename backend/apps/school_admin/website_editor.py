@@ -72,7 +72,9 @@ class BlocksView(SchoolView):
     read_roles, write_roles = READERS, WEB
 
     def get(self, request):
-        return Response([block_row(row) for row in ContentBlock.objects.for_school(self.school).order_by("key")])
+        return Response(
+            [block_row(row) for row in ContentBlock.objects.for_school(self.school).order_by("key")]
+        )
 
 
 class BlockDetailView(SchoolView):
@@ -87,7 +89,13 @@ class BlockDetailView(SchoolView):
             setattr(block, key, value)
         block.save()
         if old:
-            record(AuditLog.Action.UPDATED, actor=request.user, entity=block, old={k: str(v)[:200] for k, v in old.items()}, request=request)
+            record(
+                AuditLog.Action.UPDATED,
+                actor=request.user,
+                entity=block,
+                old={k: str(v)[:200] for k, v in old.items()},
+                request=request,
+            )
             refresh_school_sites()
         return Response(block_row(block))
 
@@ -138,7 +146,13 @@ class PhotoDetailView(SchoolView):
         for key, value in data.items():
             setattr(slot, key, value)
         slot.save()
-        record(AuditLog.Action.UPDATED, actor=request.user, entity=slot, new=dict(data), request=request)
+        record(
+            AuditLog.Action.UPDATED,
+            actor=request.user,
+            entity=slot,
+            new=dict(data),
+            request=request,
+        )
         refresh_school_sites()
         return Response(photo_row(slot))
 
@@ -153,7 +167,13 @@ class PhotoDetailView(SchoolView):
         slot.renditions = []
         slot.save()
         slot.refresh_from_db()
-        record(AuditLog.Action.UPDATED, actor=request.user, entity=slot, new={"photo": "new"}, request=request)
+        record(
+            AuditLog.Action.UPDATED,
+            actor=request.user,
+            entity=slot,
+            new={"photo": "new"},
+            request=request,
+        )
         refresh_school_sites()
         return Response(photo_row(slot))
 
@@ -176,7 +196,10 @@ class NewsResource(RefreshingResource):
 
     @classmethod
     def row(cls, view, instance):
-        return {**super().row(view, instance), "cover": image_payload(instance.renditions, instance.cover_alt)}
+        return {
+            **super().row(view, instance),
+            "cover": image_payload(instance.renditions, instance.cover_alt),
+        }
 
 
 class NewsPublishView(SchoolView):
@@ -186,7 +209,10 @@ class NewsPublishView(SchoolView):
     def post(self, request, pk, action):
         post = get_object_or_404(NewsPost.objects.for_school(self.school), pk=pk)
         if action == "publish":
-            post.status, post.published_at = NewsPost.Status.PUBLISHED, post.published_at or timezone.now()
+            post.status, post.published_at = (
+                NewsPost.Status.PUBLISHED,
+                post.published_at or timezone.now(),
+            )
             audit = AuditLog.Action.PUBLISHED
         else:
             post.status = NewsPost.Status.DRAFT
@@ -279,7 +305,9 @@ def notices_view(school_of, base=SchoolView, read=READERS, write=WEB):
         read_roles, write_roles = read, write
 
         def get(self, request):
-            return Response([notice_row(n) for n in PrivacyNotice.objects.filter(school=school_of(self))])
+            return Response(
+                [notice_row(n) for n in PrivacyNotice.objects.filter(school=school_of(self))]
+            )
 
         @transaction.atomic
         def post(self, request):
@@ -288,7 +316,13 @@ def notices_view(school_of, base=SchoolView, read=READERS, write=WEB):
             if PrivacyNotice.objects.filter(school=school, version=data["version"]).exists():
                 raise serializers.ValidationError({"version": ["That version already exists."]})
             notice = PrivacyNotice.objects.create(school=school, is_draft=True, **data)
-            record(AuditLog.Action.CREATED, actor=request.user, entity=notice, request=request, school=school)
+            record(
+                AuditLog.Action.CREATED,
+                actor=request.user,
+                entity=notice,
+                request=request,
+                school=school,
+            )
             return Response(notice_row(notice), status=201)
 
     class NoticeDetailView(base):
@@ -311,7 +345,13 @@ def notices_view(school_of, base=SchoolView, read=READERS, write=WEB):
             notice = get_object_or_404(PrivacyNotice, pk=pk, school=school_of(self))
             notice.is_draft = False
             notice.save(update_fields=["is_draft"])
-            record(AuditLog.Action.PUBLISHED, actor=request.user, entity=notice, request=request, school=school_of(self))
+            record(
+                AuditLog.Action.PUBLISHED,
+                actor=request.user,
+                entity=notice,
+                request=request,
+                school=school_of(self),
+            )
             refresh_school_sites()
             return Response(notice_row(notice))
 
@@ -332,7 +372,11 @@ class LiveView(SchoolView):
 
     def payload(self, school: School) -> dict:
         blockers = [item for item in publication_blockers(school) if item != NOT_LIVE]
-        return {"is_live": school.is_live, "blockers": blockers, "went_live_at": school.went_live_at}
+        return {
+            "is_live": school.is_live,
+            "blockers": blockers,
+            "went_live_at": school.went_live_at,
+        }
 
     def get(self, request):
         return Response(self.payload(self.school))
@@ -343,7 +387,9 @@ class LiveView(SchoolView):
         school = School.objects.select_for_update().get(pk=self.school.pk)
         payload = self.payload(school)
         if live and payload["blockers"]:
-            raise ApiError("not_ready", "The site can't go live yet: " + "; ".join(payload["blockers"]) + ".")
+            raise ApiError(
+                "not_ready", "The site can't go live yet: " + "; ".join(payload["blockers"]) + "."
+            )
         school.is_live = live
         if live and not school.went_live_at:
             school.went_live_at = timezone.now()

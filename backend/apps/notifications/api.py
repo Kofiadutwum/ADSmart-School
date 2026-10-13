@@ -59,9 +59,19 @@ class TemplateApproveView(SchoolView):
     @transaction.atomic
     def post(self, request, pk):
         template = get_object_or_404(MessageTemplate.objects.for_school(self.school), pk=pk)
-        template.approved, template.approved_by, template.approved_at = True, request.user, timezone.now()
+        template.approved, template.approved_by, template.approved_at = (
+            True,
+            request.user,
+            timezone.now(),
+        )
         template.save()
-        record(AuditLog.Action.UPDATED, actor=request.user, entity=template, new={"approved": True}, request=request)
+        record(
+            AuditLog.Action.UPDATED,
+            actor=request.user,
+            entity=template,
+            new={"approved": True},
+            request=request,
+        )
         return Response(TemplateResource.row(self, template))
 
 
@@ -148,12 +158,16 @@ def send_announcement(announcement: Announcement, by) -> int:
             for parent in parents_for(announcement):
                 if not announcement.essential and not has_consent(parent, Consent.Type.SMS_CONTACT):
                     continue
-                sent = send_sms(parent.phone, text, purpose=Purpose.ANNOUNCEMENT, school=announcement.school)
+                sent = send_sms(
+                    parent.phone, text, purpose=Purpose.ANNOUNCEMENT, school=announcement.school
+                )
                 texts += sent.status == SmsMessage.Status.SENT
         if audience in (Announcement.Audience.STAFF, Announcement.Audience.EVERYONE):
             for staff in staff_for(announcement):
                 if staff.phone:
-                    sent = send_sms(staff.phone, text, purpose=Purpose.ANNOUNCEMENT, school=announcement.school)
+                    sent = send_sms(
+                        staff.phone, text, purpose=Purpose.ANNOUNCEMENT, school=announcement.school
+                    )
                     texts += sent.status == SmsMessage.Status.SENT
     announcement.status = Announcement.Status.SENT
     announcement.sent_at = timezone.now()

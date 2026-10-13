@@ -14,7 +14,9 @@ from apps.school.models import SchoolOwned
 
 
 class SupportGrant(SchoolOwned):
-    granted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    granted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
+    )
     hours = models.PositiveSmallIntegerField()
     starts_at = models.DateTimeField(default=timezone.now)
     ends_at = models.DateTimeField()
@@ -60,7 +62,9 @@ class SupportThread(SchoolOwned):
 
     subject = models.CharField(max_length=160)
     status = models.CharField(max_length=6, choices=Status.choices, default=Status.OPEN)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -99,7 +103,9 @@ class DataRequest(SchoolOwned):
         DONE = "DONE", "Done"
         REFUSED = "REFUSED", "Refused"
 
-    parent = models.ForeignKey("people.Parent", on_delete=models.CASCADE, related_name="data_requests")
+    parent = models.ForeignKey(
+        "people.Parent", on_delete=models.CASCADE, related_name="data_requests"
+    )
     kind = models.CharField(max_length=10, choices=Kind.choices)
     details = models.TextField(max_length=2000, blank=True)
     status = models.CharField(max_length=8, choices=Status.choices, default=Status.OPEN)
@@ -146,7 +152,9 @@ class RetentionRule(SchoolOwned):
     staff_years = models.PositiveSmallIntegerField(default=7)
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["school"], name="support_one_retention_rule")]
+        constraints = [
+            models.UniqueConstraint(fields=["school"], name="support_one_retention_rule")
+        ]
 
     def __str__(self):
         return f"Keep for {self.left_pupil_years} years"

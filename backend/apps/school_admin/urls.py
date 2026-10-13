@@ -1,23 +1,31 @@
 from django.urls import path
 
-from apps.school_admin import options, website_editor as web
+from apps.billing import api as billing
+from apps.care import api as care
 from apps.finance import api as finance
-from apps.support import api as support
-from apps.school_admin.views import SchoolView
-
+from apps.finance import daily, online
+from apps.learning import attendance, quizzes, results, teaching
 from apps.school_admin import (
     calendar_views,
     class_lists,
     classes,
     consents,
     enrolment,
+    options,
     parents,
     pickups,
     profile,
     pupils,
+    reports,
+    rollover,
     staff,
     views,
 )
+from apps.school_admin import website_editor as web
+from apps.school_admin.views import SchoolView
+from apps.shop import api as shop
+from apps.support import api as support
+from apps.transport import api as transport
 
 urlpatterns = [
     path("me", views.MeView.as_view()),
@@ -112,4 +120,124 @@ urlpatterns = [
     path("finance/debtors", finance.DebtorsView.as_view()),
     path("finance/classes", finance.ClassFinanceView.as_view()),
     path("finance/wallets", finance.WalletsView.as_view()),
+    path("finance/payment-links", online.PaymentLinksView.as_view()),
+    path("finance/ussd-simulator", online.UssdSimulatorView.as_view()),
+    path("finance/statements", online.StatementsView.as_view()),
+    path("finance/statements/<int:pk>", online.StatementDetailView.as_view()),
+    path("finance/statement-lines/<int:pk>", online.StatementLineView.as_view()),
+    *daily.RateResource.urls("finance/rates", SchoolView),
+    path("finance/rates/<int:pk>/approve", daily.RateApproveView.as_view()),
+    *daily.ExemptionResource.urls("finance/exemptions", SchoolView),
+    path("finance/daily/classes/<int:pk>", daily.DailyListView.as_view()),
+    path("finance/daily/charges/<int:pk>", daily.DailyChargeView.as_view()),
+    path("finance/daily/charges/<int:pk>/late-edit", daily.LateEditRequestView.as_view()),
+    path("finance/daily/lists/<int:pk>/close", daily.DailyCloseView.as_view()),
+    path("finance/late-edits", daily.LateEditsView.as_view()),
+    path("finance/late-edits/<int:pk>/decide", daily.LateEditDecideView.as_view()),
+    *daily.HandoverResource.urls("finance/handovers", SchoolView),
+    *daily.CashUpResource.urls("finance/cash-ups", SchoolView),
+    path("finance/cash-ups/<int:pk>/sign-off", daily.CashUpSignOffView.as_view()),
+    path("finance/cash-expected", daily.CashExpectedView.as_view()),
+    path("finance/weekly-statements", daily.StatementsView.as_view()),
+    path(
+        "finance/weekly-statements/<int:pk>/approve",
+        daily.StatementActionView.as_view(),
+        {"action": "approve"},
+    ),
+    path(
+        "finance/weekly-statements/<int:pk>/send",
+        daily.StatementActionView.as_view(),
+        {"action": "send"},
+    ),
+    *daily.PayRuleResource.urls("finance/pay-rules", SchoolView),
+    path("finance/pay-runs", daily.PayRunsView.as_view()),
+    path("finance/pay-lines/<int:pk>", daily.PayLineView.as_view()),
+    path(
+        "finance/pay-runs/<int:pk>/approve", daily.PayRunActionView.as_view(), {"action": "approve"}
+    ),
+    path("finance/pay-runs/<int:pk>/paid", daily.PayRunActionView.as_view(), {"action": "paid"}),
+    path("billing", billing.SchoolBillingView.as_view()),
+    path("billing/bills/<int:pk>", billing.SchoolBillView.as_view()),
+    path("billing/bills/<int:pk>/pay", billing.SchoolBillPayView.as_view()),
+    *transport.CrewResource.urls("transport/crew", SchoolView),
+    *transport.BusResource.urls("transport/buses", SchoolView),
+    *transport.RouteResource.urls("transport/routes", SchoolView),
+    path("transport/routes/<int:pk>/riders", transport.RouteRidersView.as_view()),
+    *transport.StopResource.urls("transport/stops", SchoolView),
+    *transport.AssignmentResource.urls("transport/riders", SchoolView),
+    *transport.StopChangeResource.urls("transport/stop-changes", SchoolView),
+    path("transport/boarding", transport.BoardingView.as_view()),
+    path("learning/register/<int:pk>", attendance.RegisterView.as_view()),
+    path("learning/pupils/<int:pk>/attendance", attendance.PupilAttendanceView.as_view()),
+    path("learning/staff-register", attendance.StaffRegisterView.as_view()),
+    *attendance.LeaveResource.urls("learning/leave", SchoolView),
+    path("learning/leave/<int:pk>/decide", attendance.LeaveDecideView.as_view()),
+    *results.ScaleResource.urls("learning/grading-scales", SchoolView),
+    *results.ComponentResource.urls("learning/components", SchoolView),
+    *results.RulesResource.urls("learning/result-rules", SchoolView),
+    path("learning/marks", results.MarksView.as_view()),
+    path("learning/descriptive", results.DescriptiveView.as_view()),
+    path("learning/sheets", results.SheetsView.as_view()),
+    path("learning/sheets/<int:pk>/changes", results.ChangesView.as_view()),
+    *[
+        path(
+            f"learning/sheets/<int:pk>/{step}", results.SheetActionView.as_view(), {"action": step}
+        )
+        for step in ("submit", "review", "approve", "return", "publish")
+    ],
+    path("learning/classes/<int:pk>/results", results.ClassResultsView.as_view()),
+    path("learning/pupils/<int:pk>/report-card", results.ReportCardView.as_view()),
+    path("learning/pupils/<int:pk>/remarks", results.RemarksView.as_view()),
+    path("learning/pupils/<int:pk>/release-report", results.ReportReleaseView.as_view()),
+    path("learning/report-settings", results.ReportSettingsView.as_view()),
+    *teaching.TemplateResource.urls("learning/note-templates", SchoolView),
+    *teaching.LessonNoteResource.urls("learning/lesson-notes", SchoolView),
+    path("learning/lesson-notes/<int:pk>/submit", teaching.NoteSubmitView.as_view()),
+    path("learning/lesson-notes/<int:pk>/review", teaching.NoteReviewView.as_view()),
+    *teaching.PeriodResource.urls("learning/periods", SchoolView),
+    *teaching.SlotResource.urls("learning/timetable", SchoolView),
+    path("learning/my-timetable", teaching.MyTimetableView.as_view()),
+    *teaching.CoverResource.urls("learning/covers", SchoolView),
+    path("learning/cover-needed", teaching.CoverNeededView.as_view()),
+    path("learning/resources", teaching.ResourcesView.as_view()),
+    path("learning/resources/<int:pk>", teaching.ResourceDetailView.as_view()),
+    *quizzes.QuizResource.urls("learning/quizzes", SchoolView),
+    path("learning/quizzes/<int:pk>/questions", quizzes.QuestionsView.as_view()),
+    path("learning/quizzes/<int:pk>/draft", quizzes.DraftView.as_view()),
+    path("learning/quizzes/<int:pk>/results", quizzes.QuizResultsView.as_view()),
+    path(
+        "learning/quizzes/<int:pk>/publish", quizzes.QuizActionView.as_view(), {"action": "publish"}
+    ),
+    path("learning/quizzes/<int:pk>/close", quizzes.QuizActionView.as_view(), {"action": "close"}),
+    path("learning/questions/<int:pk>", quizzes.QuestionDetailView.as_view()),
+    *care.DailyCareResource.urls("care/daily", SchoolView),
+    *care.CareNoteResource.urls("care/notes", SchoolView),
+    path("care/notes/<int:pk>/approve", care.NoteApproveView.as_view()),
+    path("care/pupils/<int:pk>/collectors", care.PickupCheckView.as_view()),
+    path("care/releases", care.ReleaseView.as_view()),
+    *care.VisitorResource.urls("care/visitors", SchoolView),
+    *care.GateEventResource.urls("care/gate", SchoolView),
+    *care.MedicalResource.urls("care/medical", SchoolView),
+    *care.SickbayResource.urls("care/sickbay", SchoolView),
+    *care.IncidentResource.urls("care/incidents", SchoolView),
+    path("care/incidents/<int:pk>/notify", care.IncidentNotifyView.as_view()),
+    *care.SpecialNeedResource.urls("care/special-needs", SchoolView),
+    *shop.BookResource.urls("shop/books", SchoolView),
+    path("shop/books/<int:pk>/prices", shop.PriceHistoryView.as_view()),
+    *shop.RequiredBookResource.urls("shop/required-books", SchoolView),
+    *shop.UniformResource.urls("shop/uniforms", SchoolView),
+    path("shop/stock", shop.StockView.as_view()),
+    path("shop/low-stock", shop.LowStockView.as_view()),
+    path("shop/orders", shop.OrdersView.as_view()),
+    path("shop/orders/<int:pk>/pay", shop.OrderPayView.as_view()),
+    path("shop/orders/<int:pk>/cancel", shop.OrderCancelView.as_view()),
+    path("shop/collect", shop.CollectView.as_view()),
+    path("shop/pupils/<int:pk>/sizes", shop.SizesView.as_view()),
+    path("rollover", rollover.RolloverView.as_view()),
+    path("dashboard-figures", reports.DashboardView.as_view()),
+    path("reports/pupils.csv", reports.PupilsCsvView.as_view()),
+    path("reports/debtors.csv", reports.DebtorsCsvView.as_view()),
+    path("reports/payments.csv", reports.PaymentsCsvView.as_view()),
+    path("reports/attendance.csv", reports.AttendanceCsvView.as_view()),
+    path("reports/audit.csv", reports.AuditCsvView.as_view()),
 ]

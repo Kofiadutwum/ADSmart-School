@@ -24,7 +24,11 @@ class IsParent(BasePermission):
     def has_permission(self, request, view):
         user = request.user
         return bool(
-            user and user.is_authenticated and user.kind == User.Kind.PARENT and user.school_id
+            user
+            and user.is_authenticated
+            and user.kind == User.Kind.PARENT
+            and user.school_id
+            and not user.school.billing_paused
         )
 
 

@@ -48,7 +48,16 @@ class MoneyView(SchoolView):
 
 class FeeResource(Resource):
     model = FeeStructure
-    fields = ("academic_year", "term", "name", "charge_type", "band", "school_class", "amount", "optional")
+    fields = (
+        "academic_year",
+        "term",
+        "name",
+        "charge_type",
+        "band",
+        "school_class",
+        "amount",
+        "optional",
+    )
     labels = ("academic_year", "term", "school_class")
     read_roles, write_roles = READ, WRITE
     filters = {"year": "academic_year_id", "term": "term_id"}
@@ -105,7 +114,13 @@ class DiscountDecideView(SchoolView):
         discount.status = Discount.Status.APPROVED if approve else Discount.Status.REJECTED
         discount.approved_by = request.user
         discount.save(update_fields=["status", "approved_by"])
-        record(AuditLog.Action.UPDATED, actor=request.user, entity=discount, new={"status": discount.status}, request=request)
+        record(
+            AuditLog.Action.UPDATED,
+            actor=request.user,
+            entity=discount,
+            new={"status": discount.status},
+            request=request,
+        )
         return Response(DiscountResource.row(self, discount))
 
 
@@ -135,7 +150,13 @@ class RefundDecideView(SchoolView):
         refund = get_object_or_404(RefundRequest.objects.for_school(self.school), pk=pk)
         approve = validated(DecideSerializer, request)["approve"]
         refund = services.decide_refund(refund, by=request.user, approve=approve)
-        record(AuditLog.Action.UPDATED, actor=request.user, entity=refund, new={"status": refund.status}, request=request)
+        record(
+            AuditLog.Action.UPDATED,
+            actor=request.user,
+            entity=refund,
+            new={"status": refund.status},
+            request=request,
+        )
         return Response(RefundResource.row(self, refund))
 
 
@@ -156,14 +177,24 @@ def invoice_row(invoice: Invoice, detail: bool = False) -> dict:
     }
     if detail:
         row["lines"] = [
-            {"description": line.description, "amount": line.amount, "kind": line.kind} for line in invoice.lines.all()
+            {"description": line.description, "amount": line.amount, "kind": line.kind}
+            for line in invoice.lines.all()
         ]
         row["instalments"] = [
-            {"id": item.pk, "due_on": item.due_on, "amount": item.amount, "outstanding": services.outstanding_on(item)}
+            {
+                "id": item.pk,
+                "due_on": item.due_on,
+                "amount": item.amount,
+                "outstanding": services.outstanding_on(item),
+            }
             for item in invoice.instalments.all()
         ]
         row["balance"] = services.balance(invoice.student)
-        row["school"] = {"name": invoice.school.name, "phone": invoice.school.phone, "email": invoice.school.email}
+        row["school"] = {
+            "name": invoice.school.name,
+            "phone": invoice.school.phone,
+            "email": invoice.school.email,
+        }
     return row
 
 
@@ -176,7 +207,9 @@ class IssueSerializer(serializers.Serializer):
 
 class InvoicesView(MoneyView):
     def get(self, request):
-        invoices = Invoice.objects.for_school(self.school).select_related("student", "term", "term__academic_year")
+        invoices = Invoice.objects.for_school(self.school).select_related(
+            "student", "term", "term__academic_year"
+        )
         params = request.query_params
         if params.get("term"):
             invoices = invoices.filter(term_id=params["term"])
@@ -186,7 +219,8 @@ class InvoicesView(MoneyView):
             invoices = invoices.filter(student_id=params["student"])
         if params.get("class"):
             invoices = invoices.filter(
-                student__enrolments__school_class_id=params["class"], student__enrolments__end_date__isnull=True
+                student__enrolments__school_class_id=params["class"],
+                student__enrolments__end_date__isnull=True,
             )
         return Response([invoice_row(row) for row in invoices[:500]])
 
@@ -195,7 +229,9 @@ class InvoicesView(MoneyView):
         term = get_object_or_404(Term.objects.for_school(self.school), pk=data["term"])
         pupils = Student.objects.for_school(self.school).filter(status=Student.Status.ACTIVE)
         if data.get("school_class"):
-            klass = get_object_or_404(SchoolClass.objects.for_school(self.school), pk=data["school_class"])
+            klass = get_object_or_404(
+                SchoolClass.objects.for_school(self.school), pk=data["school_class"]
+            )
             pupils = pupils_in(klass).filter(status=Student.Status.ACTIVE)
         elif data["students"]:
             pupils = pupils.filter(pk__in=data["students"])
@@ -219,7 +255,9 @@ class InvoicesView(MoneyView):
 
 class InvoiceDetailView(MoneyView):
     def get(self, request, pk):
-        invoice = get_object_or_404(Invoice.objects.for_school(self.school).select_related("student", "term"), pk=pk)
+        invoice = get_object_or_404(
+            Invoice.objects.for_school(self.school).select_related("student", "term"), pk=pk
+        )
         return Response(invoice_row(invoice, detail=True))
 
 
@@ -234,7 +272,9 @@ class InvoiceCancelView(MoneyView):
 
     @transaction.atomic
     def post(self, request, pk):
-        invoice = get_object_or_404(Invoice.objects.for_school(self.school).select_for_update(), pk=pk)
+        invoice = get_object_or_404(
+            Invoice.objects.for_school(self.school).select_for_update(), pk=pk
+        )
         if invoice.status == Invoice.Status.CANCELLED:
             raise ApiError("cancelled", "This invoice is already cancelled.")
         reason = validated(InvoiceCancelSerializer, request)["reason"]
@@ -251,7 +291,13 @@ class InvoiceCancelView(MoneyView):
             )
         invoice.status = Invoice.Status.CANCELLED
         invoice.save(update_fields=["status"])
-        record(AuditLog.Action.UPDATED, actor=request.user, entity=invoice, new={"cancelled": reason}, request=request)
+        record(
+            AuditLog.Action.UPDATED,
+            actor=request.user,
+            entity=invoice,
+            new={"cancelled": reason},
+            request=request,
+        )
         return Response(invoice_row(invoice, detail=True))
 
 
@@ -269,7 +315,13 @@ class InstalmentsView(MoneyView):
         invoice = get_object_or_404(Invoice.objects.for_school(self.school), pk=pk)
         plan = validated(PlanSerializer, request)["instalments"]
         services.set_instalments(invoice, plan)
-        record(AuditLog.Action.UPDATED, actor=request.user, entity=invoice, new={"instalments": len(plan)}, request=request)
+        record(
+            AuditLog.Action.UPDATED,
+            actor=request.user,
+            entity=invoice,
+            new={"instalments": len(plan)},
+            request=request,
+        )
         return Response(invoice_row(invoice, detail=True))
 
 
@@ -290,7 +342,12 @@ def payment_row(payment: Payment) -> dict:
     }
 
 
-OFFICE_METHODS = [Payment.Method.CASH, Payment.Method.BANK, Payment.Method.MOMO, Payment.Method.WALLET]
+OFFICE_METHODS = [
+    Payment.Method.CASH,
+    Payment.Method.BANK,
+    Payment.Method.MOMO,
+    Payment.Method.WALLET,
+]
 
 
 class PaymentSerializer(serializers.Serializer):
@@ -320,8 +377,16 @@ class PaymentsView(MoneyView):
     def post(self, request):
         data = validated(PaymentSerializer, request)
         pupil = self.pupil(data.pop("student"))
-        payment = services.record_payment(pupil, data.pop("amount"), data.pop("method"), by=request.user, **data)
-        record(AuditLog.Action.CREATED, actor=request.user, entity=payment, new={"amount": payment.amount}, request=request)
+        payment = services.record_payment(
+            pupil, data.pop("amount"), data.pop("method"), by=request.user, **data
+        )
+        record(
+            AuditLog.Action.CREATED,
+            actor=request.user,
+            entity=payment,
+            new={"amount": payment.amount},
+            request=request,
+        )
         return Response(payment_row(payment), status=201)
 
 
@@ -333,7 +398,9 @@ class PaymentDetailView(MoneyView):
     write_roles = (roles.ACCOUNTANT, *APPROVERS)
 
     def payment(self, pk) -> Payment:
-        return get_object_or_404(Payment.objects.for_school(self.school).select_related("student"), pk=pk)
+        return get_object_or_404(
+            Payment.objects.for_school(self.school).select_related("student"), pk=pk
+        )
 
     def get(self, request, pk):
         """The receipt."""
@@ -342,8 +409,14 @@ class PaymentDetailView(MoneyView):
             {
                 **payment_row(payment),
                 "student_id": payment.student.student_id,
-                "school": {"name": self.school.name, "phone": self.school.phone, "email": self.school.email},
-                "balance_after": services.balance(payment.student, services.PURPOSE_ACCOUNT[payment.purpose]),
+                "school": {
+                    "name": self.school.name,
+                    "phone": self.school.phone,
+                    "email": self.school.email,
+                },
+                "balance_after": services.balance(
+                    payment.student, services.PURPOSE_ACCOUNT[payment.purpose]
+                ),
             }
         )
 
@@ -352,7 +425,13 @@ class PaymentDetailView(MoneyView):
         payment = self.payment(pk)
         reason = validated(ReverseSerializer, request)["reason"]
         payment = services.reverse_payment(payment, by=request.user, reason=reason)
-        record(AuditLog.Action.UPDATED, actor=request.user, entity=payment, new={"reversed": reason}, request=request)
+        record(
+            AuditLog.Action.UPDATED,
+            actor=request.user,
+            entity=payment,
+            new={"reversed": reason},
+            request=request,
+        )
         return Response(payment_row(payment))
 
 
@@ -382,11 +461,18 @@ class PupilAccountView(MoneyView):
         )
         return Response(
             {
-                "student": {"id": pupil.pk, "name": f"{pupil.first_name} {pupil.surname}", "student_id": pupil.student_id},
+                "student": {
+                    "id": pupil.pk,
+                    "name": f"{pupil.first_name} {pupil.surname}",
+                    "student_id": pupil.student_id,
+                },
                 "balances": {key: totals.get(key, 0) for key in Account.values},
-                "entries": [entry_row(entry) for entry in entries.order_by("-created_at", "-id")[:300]],
+                "entries": [
+                    entry_row(entry) for entry in entries.order_by("-created_at", "-id")[:300]
+                ],
                 "invoices": [
-                    invoice_row(i) for i in Invoice.objects.filter(student=pupil).select_related("student", "term")
+                    invoice_row(i)
+                    for i in Invoice.objects.filter(student=pupil).select_related("student", "term")
                 ],
             }
         )
@@ -406,8 +492,16 @@ class AdjustView(MoneyView):
     def post(self, request, pk):
         pupil = self.pupil(pk)
         data = validated(AdjustSerializer, request)
-        entry = services.adjust(pupil, data["account"], data["amount"], data["reason"], by=request.user)
-        record(AuditLog.Action.CREATED, actor=request.user, entity=entry, new=dict(data), request=request)
+        entry = services.adjust(
+            pupil, data["account"], data["amount"], data["reason"], by=request.user
+        )
+        record(
+            AuditLog.Action.CREATED,
+            actor=request.user,
+            entity=entry,
+            new=dict(data),
+            request=request,
+        )
         return Response(entry_row(entry), status=201)
 
 
@@ -425,7 +519,11 @@ class SummaryView(MoneyView):
         today = timezone.localdate()
         confirmed = Payment.objects.for_school(self.school).filter(status=Payment.Status.CONFIRMED)
         week_start = today - timedelta(days=today.weekday())
-        term = Term.objects.for_school(self.school).filter(start_date__lte=today, end_date__gte=today).first()
+        term = (
+            Term.objects.for_school(self.school)
+            .filter(start_date__lte=today, end_date__gte=today)
+            .first()
+        )
         owed = [row["total"] for row in owed_by_pupil(self.school)]
 
         def total(rows):
@@ -435,7 +533,9 @@ class SummaryView(MoneyView):
             {
                 "today": total(confirmed.filter(received_at__date=today)),
                 "this_week": total(confirmed.filter(received_at__date__gte=week_start)),
-                "this_term": total(confirmed.filter(received_at__date__gte=term.start_date)) if term else 0,
+                "this_term": total(confirmed.filter(received_at__date__gte=term.start_date))
+                if term
+                else 0,
                 "outstanding": sum(owed),
                 "debtors": len(owed),
                 "by_method_today": list(
@@ -486,9 +586,13 @@ class ClassFinanceView(MoneyView):
         if term is None:
             return Response({"term": "", "classes": []})
         rows = []
-        for klass in SchoolClass.objects.for_school(self.school).filter(academic_year=term.academic_year):
+        for klass in SchoolClass.objects.for_school(self.school).filter(
+            academic_year=term.academic_year
+        ):
             pupils = pupils_in(klass)
-            invoices = Invoice.objects.filter(term=term, student__in=pupils).exclude(status=Invoice.Status.CANCELLED)
+            invoices = Invoice.objects.filter(term=term, student__in=pupils).exclude(
+                status=Invoice.Status.CANCELLED
+            )
             owing = list(
                 LedgerEntry.objects.filter(student__in=pupils, account=Account.FEES)
                 .values("student")

@@ -8,13 +8,7 @@ from importlib import import_module
 log = logging.getLogger(__name__)
 
 JOBS: dict[str, Callable[[], int]] = {}
-MODULES = (
-    "apps.finance.jobs",
-    "apps.shop.jobs",
-    "apps.billing.jobs",
-    "apps.transport.jobs",
-    "apps.platform_content.jobs",
-)
+MODULES = ("apps.finance.jobs", "apps.platform_content.jobs")
 
 
 def job(name: str):

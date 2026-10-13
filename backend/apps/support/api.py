@@ -84,12 +84,24 @@ class SupportAccessView(SchoolView):
     @transaction.atomic
     def post(self, request):
         hours = validated(GrantSerializer, request)["hours"]
-        SupportGrant.objects.filter(school=self.school, ended_at__isnull=True).update(ended_at=timezone.now())
+        SupportGrant.objects.filter(school=self.school, ended_at__isnull=True).update(
+            ended_at=timezone.now()
+        )
         now = timezone.now()
         grant = SupportGrant.objects.create(
-            school=self.school, granted_by=request.user, hours=hours, starts_at=now, ends_at=now + timedelta(hours=hours)
+            school=self.school,
+            granted_by=request.user,
+            hours=hours,
+            starts_at=now,
+            ends_at=now + timedelta(hours=hours),
         )
-        record(AuditLog.Action.CREATED, actor=request.user, entity=grant, new={"hours": hours}, request=request)
+        record(
+            AuditLog.Action.CREATED,
+            actor=request.user,
+            entity=grant,
+            new={"hours": hours},
+            request=request,
+        )
         return Response(grant_row(grant), status=201)
 
     @transaction.atomic
@@ -99,7 +111,13 @@ class SupportAccessView(SchoolView):
             raise ApiError("no_access", "Support access isn't switched on.")
         grant.ended_at = timezone.now()
         grant.save(update_fields=["ended_at"])
-        record(AuditLog.Action.UPDATED, actor=request.user, entity=grant, new={"ended": True}, request=request)
+        record(
+            AuditLog.Action.UPDATED,
+            actor=request.user,
+            entity=grant,
+            new={"ended": True},
+            request=request,
+        )
         return Response(grant_row(grant))
 
 
@@ -137,8 +155,12 @@ class MessageSerializer(serializers.Serializer):
     close = serializers.BooleanField(required=False, default=False)
 
 
-def add_message(thread: SupportThread, user, body: str, from_platform: bool, close: bool = False) -> None:
-    SupportMessage.objects.create(thread=thread, author=user, from_platform=from_platform, body=body)
+def add_message(
+    thread: SupportThread, user, body: str, from_platform: bool, close: bool = False
+) -> None:
+    SupportMessage.objects.create(
+        thread=thread, author=user, from_platform=from_platform, body=body
+    )
     thread.status = SupportThread.Status.CLOSED if close else SupportThread.Status.OPEN
     thread.save(update_fields=["status", "updated_at"])
 
@@ -147,13 +169,17 @@ class SchoolThreadsView(SchoolView):
     read_roles = write_roles = LEADERS
 
     def get(self, request):
-        threads = SupportThread.objects.filter(school=self.school).select_related("school", "created_by")
+        threads = SupportThread.objects.filter(school=self.school).select_related(
+            "school", "created_by"
+        )
         return Response([thread_row(row) for row in threads])
 
     @transaction.atomic
     def post(self, request):
         data = validated(NewThreadSerializer, request)
-        thread = SupportThread.objects.create(school=self.school, subject=data["subject"], created_by=request.user)
+        thread = SupportThread.objects.create(
+            school=self.school, subject=data["subject"], created_by=request.user
+        )
         add_message(thread, request.user, data["body"], from_platform=False)
         return Response(thread_row(thread, messages=True), status=201)
 
@@ -182,7 +208,12 @@ class SchoolAnnouncementsView(SchoolView):
 
     def get(self, request):
         rows = PlatformAnnouncement.objects.filter(published=True)[:30]
-        return Response([{"id": r.pk, "title": r.title, "body": r.body, "published_at": r.published_at} for r in rows])
+        return Response(
+            [
+                {"id": r.pk, "title": r.title, "body": r.body, "published_at": r.published_at}
+                for r in rows
+            ]
+        )
 
 
 class DataRequestResource(Resource):
@@ -236,7 +267,9 @@ class RetentionView(SchoolView):
 
     def get(self, request):
         rule = self.rule()
-        return Response({"left_pupil_years": rule.left_pupil_years, "staff_years": rule.staff_years})
+        return Response(
+            {"left_pupil_years": rule.left_pupil_years, "staff_years": rule.staff_years}
+        )
 
     @transaction.atomic
     def patch(self, request):
@@ -245,7 +278,13 @@ class RetentionView(SchoolView):
         for key, value in data.items():
             setattr(rule, key, value)
         rule.save()
-        record(AuditLog.Action.UPDATED, actor=request.user, entity=rule, new=dict(data), request=request)
+        record(
+            AuditLog.Action.UPDATED,
+            actor=request.user,
+            entity=rule,
+            new=dict(data),
+            request=request,
+        )
         return self.get(request)
 
 
@@ -262,11 +301,21 @@ class PlatformSchoolView(PlatformView):
 RECORDS = {
     "pupils": (
         Student,
-        lambda s: {"id": s.pk, "student_id": s.student_id, "name": f"{s.first_name} {s.surname}", "status": s.status},
+        lambda s: {
+            "id": s.pk,
+            "student_id": s.student_id,
+            "name": f"{s.first_name} {s.surname}",
+            "status": s.status,
+        },
     ),
     "staff": (
         Staff,
-        lambda s: {"id": s.pk, "name": f"{s.first_name} {s.surname}", "phone": s.phone, "status": s.employment_status},
+        lambda s: {
+            "id": s.pk,
+            "name": f"{s.first_name} {s.surname}",
+            "phone": s.phone,
+            "status": s.employment_status,
+        },
     ),
     "parents": (
         Parent,
@@ -287,7 +336,9 @@ def records_view(kind: str):
             school = self.get_school(slug)
             grant = SupportGrant.active_for(school)
             if grant is None:
-                raise ApiError("no_support_access", "The school hasn't switched on support access.", 409)
+                raise ApiError(
+                    "no_support_access", "The school hasn't switched on support access.", 409
+                )
             record(
                 AuditLog.Action.VIEWED_RESTRICTED,
                 actor=request.user,
@@ -325,7 +376,9 @@ class DomainSerializer(serializers.Serializer):
 
 def txt_records(name: str) -> list[str]:
     """DNS over HTTPS, so no resolver library is needed."""
-    url = "https://cloudflare-dns.com/dns-query?" + urllib.parse.urlencode({"name": name, "type": "TXT"})
+    url = "https://cloudflare-dns.com/dns-query?" + urllib.parse.urlencode(
+        {"name": name, "type": "TXT"}
+    )
     request = urllib.request.Request(url, headers={"accept": "application/dns-json"})
     with urllib.request.urlopen(request, timeout=8) as response:  # noqa: S310 - fixed host
         answer = json.loads(response.read() or b"{}")
@@ -342,7 +395,13 @@ class DomainsView(PlatformSchoolView):
         school = self.get_school(slug)
         data = validated(DomainSerializer, request)
         domain = SchoolDomain.objects.create(school=school, domain=data["domain"])
-        record(AuditLog.Action.CREATED, actor=request.user, entity=domain, request=request, school=school)
+        record(
+            AuditLog.Action.CREATED,
+            actor=request.user,
+            entity=domain,
+            request=request,
+            school=school,
+        )
         return Response(domain_row(domain), status=201)
 
 
@@ -362,24 +421,45 @@ class DomainDetailView(PlatformSchoolView):
             try:
                 values = txt_records(f"_adsmartschool.{domain.domain}")
             except OSError as exc:
-                raise ApiError("dns_unavailable", "The address couldn't be checked just now; try again.", 503) from exc
+                raise ApiError(
+                    "dns_unavailable", "The address couldn't be checked just now; try again.", 503
+                ) from exc
             if domain.verification_token not in values:
-                raise ApiError("not_verified", "The TXT record isn't there yet. DNS changes can take a few hours.")
+                raise ApiError(
+                    "not_verified",
+                    "The TXT record isn't there yet. DNS changes can take a few hours.",
+                )
             domain.verified_at = timezone.now()
             domain.save(update_fields=["verified_at"])
         else:
             if not domain.verified_at:
                 raise ApiError("not_verified", "Check the address before making it the main one.")
-            SchoolDomain.objects.filter(school=domain.school, is_primary=True).update(is_primary=False)
+            SchoolDomain.objects.filter(school=domain.school, is_primary=True).update(
+                is_primary=False
+            )
             domain.is_primary = True
             domain.save(update_fields=["is_primary"])
-        record(AuditLog.Action.UPDATED, actor=request.user, entity=domain, new={"action": action}, request=request, school=domain.school)
+        record(
+            AuditLog.Action.UPDATED,
+            actor=request.user,
+            entity=domain,
+            new={"action": action},
+            request=request,
+            school=domain.school,
+        )
         return Response(domain_row(domain))
 
     @transaction.atomic
     def delete(self, request, slug, pk):
         domain = self.domain(slug, pk)
-        record(AuditLog.Action.DELETED, actor=request.user, entity=domain, old={"domain": domain.domain}, request=request, school=domain.school)
+        record(
+            AuditLog.Action.DELETED,
+            actor=request.user,
+            entity=domain,
+            old={"domain": domain.domain},
+            request=request,
+            school=domain.school,
+        )
         domain.delete()
         return Response(status=204)
 
@@ -402,7 +482,9 @@ class SmsCountsView(PlatformView):
             )
         }
         credits = dict(
-            SmsCreditEntry.objects.values("school").annotate(balance=Sum("change")).values_list("school", "balance")
+            SmsCreditEntry.objects.values("school")
+            .annotate(balance=Sum("change"))
+            .values_list("school", "balance")
         )
         return Response(
             [
@@ -436,7 +518,10 @@ class SmsCreditsView(PlatformSchoolView):
         return Response(
             {
                 "balance": credit_balance(school),
-                "entries": [{"change": e.change, "reason": e.reason, "created_at": e.created_at} for e in entries],
+                "entries": [
+                    {"change": e.change, "reason": e.reason, "created_at": e.created_at}
+                    for e in entries
+                ],
             }
         )
 
@@ -447,7 +532,14 @@ class SmsCreditsView(PlatformSchoolView):
         entry = SmsCreditEntry.objects.create(
             school=school, change=data["credits"], reason=data["reason"], created_by=request.user
         )
-        record(AuditLog.Action.CREATED, actor=request.user, entity=entry, new=dict(data), request=request, school=school)
+        record(
+            AuditLog.Action.CREATED,
+            actor=request.user,
+            entity=entry,
+            new=dict(data),
+            request=request,
+            school=school,
+        )
         return self.get(request, slug)
 
 
@@ -469,7 +561,9 @@ class AnnouncementPublishView(PlatformView):
         announcement.published = not announcement.published
         announcement.published_at = timezone.now() if announcement.published else None
         announcement.save(update_fields=["published", "published_at"])
-        action = AuditLog.Action.PUBLISHED if announcement.published else AuditLog.Action.UNPUBLISHED
+        action = (
+            AuditLog.Action.PUBLISHED if announcement.published else AuditLog.Action.UNPUBLISHED
+        )
         record(action, actor=request.user, entity=announcement, request=request)
         return Response(AnnouncementResource.row(self, announcement))
 

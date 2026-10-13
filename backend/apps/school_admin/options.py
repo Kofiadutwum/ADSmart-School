@@ -35,18 +35,26 @@ SOURCES = {
     "pupils": _pupils,
     "staff": lambda school: [
         {"id": row.pk, "name": f"{row.first_name} {row.surname}"}
-        for row in Staff.objects.for_school(school).filter(user__is_active=True).order_by("first_name")
+        for row in Staff.objects.for_school(school)
+        .filter(user__is_active=True)
+        .order_by("first_name")
     ],
     "parents": lambda school: [
         {"id": row.pk, "name": f"{row} ({row.phone})"} for row in Parent.objects.for_school(school)
     ],
     "classes": _classes,
-    "subjects": lambda school: [{"id": row.pk, "name": row.name} for row in Subject.objects.for_school(school)],
+    "subjects": lambda school: [
+        {"id": row.pk, "name": row.name} for row in Subject.objects.for_school(school)
+    ],
     "terms": lambda school: [
         {"id": row.pk, "name": str(row)}
-        for row in Term.objects.for_school(school).select_related("academic_year").order_by("-start_date")
+        for row in Term.objects.for_school(school)
+        .select_related("academic_year")
+        .order_by("-start_date")
     ],
-    "years": lambda school: [{"id": row.pk, "name": row.name} for row in AcademicYear.objects.for_school(school)],
+    "years": lambda school: [
+        {"id": row.pk, "name": row.name} for row in AcademicYear.objects.for_school(school)
+    ],
 }
 
 

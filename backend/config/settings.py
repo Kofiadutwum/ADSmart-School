@@ -48,6 +48,11 @@ if not DEBUG:  # behind HTTPS in production (Vercel or Caddy)
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=31536000)
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
+X_FRAME_OPTIONS = "DENY"
 # How a school's address is written in links: development "http://{host}:3000",
 # production "https://{host}".
 SITE_URL_TEMPLATE = env("SITE_URL_TEMPLATE", default="http://{host}:3000")
@@ -84,6 +89,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "apps.core.request_id.RequestIdMiddleware",
     "apps.core.forwarding.SignedForwardingMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",

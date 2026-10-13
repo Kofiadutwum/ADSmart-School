@@ -47,7 +47,7 @@ def school_for_host(host: str) -> School:
     site = resolve_host(host)
     if site is None or site.school is None:
         raise Http404("No school is registered at this address.")
-    if site.school.is_suspended:
+    if site.school.is_suspended or site.school.billing_paused:
         raise ApiError("suspended", UNAVAILABLE, 503)
     return site.school
 

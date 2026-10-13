@@ -44,7 +44,9 @@ class MessageTemplate(SchoolOwned):
 
     class Meta:
         ordering = ["key"]
-        constraints = [models.UniqueConstraint(fields=["school", "key"], name="notifications_one_template")]
+        constraints = [
+            models.UniqueConstraint(fields=["school", "key"], name="notifications_one_template")
+        ]
 
     def __str__(self):
         return self.key
@@ -83,7 +85,11 @@ class Announcement(SchoolOwned):
     body = models.TextField(max_length=2000)
     audience = models.CharField(max_length=8, choices=Audience.choices, default=Audience.PARENTS)
     school_class = models.ForeignKey(
-        "academics.SchoolClass", null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
+        "academics.SchoolClass",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
         help_text="Only this class's parents",
     )
     essential = models.BooleanField(
