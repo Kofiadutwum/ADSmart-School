@@ -55,7 +55,31 @@ SOURCES = {
     "years": lambda school: [
         {"id": row.pk, "name": row.name} for row in AcademicYear.objects.for_school(school)
     ],
+    "users": lambda school: [
+        {"id": row.user_id, "name": f"{row.first_name} {row.surname}"}
+        for row in Staff.objects.for_school(school)
+        .filter(user__is_active=True)
+        .order_by("first_name")
+    ],
+    "fees": lambda school: _named("finance.FeeStructure", school),
+    "routes": lambda school: _named("transport.Route", school),
+    "stops": lambda school: _named("transport.Stop", school),
+    "buses": lambda school: _named("transport.Bus", school),
+    "crew": lambda school: _named("transport.Crew", school),
+    "books": lambda school: _named("shop.Book", school),
+    "uniforms": lambda school: _named("shop.UniformItem", school),
+    "periods": lambda school: _named("learning.Period", school),
+    "slots": lambda school: _named("learning.TimetableSlot", school),
+    "templates": lambda school: _named("learning.LessonNoteTemplate", school),
 }
+
+
+def _named(label: str, school) -> list[dict]:
+    """Any school register, named as the model names itself."""
+    from django.apps import apps
+
+    rows = apps.get_model(label).objects.filter(school=school)
+    return [{"id": row.pk, "name": str(row)} for row in rows[:1000]]
 
 
 def register(kind: str, source) -> None:

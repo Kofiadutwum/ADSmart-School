@@ -185,7 +185,8 @@ function FieldInput({
             </select>
           );
         }
-        const type = { date: "date", time: "time", number: "number" }[field.type ?? ""] ?? "text";
+        const types: Record<string, string> = { date: "date", time: "time", number: "number" };
+        const type = types[field.type ?? ""] ?? "text";
         return (
           <input
             {...common}

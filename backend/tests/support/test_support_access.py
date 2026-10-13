@@ -5,7 +5,6 @@ import pytest
 
 from apps.audit.models import AuditLog
 from apps.support.models import SupportGrant
-from tests.platform_admin.conftest import member_client  # noqa: F401 - a shared fixture
 from tests.records import make_student
 
 pytestmark = pytest.mark.django_db

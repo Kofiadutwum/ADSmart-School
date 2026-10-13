@@ -367,7 +367,7 @@ class OrderPayView(ParentView):
                 order=order,
                 email=request.user.email,
                 phone=request.user.phone,
-                callback=order.school.base_url() + "/portal/payments/done",
+                callback=order.school.base_url() + "/payments/done",
             )
         )
 

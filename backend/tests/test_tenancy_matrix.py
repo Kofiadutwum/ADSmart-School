@@ -189,7 +189,7 @@ CLASSIFIED = {
     "api/platform/support/threads/<int:pk>": PLATFORM_STAFF,
     "api/platform/website/notices": PLATFORM_STAFF,
     "api/platform/website/notices/<int:pk>": PLATFORM_STAFF,
-    "api/public/pay/<str:token>": "the one pupil an unguessable payment link names (tests/finance/test_online.py)",
+    "api/public/pay/<str:token>": "the pupil a payment link names (tests/finance/test_online.py)",
     "api/public/platform/prices": NO_SCHOOL_DATA,
     "api/school/billing": SCHOOL_STAFF,
     "api/school/billing/bills/<int:pk>": SCHOOL_STAFF,

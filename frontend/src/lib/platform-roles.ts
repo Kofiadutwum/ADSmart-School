@@ -23,6 +23,11 @@ export function canUse(me: HasRoles, roles?: readonly string[]): boolean {
 export const ADMIN_NAV: { href: string; label: string; roles?: readonly string[] }[] = [
   { href: "/schools", label: "Schools", roles: [SUPPORT] },
   { href: "/leads", label: "Leads", roles: [SUPPORT] },
+  { href: "/support", label: "Support", roles: [SUPPORT] },
+  { href: "/announcements", label: "Announcements", roles: [SUPPORT] },
+  { href: "/sms", label: "Texts", roles: [SUPPORT] },
+  { href: "/billing", label: "Billing", roles: [FINANCE] },
+  { href: "/statistics", label: "Statistics", roles: [FINANCE] },
   { href: "/website", label: "Website", roles: [CONTENT] },
   { href: "/team", label: "Team", roles: [OWNER] },
   { href: "/audit", label: "Audit log", roles: [OWNER] },

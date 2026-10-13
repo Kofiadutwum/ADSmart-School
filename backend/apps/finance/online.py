@@ -268,7 +268,7 @@ def pay_for_ward(request, wards) -> dict:
         student=pupil,
         email=request.user.email,
         phone=request.user.phone,
-        callback=pupil.school.base_url() + "/portal/payments/done",
+        callback=pupil.school.base_url() + "/payments/done",
     )
 
 
@@ -368,7 +368,7 @@ class PublicLinkView(APIView):
                 amount=link.amount,
                 school=link.school,
                 student=link.student,
-                callback=f"{link.school.base_url()}/pay/{token}/done",
+                callback=f"{link.school.base_url()}/pay/{token}",
             )
         )
 

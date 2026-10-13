@@ -14,8 +14,9 @@ import { canUse } from "@/lib/platform-roles";
 import type { ImageData } from "@/lib/types";
 import { useAuth } from "./auth-provider";
 
-/** `roles`: shown only to people holding one of them (platform team; business tools §2). */
-export type NavItem = { href: string; label: string; roles?: readonly string[] };
+/** `roles`: shown only to people holding one of them (platform team; business tools §2).
+ * `group`: a heading the item sits under in the sidebar. */
+export type NavItem = { href: string; label: string; roles?: readonly string[]; group?: string };
 type Props = {
   name: string;
   logo?: ImageData | null;
@@ -74,10 +75,14 @@ function NavList({ items, onNavigate }: { items: NavItem[]; onNavigate?: () => v
   return (
     <nav aria-label="Main">
       <ul className="space-y-1">
-        {items.map((item) => {
+        {items.map((item, index) => {
           const current = path === item.href || path.startsWith(`${item.href}/`);
+          const heading = item.group && item.group !== items[index - 1]?.group ? item.group : null;
           return (
             <li key={item.href}>
+              {heading && (
+                <p className="px-3 pt-3 pb-1 text-xs font-semibold tracking-wide text-ink-muted uppercase">{heading}</p>
+              )}
               <Link
                 href={item.href}
                 onClick={onNavigate}

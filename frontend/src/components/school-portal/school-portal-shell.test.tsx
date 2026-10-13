@@ -55,10 +55,17 @@ describe("SchoolPortalShell", () => {
     expect(window.localStorage.getItem("school-portal-role")).toBe("Teacher");
   });
 
-  it("shows no switcher for one role, and only Account for roles without screens", async () => {
+  it("shows no switcher for one role, and that role's own pages", async () => {
     renderShell({ ...ME, roles: ["Accountant"] });
-    expect(await screen.findByText("Active: none")).toBeInTheDocument();
+    expect(await screen.findByText("Active: Accountant")).toBeInTheDocument();
     expect(screen.queryByLabelText("Viewing as")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Money" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Account" })).toBeInTheDocument();
+  });
+
+  it("shows only Account to someone with no school role", async () => {
+    renderShell({ ...ME, roles: [] });
+    expect(await screen.findByText("Active: none")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Account" })).toBeInTheDocument();
   });
 });

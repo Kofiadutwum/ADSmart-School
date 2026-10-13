@@ -1,6 +1,8 @@
 """Quizzes (SMS spec §22): questions approved before publishing, one attempt, automatic marking,
 and AI drafting that is off without a key and never sends pupils' details."""
 
+import json
+
 import pytest
 
 from apps.academics.models import Subject, TeachingAssignment
@@ -101,9 +103,7 @@ def test_ai_drafting_sends_only_the_topic_level_and_difficulty(school, quiz, set
 
         def read(self):
             text = '[{"text": "Q?", "options": ["A", "B"], "answer": "A"}]'
-            return (
-                '{"content": [{"type": "text", "text": %s}]}' % __import__("json").dumps(text)
-            ).encode()
+            return json.dumps({"content": [{"type": "text", "text": text}]}).encode()
 
     def fake_open(request, timeout=0):
         sent["body"] = request.data.decode()

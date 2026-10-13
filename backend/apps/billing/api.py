@@ -667,6 +667,6 @@ class SchoolBillPayView(SchoolBillingBase):
                 bill=bill,
                 email=request.user.email,
                 phone=request.user.phone,
-                callback=self.school.base_url() + "/portal/billing",
+                callback=self.school.base_url() + "/billing",
             )
         )
