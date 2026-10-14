@@ -32,7 +32,8 @@ class PublicView(APIView):
 
 class SiteView(PublicView):
     def get(self, request, host):
-        return Response(build_site_payload(school_for_host(host)))
+        portal = request.query_params.get("portal") == "1"
+        return Response(build_site_payload(school_for_host(host, for_portal=portal)))
 
 
 class NewsListView(PublicView):

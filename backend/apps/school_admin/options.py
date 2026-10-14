@@ -1,0 +1,124 @@
+"""Choices for the portal's drop-down lists, always from the user's own school."""
+
+from django.http import Http404
+from rest_framework.response import Response
+
+from apps.academics.models import AcademicYear, SchoolClass, Subject, Term
+from apps.people.models import Enrolment, Parent, Staff, Student
+from apps.people.services import STAFF_ROLES
+from apps.school_admin.dashboard import current_year
+from apps.school_admin.views import SchoolView
+
+
+def _pupils(school):
+    year = current_year(school)
+    rows = Student.objects.for_school(school).filter(status=Student.Status.ACTIVE)
+    places = {
+        place.student_id: place.school_class.name
+        for place in Enrolment.objects.filter(
+            school=school, academic_year=year, end_date__isnull=True
+        ).select_related("school_class")
+    }
+    return [
+        {"id": pupil.pk, "name": f"{pupil.full_name} ({places.get(pupil.pk, 'no class')})"}
+        for pupil in rows.order_by("first_name", "surname")
+    ]
+
+
+def _classes(school):
+    year = current_year(school)
+    rows = SchoolClass.objects.for_school(school).filter(academic_year=year)
+    return sorted(({"id": row.pk, "name": row.name} for row in rows), key=lambda item: item["name"])
+
+
+SOURCES = {
+    "pupils": _pupils,
+    "staff": lambda school: [
+        {"id": row.pk, "name": f"{row.first_name} {row.surname}"}
+        for row in Staff.objects.for_school(school)
+        .filter(user__is_active=True)
+        .order_by("first_name")
+    ],
+    "parents": lambda school: [
+        {"id": row.pk, "name": f"{row} ({row.phone})"} for row in Parent.objects.for_school(school)
+    ],
+    "classes": _classes,
+    "subjects": lambda school: [
+        {"id": row.pk, "name": row.name} for row in Subject.objects.for_school(school)
+    ],
+    "terms": lambda school: [
+        {"id": row.pk, "name": str(row)}
+        for row in Term.objects.for_school(school)
+        .select_related("academic_year")
+        .order_by("-start_date")
+    ],
+    "years": lambda school: [
+        {"id": row.pk, "name": row.name} for row in AcademicYear.objects.for_school(school)
+    ],
+    "users": lambda school: [
+        {"id": row.user_id, "name": f"{row.first_name} {row.surname}"}
+        for row in Staff.objects.for_school(school)
+        .filter(user__is_active=True)
+        .order_by("first_name")
+    ],
+    "fees": lambda school: _named("finance.FeeStructure", school),
+    "routes": lambda school: _named("transport.Route", school),
+    "stops": lambda school: _named("transport.Stop", school),
+    "buses": lambda school: _named("transport.Bus", school),
+    "crew": lambda school: _named("transport.Crew", school),
+    "books": lambda school: _named("shop.Book", school),
+    "uniforms": lambda school: _named("shop.UniformItem", school),
+    "periods": lambda school: _named("learning.Period", school),
+    "slots": lambda school: _named("learning.TimetableSlot", school),
+    "templates": lambda school: _named("learning.LessonNoteTemplate", school),
+}
+
+# Lists that depend on who is asking: a teacher's own classes and subjects this year.
+PERSONAL = {"my-classes", "my-subjects"}
+
+
+def _mine(kind: str, school, user) -> list[dict]:
+    from apps.academics.models import ClassTeacherAssignment, TeachingAssignment
+
+    staff = Staff.objects.filter(user=user).first()
+    year = current_year(school)
+    teaching = TeachingAssignment.objects.filter(staff=staff, school_class__academic_year=year)
+    if kind == "my-subjects":
+        subjects = {row.subject_id: row.subject.name for row in teaching.select_related("subject")}
+        return [
+            {"id": pk, "name": name} for pk, name in sorted(subjects.items(), key=lambda i: i[1])
+        ]
+    classes = {
+        row.school_class_id: row.school_class.name
+        for row in teaching.select_related("school_class")
+    }
+    for row in ClassTeacherAssignment.objects.filter(
+        staff=staff, school_class__academic_year=year
+    ).select_related("school_class"):
+        classes[row.school_class_id] = row.school_class.name
+    return [{"id": pk, "name": name} for pk, name in sorted(classes.items(), key=lambda i: i[1])]
+
+
+def _named(label: str, school) -> list[dict]:
+    """Any school register, named as the model names itself."""
+    from django.apps import apps
+
+    rows = apps.get_model(label).objects.filter(school=school)
+    return [{"id": row.pk, "name": str(row)} for row in rows[:1000]]
+
+
+def register(kind: str, source) -> None:
+    """Other apps add their own lists (buses, books, …)."""
+    SOURCES[kind] = source
+
+
+class OptionsView(SchoolView):
+    read_roles = tuple(STAFF_ROLES)
+
+    def get(self, request, kind):
+        if kind in PERSONAL:
+            return Response(_mine(kind, self.school, request.user))
+        source = SOURCES.get(kind)
+        if source is None:
+            raise Http404
+        return Response(source(self.school))

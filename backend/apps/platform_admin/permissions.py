@@ -2,7 +2,8 @@
 spec §2). Plan 3's session binding keeps their sessions to the admin address, so a school's own
 users are never signed in there."""
 
-from rest_framework.permissions import BasePermission
+from rest_framework.permissions import SAFE_METHODS, BasePermission
+from rest_framework.views import APIView
 
 from apps.accounts import roles
 from apps.accounts.models import User
@@ -35,4 +36,28 @@ ROLE_FOR_AREA = {
     "audit": roles.PLATFORM_OWNER,
     "team": roles.PLATFORM_OWNER,
     "website": roles.PLATFORM_CONTENT,
+    "billing": roles.PLATFORM_FINANCE,
+    "statistics": roles.PLATFORM_FINANCE,
+    "announcements": roles.PLATFORM_SUPPORT,
+    "support": roles.PLATFORM_SUPPORT,
+    "sms": roles.PLATFORM_SUPPORT,
 }
+
+
+class PlatformRolesPermission(IsPlatformStaff):
+    """Platform staff holding the view's read roles (or write roles for changes); the Owner
+    holds them all. Used by the shared registers (apps.core.resources)."""
+
+    message = "Your role on the team doesn't include this."
+
+    def has_permission(self, request, view):
+        if not super().has_permission(request, view):
+            return False
+        allowed = view.read_roles if request.method in SAFE_METHODS else view.write_roles
+        return roles.has_role(request.user, roles.PLATFORM_OWNER, *allowed)
+
+
+class PlatformView(APIView):
+    permission_classes = [PlatformRolesPermission]
+    read_roles: tuple[str, ...] = ()
+    write_roles: tuple[str, ...] = ()

@@ -142,3 +142,16 @@ class ArticleEmailsCronView(PublicView):
         if not secret or not constant_time_compare(given, f"Bearer {secret}"):
             raise ApiError("not_allowed", "Only the scheduler may call this.", 401)
         return Response({"sent": articles.email_due_articles()})
+
+
+class JobsCronView(PublicView):
+    """Every scheduled job, once a day (Stage 10). Same Bearer secret as the article emails."""
+
+    def get(self, request):
+        secret = settings.CRON_SECRET
+        given = request.headers.get("Authorization", "")
+        if not secret or not constant_time_compare(given, f"Bearer {secret}"):
+            raise ApiError("not_allowed", "Only the scheduler may call this.", 401)
+        from apps.core.jobs import run_all
+
+        return Response(run_all())

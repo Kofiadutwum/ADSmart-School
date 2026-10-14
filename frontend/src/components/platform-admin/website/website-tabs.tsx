@@ -6,6 +6,7 @@ const TABS = [
   ["/website/comments", "Comments from schools"],
   ["/website/questions", "Questions"],
   ["/website/tips", "Tips and WhatsApp"],
+  ["/website/privacy", "Privacy notice"],
 ] as const;
 
 /** The parts of your own website you can edit (business tools spec §5). */

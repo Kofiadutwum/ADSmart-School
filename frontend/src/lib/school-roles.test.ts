@@ -10,41 +10,74 @@ describe("school roles", () => {
     expect(homeFor("Proprietor")).toBe("/overview");
     expect(homeFor("Parent")).toBe("/family");
     expect(homeFor("Student")).toBe("/my-school");
-    expect(homeFor("Accountant")).toBe("/account");
+    expect(homeFor("Accountant")).toBe("/money");
+    expect(homeFor("Front Desk Officer")).toBe("/gate");
+    expect(homeFor("School Nurse")).toBe("/health");
+    expect(homeFor("Bookshop Keeper")).toBe("/shop");
+    expect(homeFor("Canteen Officer")).toBe("/daily-charges");
+    expect(homeFor("Transport Officer")).toBe("/transport");
     expect(homeFor(null)).toBe("/account");
   });
 
   it("offers the switcher only between roles that have screens", () => {
-    expect(rolesWithScreens(["Teacher", "Administrator", "Accountant"])).toEqual(["Administrator", "Teacher"]);
-    expect(rolesWithScreens(["Accountant"])).toEqual([]);
+    expect(rolesWithScreens(["Teacher", "Administrator", "Accountant"])).toEqual(["Administrator", "Accountant", "Teacher"]);
+    expect(rolesWithScreens([])).toEqual([]);
     expect(rolesWithScreens(["Parent"])).toEqual(["Parent"]);
   });
 
-  it("shows the pages of the active role, always with Account", () => {
-    expect(navFor("Administrator").map((item) => item.label)).toEqual([
+  it("shows the pages of the active role, with Account for everyone but parents", () => {
+    const labels = (role: string | null) => navFor(role).map((item) => item.label);
+    expect(labels("Administrator")).toEqual([
       "Dashboard",
       "Pupils",
       "Parents",
       "Enrolment",
-      "School setup",
       "Staff",
+      "Leave",
+      "Attendance",
+      "Results",
+      "Lesson notes",
+      "Timetable",
+      "Resources",
+      "Daily care",
+      "Money",
+      "Daily charges",
+      "Billing",
+      "Gate",
+      "Health",
+      "Transport",
+      "Shop",
+      "Messages",
+      "Website",
+      "School setup",
+      "Support",
+      "Year end",
+      "Reports",
       "Audit log",
       "Account",
     ]);
-    expect(navFor("Head Teacher").map((item) => item.label)).toEqual([
-      "Dashboard",
-      "Pupils",
-      "Parents",
-      "School setup",
-      "Staff",
-      "Audit log",
+    expect(labels("Teacher")).toEqual([
+      "My classes",
+      "Leave",
+      "Attendance",
+      "Marks",
+      "Lesson notes",
+      "Timetable",
+      "Resources",
+      "Quizzes",
+      "Daily care",
+      "Daily charges",
       "Account",
     ]);
-    expect(navFor("Teacher").map((item) => item.label)).toEqual(["My classes", "Account"]);
-    expect(navFor("Proprietor").map((item) => item.label)).toEqual(["Overview", "Account"]);
-    expect(navFor("Parent").map((item) => item.label)).toEqual(["Home", "My wards", "Consent", "Account"]);
-    expect(navFor("Student").map((item) => item.label)).toEqual(["My school", "Account"]);
-    expect(navFor(null).map((item) => item.label)).toEqual(["Account"]);
+    expect(labels("Accountant")).toEqual(["Leave", "Money", "Daily charges", "Billing", "Shop", "Reports", "Account"]);
+    expect(labels("Parent")).toEqual(["Home", "My wards", "Payments", "Consent", "More"]);
+    expect(labels("Student")).toEqual(["My school", "Results", "Quizzes", "Timetable", "Resources", "Account"]);
+    expect(labels(null)).toEqual(["Account"]);
+  });
+
+  it("puts staff pages under headings", () => {
+    expect(navFor("Administrator").find((item) => item.label === "Pupils")?.group).toBe("People");
+    expect(navFor("Administrator").find((item) => item.label === "Dashboard")?.group).toBeUndefined();
   });
 
   it("gives parents a bottom tab bar on phones", () => {

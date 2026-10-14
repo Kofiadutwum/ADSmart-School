@@ -220,6 +220,9 @@ class Staff(SchoolOwned):
     employment_status = models.CharField(
         max_length=10, choices=EmploymentStatus.choices, default=EmploymentStatus.ACTIVE
     )
+    left_on = models.DateField(
+        null=True, blank=True, help_text="Set when their sign-in is switched off (retention)"
+    )
     is_demo = models.BooleanField(default=False)
 
     class Meta:

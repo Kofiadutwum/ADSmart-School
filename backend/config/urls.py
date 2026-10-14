@@ -3,17 +3,30 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
+from apps.billing.api import PricesView  # noqa: E402
 from apps.core.views import health
-from apps.platform_content.public_views import ArticleEmailsCronView
+from apps.finance import online  # noqa: E402
+from apps.notifications.api import DeliveryReportView
+from apps.platform_content.public_views import ArticleEmailsCronView, JobsCronView
+
+handler500 = "apps.core.request_id.server_error"
 
 urlpatterns = [
     path("api/health", health, name="health"),
     path("api/public/", include("apps.website.urls")),
     path("api/public/platform/", include("apps.platform_content.urls_public")),
     path("api/cron/article-emails", ArticleEmailsCronView.as_view()),
+    path("api/cron/jobs", JobsCronView.as_view()),
+    path("api/sms/delivery", DeliveryReportView.as_view()),
+    path("api/payments/verify", online.VerifyView.as_view()),
+    path("api/payments/paystack", online.WebhookView.as_view()),
+    path("api/ussd", online.UssdView.as_view()),
+    path("api/public/pay/<str:token>", online.PublicLinkView.as_view()),
+    path("api/public/platform/prices", PricesView.as_view()),
     path("api/auth/", include("apps.accounts.urls")),
     path("api/platform/", include("apps.platform_admin.urls")),
     path("api/school/", include("apps.school_admin.urls")),
+    path("api/school/messages/", include("apps.notifications.urls")),
     path("api/parent/", include("apps.family.urls")),
     path("api/student/", include("apps.pupil.urls")),
 ]

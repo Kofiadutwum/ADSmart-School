@@ -2,6 +2,12 @@ import type { LevelCode } from "./levels";
 
 /** Shapes returned by the Django public API (backend Tasks 7–8). */
 
+/** The prices section of the owner's website (business tools spec §3.1); amounts in pesewas. */
+export type PlatformPrices = {
+  plans: { name: string; audience: string; yearly_price: number; from_price: boolean; includes: string[] }[];
+  setup_fee: number;
+};
+
 export type ImageData = { src: string; srcset: string; width: number; height: number; alt: string };
 
 export type Photo = ImageData & { caption: string; is_placeholder: boolean };

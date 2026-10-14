@@ -48,6 +48,11 @@ if not DEBUG:  # behind HTTPS in production (Vercel or Caddy)
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=31536000)
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
+X_FRAME_OPTIONS = "DENY"
 # How a school's address is written in links: development "http://{host}:3000",
 # production "https://{host}".
 SITE_URL_TEMPLATE = env("SITE_URL_TEMPLATE", default="http://{host}:3000")
@@ -74,9 +79,17 @@ INSTALLED_APPS = [
     "apps.school_admin",
     "apps.family",
     "apps.pupil",
+    "apps.support",
+    "apps.finance",
+    "apps.transport",
+    "apps.billing",
+    "apps.learning",
+    "apps.care",
+    "apps.shop",
 ]
 
 MIDDLEWARE = [
+    "apps.core.request_id.RequestIdMiddleware",
     "apps.core.forwarding.SignedForwardingMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -174,11 +187,26 @@ MAILERS = mailers(os.environ)
 DEFAULT_FROM_EMAIL = env("DJANGO_DEFAULT_FROM_EMAIL", default="ADsmartschool <no-reply@localhost>")
 
 # SMS (Phase 1 spec §3.7). Development logs codes to the console (and SMS_FILE_PATH, if set).
-SMS_BACKEND = env(
-    "SMS_BACKEND",
-    default="apps.notifications.backends." + ("ConsoleBackend" if DEBUG else "UnavailableBackend"),
+# Stage 10: Arkesel is the provider once its key is set (SMS spec §24, §32).
+SMS_API_KEY = env("SMS_API_KEY", default="")
+SMS_SENDER_ID = env("SMS_SENDER_ID", default="ADsmartsch")
+SMS_WEBHOOK_TOKEN = env("SMS_WEBHOOK_TOKEN", default="")
+SMS_LOW_CREDIT = env.int("SMS_LOW_CREDIT", default=50)
+_SMS_DEFAULT = (
+    "ConsoleBackend" if DEBUG else ("ArkeselBackend" if SMS_API_KEY else "UnavailableBackend")
 )
+SMS_BACKEND = env("SMS_BACKEND", default="apps.notifications.backends." + _SMS_DEFAULT)
 SMS_FILE_PATH = env("SMS_FILE_PATH", default="")
+
+# Stage 14: Paystack (MoMo and card) and USSD. Empty keys: "not set up yet".
+PAYSTACK_SECRET_KEY = env("PAYSTACK_SECRET_KEY", default="")
+PAYSTACK_FEE_BEARER = env("PAYSTACK_FEE_BEARER", default="school")  # or "payer"
+USSD_PROVIDER = env("USSD_PROVIDER", default="simulator")
+USSD_SECRET = env("USSD_SECRET", default="")
+
+# Stage 22: AI-assisted questions. Only topic, level and difficulty are ever sent.
+ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default="")
+AI_MODEL = env("AI_MODEL", default="claude-sonnet-5-5")
 
 # Phase 1 spec §9: seed_demo adds one sign-in per role for trying the system. Development only.
 DEMO_LOGINS_ENABLED = env.bool("DEMO_LOGINS_ENABLED", default=False)
@@ -203,6 +231,7 @@ REST_FRAMEWORK = {
         "tips_ip": "30/hour",
         "visit_ip": "600/hour",
         "sms_code_ip": "10/hour",
+        "pay_ip": "120/hour",
     },
 }
 

@@ -7,6 +7,7 @@ const TABS = [
   ["/setup/classes", "Classes"],
   ["/setup/subjects", "Subjects"],
   ["/setup/teaching", "Teaching"],
+  ["/setup/assessment", "Assessment"],
 ] as const;
 
 /** School setup (Phase 1 spec §7.2), one tab per part. */

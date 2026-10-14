@@ -81,6 +81,8 @@ def assignments(staff: Staff, year) -> dict:
 class MeView(SchoolView):
     """Any member of staff: their own profile and this year's classes (Phase 1 spec §7.3)."""
 
+    allowed_while_paused = True
+
     read_roles = tuple(STAFF_ROLES)
 
     def get(self, request):

@@ -21,7 +21,7 @@ browser tests, accessibility checks and Lighthouse budget pass, and it is merged
 
 ---
 
-## Built (stages 1–8, merged)
+## Built (stages 1–22, merged)
 
 | Area | Source |
 |---|---|
@@ -35,6 +35,7 @@ browser tests, accessibility checks and Lighthouse budget pass, and it is merged
 | Going live: Vercel, Neon, Cloudinary, SMTP email, signed forwarding, cron, `ADMIN_HOST`, deploy guide | CHAT, P1 §13 |
 | School portal I (Stage 7): role homes and switcher, sidebar and phone menu, dashboard with go-live checklist, school profile, levels, logo and colours, years, terms, month calendar, classes and class teachers, subjects, teaching assignments, staff (add, roles, switch off, reset password, demo), school audit log, Head Teacher read-only, My teaching | P1 §7.2–7.5, SMS §7, §28 |
 | School portal II (Stage 8): pupils (search, admission, record tabs, status with reason, emergency contacts, photo with consent, demo), parents (link, activation text, reset), pick-up persons, consents against the privacy notice, enrolment in bulk with history, pupil sign-ins from Basic 4, teachers' class lists (contacts for the class teacher), Proprietor overview, parent portal (Home, My wards, Consent, bottom tabs), pupil My school | P1 §3.2, §3.5, §5, §7.2–7.5; SMS §5, §6, §30 |
+| Stages 9–22 (built together): the school website from the portal; support access with every look logged; school web addresses with a DNS check; SMS credits, approved wording, announcements and delivery reports; scheduled jobs; fees, invoices, gapless receipts, the append-only ledger, wallets, discounts, instalments, refunds and reversals; daily canteen and extra-class lists with late edits, cash-ups, weekly statements and teacher pay; transport with boarding texts; platform billing (five plans, trials, gapless bills, credits, reminders, pausing) and the school Billing page; Paystack, payment links, USSD with simulator and statement matching; statistics; attendance with absence texts, staff attendance and leave, assessment set-up, marks, approval workflow, positions and report cards withheld for fees with release; daily care, pick-up control, visitors, medical, sickbay, incidents and special needs (restricted); full parent and pupil portals; bookshop and uniforms with collection codes; lesson notes; timetable with clash checks and cover; year-end rollover, CSV reports, audit export, backup check, retention command, data requests and breach log; support conversations and platform announcements; learning resources; quizzes with AI drafting | SMS §5–§39, BT §3–§6, MS §4 |
 
 ---
 
@@ -82,7 +83,7 @@ Each stage gets a plan, test-first code, a full check and a local merge.
 - **Student (Basic 4+):** profile, class and account security (P1 §7.3).
 - **Privacy notice:** shown to parents in the portal (SMS §30).
 
-### Stage 9: school websites from the portal, support access, domains
+### Stage 9: school websites from the portal, support access, domains, built
 - **Website section in the school portal:**
   - content blocks (with "reviewed"), facts, photo slots (upload, alt text, placeholder flag) and feature blocks;
   - news (drafts and publishing) and the enquiry inbox (status, notes);
@@ -98,7 +99,7 @@ Each stage gets a plan, test-first code, a full check and a local merge.
   - platform staff open records while the grant runs, each view logged as `VIEWED_RESTRICTED` (MS §4).
 - **School SMS log**, for the school's own messages (MS §8).
 
-### Stage 10: notifications and the SMS provider
+### Stage 10: notifications and the SMS provider, built
 - **SMS provider backend:** Arkesel by default, behind the existing gateway, configured by settings (P1 §1.3, SMS §24, §32).
 - **Message templates** approved by the Head Teacher; a delivery log per message with provider delivery reports (SMS §24).
 - **SMS credits remaining**, with a low-credit warning to the Administrator (SMS §24, §36).
@@ -106,7 +107,7 @@ Each stage gets a plan, test-first code, a full check and a local merge.
 - **Scheduled jobs runner:** one cron endpoint runs due work (reminders, re-checks, statements); daily on Vercel Hobby (SMS §32).
 - **Announcements to parents and staff**, by SMS and in the portal (SMS §24, §20).
 
-### Stage 11: finance core I (fees, invoices, ledger, payments, wallets)
+### Stage 11: finance core I (fees, invoices, ledger, payments, wallets), built
 - **Fee structures** by band, class, year, term and charge type; optional charges (bus, canteen plan, extra classes, BECE and mock fees) (SMS §13).
 - **Invoices and invoice lines** per student; arrears carried forward and shown separately (SMS §13).
 - **Discounts and scholarships** (sibling, staff child, bursary), with approver and reason (SMS §13).
@@ -119,7 +120,7 @@ Each stage gets a plan, test-first code, a full check and a local merge.
 - **Prepaid wallet** per student (canteen, bus), with top-ups and a low-balance alert (SMS §13, §24).
 - **Accountant workspace:** payment history search; filters by type, class, term, year and dates (SMS §13).
 
-### Stage 12: finance core II (canteen, extra classes, transport, cash-up)
+### Stage 12: finance core II (canteen, extra classes, transport, cash-up), built
 - **Category rates** (Early Years, Primary, JHS): combined daily amount and canteen amount, set by the Administrator with Head Teacher approval; audited (SMS §14.1).
 - **The class teacher's daily list:**
   - amounts filled in by the system (plus bus);
@@ -142,7 +143,7 @@ Each stage gets a plan, test-first code, a full check and a local merge.
   - change of pick-up point confirmed by the parent (SMS §15).
 - **Allergy check before meals** in canteen records (SMS §14).
 
-### Stage 13: platform billing (school subscriptions)
+### Stage 13: platform billing (school subscriptions), built
 - **Plans:** the five plans (yearly price; Enterprise "From"), changed by Owner or Finance (BT §3.1, CHAT).
 - **Subscriptions:** each keeps its own price; changes apply to new schools only; trials (BT §3.2).
 - **School groups (Enterprise):** one bill for the whole group (BT §3.2).
@@ -155,7 +156,7 @@ Each stage gets a plan, test-first code, a full check and a local merge.
 - **The school's Billing page** (BT §3.9).
 - **Prices section** on your website (BT §5.4).
 
-### Stage 14: online payments, reconciliation and platform statistics
+### Stage 14: online payments, reconciliation and platform statistics, built
 - **Paystack (MoMo and card):**
   - pending transactions with unique references;
   - redirect plus webhook (with signature check) plus server verification;
@@ -172,7 +173,7 @@ Each stage gets a plan, test-first code, a full check and a local merge.
 - **Reconciliation:** import MoMo, Paystack and bank statements; match them to the ledger; list unmatched items (SMS §13, §25).
 - **Platform Statistics page** (BT §4).
 
-### Stage 15: attendance, assessment, results and report cards
+### Stage 15: attendance, assessment, results and report cards, built
 - **Student attendance:**
   - Present, Absent, Late and Excused, on open calendar days only;
   - early-years arrival and departure, with who collected checked against the pick-up list;
@@ -189,7 +190,7 @@ Each stage gets a plan, test-first code, a full check and a local merge.
   - print or PDF;
   - optional withholding for arrears, logged, with a Head Teacher override (SMS §11).
 
-### Stage 16: early years, safeguarding and health
+### Stage 16: early years, safeguarding and health, built
 - **Daily care report:**
   - arrival and departure, meals (with an allergy alert), sleep, toilet, mood and activities;
   - incidents (staff signature; parent alerted at once);
@@ -208,7 +209,7 @@ Each stage gets a plan, test-first code, a full check and a local merge.
 - **Special learning needs** (restricted) (SMS §6).
 - **Bus boarding log:** a bus attendant records boarding and drop-off by phone; the parent is notified (SMS §15).
 
-### Stage 17: the full parent and student portals
+### Stage 17: the full parent and student portals, built
 - **Parent portal**, mobile-first and light on data, with multiple wards:
   - daily reports, academic performance and attendance;
   - invoices and balances, Pay now, wallet and receipts;
@@ -217,7 +218,7 @@ Each stage gets a plan, test-first code, a full check and a local merge.
 - **Student portal (Basic 4+):** profile, results and report cards, attendance, announcements, bookshop, and fees only if the school allows (SMS §20).
 - **Performance analysis:** averages, subjects, term comparison, attendance percentage, position, trends, and attention thresholds (SMS §21).
 
-### Stage 18: bookshop, uniforms, lesson notes, timetable
+### Stage 18: bookshop, uniforms, lesson notes, timetable, built
 - **Books catalogue:** title, subject, class, year, price and stock, with price history; a required-books list per class (SMS §16.1).
 - **Orders:** by parents and pupils (pupil orders send the parent an SMS payment link).
 - **Order statuses:** awaiting payment, awaiting stock, ready to issue, part issued, issued, cancelled or refunded.
@@ -231,7 +232,7 @@ Each stage gets a plan, test-first code, a full check and a local merge.
   - Head Teacher review (SMS §12).
 - **Timetable:** by class and teacher, with clash detection and substitute cover (SMS §28).
 
-### Stage 19: year-end, reports, dashboards, protection
+### Stage 19: year-end, reports, dashboards, protection, built
 - **Year-end promotion and rollover:**
   - the Head Teacher decides for every pupil;
   - new enrolments, arrears carried forward, the next year's invoices (SMS §29).
@@ -249,14 +250,14 @@ Each stage gets a plan, test-first code, a full check and a local merge.
   - a breach procedure (SMS §30).
 - **Security headers** (CSP, Permissions-Policy, HSTS, framing denied), and an error page showing a request ID (P1 §10, §11.1).
 
-### Stage 20: talking with schools
+### Stage 20: talking with schools, built
 - **Announcements** from the platform to schools (BT §6.1).
 - **Support conversations** between a school and the platform team (BT §6.2).
 
-### Stage 21: learning resources
+### Stage 21: learning resources, built
 - **Resources** per class and subject: uploads and legitimate links; search by title, subject and class (SMS §22).
 
-### Stage 22: AI-assisted questions and quizzes
+### Stage 22: AI-assisted questions and quizzes, built
 - **Teacher-led generation:** the teacher chooses class, subject, topic, difficulty and number. The AI drafts questions, and the teacher edits and approves them (SMS §23).
 - **Quizzes:** published to students, objective items auto-marked, subjective answers to the teacher, learning analytics.
 - **Privacy:** only the topic, level and difficulty go to the AI service, never personal data (SMS §23, §30).

@@ -30,7 +30,7 @@ def test_vercel_runs_the_wsgi_app_and_a_daily_cron():
 
     assert vercel["entrypoint"] == "config.wsgi:application"
     assert vercel["scripts"]["build"] == "python vercel_build.py"
-    assert config["crons"] == [{"path": "/api/cron/article-emails", "schedule": "0 7 * * *"}]
+    assert config["crons"] == [{"path": "/api/cron/jobs", "schedule": "0 6 * * *"}]
     assert config["functions"]["config/wsgi.py"]["maxDuration"] == 60
 
 

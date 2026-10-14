@@ -73,6 +73,10 @@ for (const [project, username] of Object.entries(accounts.head_teachers)) {
   await createUser("--kind", "staff", "--school", "sample", "--username", username, "--name", `Kwame Head ${project}`,
     "--role", "Head Teacher", "--password", accounts.password, "--phone", accounts.phones.head_teachers[project]);
 }
+for (const [project, username] of Object.entries(accounts.accountants)) {
+  await createUser("--kind", "staff", "--school", "sample", "--username", username, "--name", `Yaw Money ${project}`,
+    "--role", "Accountant", "--password", accounts.password, "--phone", accounts.phones.accountants[project]);
+}
 for (const [project, phone] of Object.entries(accounts.parents)) {
   await createUser("--kind", "parent", "--school", "sample", "--username", phone, "--name", `Ama Mensah ${project}`);
 }
