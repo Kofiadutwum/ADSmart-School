@@ -3,6 +3,10 @@ import type { ReactNode } from "react";
 import { getPlatform } from "@/lib/api";
 import { PLATFORM_ICON } from "@/lib/platform-brand";
 
+// Private pages, rendered when opened rather than during the build: the build then doesn't wait
+// on the backend for each of them (Render's free plan sleeps, and waking can pass 60 seconds).
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata(): Promise<Metadata> {
   const { name } = await getPlatform();
   return {
