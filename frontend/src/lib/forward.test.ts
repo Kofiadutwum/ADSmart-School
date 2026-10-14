@@ -44,6 +44,9 @@ describe("forwarding to Django", () => {
 
   it("finds Django, trimming a trailing slash, and says plainly when Vercel lacks the address", () => {
     expect(djangoOrigin({ DJANGO_ORIGIN: "https://api.onrender.com/" })).toBe("https://api.onrender.com");
+    expect(djangoOrigin({ DJANGO_ORIGIN: "adsmartschool-api.onrender.com" })).toBe("https://adsmartschool-api.onrender.com");
+    expect(djangoOrigin({ DJANGO_ORIGIN: ' "https://api.onrender.com/" ' })).toBe("https://api.onrender.com");
+    expect(() => djangoOrigin({ DJANGO_ORIGIN: "https://exa mple" })).toThrow(/isn't a web address/);
     expect(djangoOrigin({})).toBe("http://127.0.0.1:8000");
     expect(() => djangoOrigin({ VERCEL: "1" })).toThrow(/DJANGO_ORIGIN is not set/);
   });

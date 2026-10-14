@@ -9,8 +9,20 @@ type Env = Record<string, string | undefined>;
 /** Where Django runs. On Vercel it must be set (the Render address); without it every page would
  * try this computer's address and the build would fail with a puzzling connection error. */
 export function djangoOrigin(env: Env = process.env): string {
-  const origin = env.DJANGO_ORIGIN?.trim();
-  if (origin) return origin.replace(/\/+$/, "");
+  // Forgive the usual slips when pasting it: quotes, spaces, a missing https://, a trailing slash.
+  let origin = env.DJANGO_ORIGIN?.trim().replace(/^["']+|["']+$/g, "").trim() ?? "";
+  if (origin) {
+    if (!/^https?:\/\//i.test(origin)) origin = `https://${origin}`;
+    origin = origin.replace(/\/+$/, "");
+    try {
+      return new URL(origin).origin;
+    } catch {
+      throw new Error(
+        "DJANGO_ORIGIN isn't a web address. In Vercel, set it to your Render backend's full address, " +
+          "e.g. https://adsmartschool-api.onrender.com (docs/deploy/hosting.md, step 7).",
+      );
+    }
+  }
   if (env.VERCEL) {
     throw new Error(
       "DJANGO_ORIGIN is not set. In Vercel, open Settings → Environment Variables and set it to your " +

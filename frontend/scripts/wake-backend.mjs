@@ -20,5 +20,12 @@ async function wake(origin) {
   console.warn("The backend didn't wake within 4 minutes; building anyway.");
 }
 
-const origin = process.env.DJANGO_ORIGIN?.trim().replace(/\/+$/, "");
+// The same forgiving reading as src/lib/forward.ts: quotes, spaces, missing https://, trailing slash.
+let origin = process.env.DJANGO_ORIGIN?.trim().replace(/^["']+|["']+$/g, "").trim() ?? "";
+if (origin && !/^https?:\/\//i.test(origin)) origin = `https://${origin}`;
+origin = origin.replace(/\/+$/, "");
+if (origin && !URL.canParse(origin)) {
+  console.warn("DJANGO_ORIGIN isn't a web address; not waking the backend.");
+  origin = "";
+}
 if (process.env.VERCEL && origin) await wake(origin);
