@@ -126,7 +126,9 @@ You already have the `adsmartschool` project on Vercel (folder `frontend`). Open
 | `REVALIDATE_SECRET` | the **same** REVALIDATE_SECRET as on Render | Secret |
 | `CRON_SECRET` | the **same** CRON_SECRET as on Render | Secret |
 
-For **Environments**, tick Production, Preview and Development.
+Vercel's form gives every row added together the same type, so add them in two goes: first the
+four **Config** ones, **Save**; then **Add new variable** for the three **Secret** ones, **Save**.
+Each time, for **Environments**, tick Production, Preview and Development.
 
 Then:
 
