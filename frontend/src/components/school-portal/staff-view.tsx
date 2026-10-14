@@ -5,7 +5,7 @@ import { useState, type FormEvent } from "react";
 import { CHECK_FORM, InputField, LoadState, useLoad, useSubmit } from "@/components/portal/kit";
 import { OneTimePasswordNote } from "@/components/portal/one-time-password-note";
 import { inputClasses } from "@/components/site/field";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { FormAlert } from "@/components/ui/form-alert";
 import { postJson } from "@/lib/client-api";
 import { formatDateTime } from "@/lib/dates";
@@ -62,14 +62,19 @@ export function StaffView({ canEdit }: { canEdit: boolean }) {
           <p className="mt-1 text-ink-muted">Everyone who signs in for the school, and what each can do.</p>
         </div>
         {canEdit && !adding && (
-          <Button
-            onClick={() => {
-              setAdding(true);
-              setAdded(null);
-            }}
-          >
-            Add a member of staff
-          </Button>
+          <div className="flex flex-wrap gap-3">
+            <ButtonLink href="/import?kind=staff" variant="outline">
+              Import from a spreadsheet
+            </ButtonLink>
+            <Button
+              onClick={() => {
+                setAdding(true);
+                setAdded(null);
+              }}
+            >
+              Add a member of staff
+            </Button>
+          </div>
         )}
       </div>
       {adding && (

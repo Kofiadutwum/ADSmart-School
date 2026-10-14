@@ -41,7 +41,8 @@ describe("StaffView", () => {
     const demo = screen.getByRole("link", { name: "Demo Teacher" }).closest("li") as HTMLElement;
     expect(within(demo).getByText("Demo")).toBeInTheDocument();
     await user.selectOptions(screen.getByLabelText("Show"), "Can't get sign-in codes");
-    expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual(["Esi Accounts"]);
+    const list = screen.getByRole("list");
+    expect(within(list).getAllByRole("link").map((link) => link.textContent)).toEqual(["Esi Accounts"]);
   });
 
   it("adds a member of staff and shows the one-time password once", async () => {

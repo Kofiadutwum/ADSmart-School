@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { CHECK_FORM, InputField, LoadState, useLoad, useSubmit } from "@/components/portal/kit";
 import { Field, inputClasses } from "@/components/site/field";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { FormAlert } from "@/components/ui/form-alert";
 import { postJson } from "@/lib/client-api";
 import { todayInAccra } from "@/lib/dates";
@@ -95,7 +95,14 @@ export function PupilsView({ canEdit }: { canEdit: boolean }) {
           <h1 className="text-3xl font-semibold">Pupils</h1>
           <p className="mt-1 text-ink-muted">Search by name or Student ID, or narrow the list.</p>
         </div>
-        {canEdit && !admitting && <Button onClick={() => setAdmitting(true)}>Admit a pupil</Button>}
+        {canEdit && !admitting && (
+          <div className="flex flex-wrap gap-3">
+            <ButtonLink href="/import" variant="outline">
+              Import from a spreadsheet
+            </ButtonLink>
+            <Button onClick={() => setAdmitting(true)}>Admit a pupil</Button>
+          </div>
+        )}
       </div>
       {admitting && <AdmitForm classes={classes.data} onCancel={() => setAdmitting(false)} />}
       <form
