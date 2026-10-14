@@ -60,7 +60,11 @@ This also replaces the old database password, which was shared in a chat.
    emails you.
 2. **Make an API key.** Open **SMTP & API**, then **API Keys**, then **Generate a new API key**.
    Name it `ADsmartschool`. Copy it (it starts with `xkeysib-`). This is your **BREVO_API_KEY**.
-3. Until you have your own domain, emails come from your Gmail address through Brevo. The first
+   Not the SMTP key on the same page (that one starts with `xsmtpsib-` and won't work).
+3. **Let Render use the key.** Render's free plan sends from changing addresses, which Brevo
+   blocks by default. Click your name (top right), then **Security**, then **Authorised IPs**,
+   and turn IP blocking **off**.
+4. Until you have your own domain, emails come from your Gmail address through Brevo. The first
    ones may land in spam: check the spam folder, and mark them "not spam".
 
 ## 5. Make four secrets

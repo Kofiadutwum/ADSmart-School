@@ -82,6 +82,25 @@ def test_the_brevo_mailer_posts_each_message_to_its_api(monkeypatch):
     }
 
 
+def test_a_brevo_refusal_names_brevos_reason_for_the_logs(monkeypatch):
+    import io
+    import urllib.error
+
+    from django.core.mail import EmailMessage
+
+    from config import mail
+
+    def refuse(request, timeout=0):
+        body = io.BytesIO(b'{"code":"unauthorized","message":"Key not found"}')
+        raise urllib.error.HTTPError(request.full_url, 401, "Unauthorized", {}, body)
+
+    monkeypatch.setattr(mail.urllib.request, "urlopen", refuse)
+    message = EmailMessage("Your code", "123456", "a@example.com", ["b@example.com"])
+
+    with pytest.raises(RuntimeError, match=r"Brevo refused the email \(401\).*Key not found"):
+        mail.BrevoBackend(api_key="xkeysib-wrong").send_messages([message])
+
+
 def test_email_stays_in_the_console_without_a_server():
     assert mailers({})["default"]["BACKEND"] == "django.core.mail.backends.console.EmailBackend"
 

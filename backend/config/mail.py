@@ -3,6 +3,7 @@ email ports, so SMTP can't work there), else an SMTP server when SMTP_HOST is se
 console."""
 
 import json
+import urllib.error
 import urllib.request
 from collections.abc import Mapping
 from email.utils import parseaddr
@@ -85,5 +86,10 @@ class BrevoBackend(BaseEmailBackend):
             },
             method="POST",
         )
-        with urllib.request.urlopen(request, timeout=15):  # noqa: S310 - fixed host
-            pass
+        try:
+            with urllib.request.urlopen(request, timeout=15):  # noqa: S310 - fixed host
+                pass
+        except urllib.error.HTTPError as exc:
+            # Brevo's reason (bad key, unverified sender, blocked IP) lands in the logs.
+            reason = exc.read().decode(errors="replace")[:300]
+            raise RuntimeError(f"Brevo refused the email ({exc.code}): {reason}") from exc
