@@ -4,6 +4,22 @@
 
 const SIGNED = ["x-site-host", "x-site-client-ip", "x-proxy-secret"];
 
+type Env = Record<string, string | undefined>;
+
+/** Where Django runs. On Vercel it must be set (the Render address); without it every page would
+ * try this computer's address and the build would fail with a puzzling connection error. */
+export function djangoOrigin(env: Env = process.env): string {
+  const origin = env.DJANGO_ORIGIN?.trim();
+  if (origin) return origin.replace(/\/+$/, "");
+  if (env.VERCEL) {
+    throw new Error(
+      "DJANGO_ORIGIN is not set. In Vercel, open Settings → Environment Variables and set it to your " +
+        "Render backend address, e.g. https://adsmartschool-api.onrender.com (docs/deploy/hosting.md, step 7).",
+    );
+  }
+  return "http://127.0.0.1:8000";
+}
+
 export function isBackendPath(pathname: string): boolean {
   if (pathname === "/api/revalidate") return false; // answered by Next.js itself
   return pathname.startsWith("/api/") || pathname.startsWith("/media/");

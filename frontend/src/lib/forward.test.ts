@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { backendUrl, isBackendPath, signedHeaders } from "./forward";
+import { backendUrl, djangoOrigin, isBackendPath, signedHeaders } from "./forward";
 
 describe("forwarding to Django", () => {
   it("sends the API and media to Django, but answers the refresh route itself", () => {
@@ -40,6 +40,12 @@ describe("forwarding to Django", () => {
     expect(plain.get("x-site-host")).toBeNull();
     expect(plain.get("x-proxy-secret")).toBeNull();
     expect(plain.get("x-forwarded-host")).toBe("a.example");
+  });
+
+  it("finds Django, trimming a trailing slash, and says plainly when Vercel lacks the address", () => {
+    expect(djangoOrigin({ DJANGO_ORIGIN: "https://api.onrender.com/" })).toBe("https://api.onrender.com");
+    expect(djangoOrigin({})).toBe("http://127.0.0.1:8000");
+    expect(() => djangoOrigin({ VERCEL: "1" })).toThrow(/DJANGO_ORIGIN is not set/);
   });
 
   it("passes on the daily cron's secret so the backend can check it", () => {

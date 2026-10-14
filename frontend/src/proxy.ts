@@ -1,8 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { backendUrl, isBackendPath, signedHeaders } from "@/lib/forward";
+import { backendUrl, djangoOrigin, isBackendPath, signedHeaders } from "@/lib/forward";
 import { routeFor } from "@/lib/hosts";
-
-const djangoOrigin = () => process.env.DJANGO_ORIGIN ?? "http://127.0.0.1:8000";
 
 /** Serves every school, the platform site and the admin area from one app (amendment §2.4), and
  * hands the API and media to Django (Plan 6A). */

@@ -6,15 +6,14 @@ import type {
   PlatformArticle,
   PlatformArticleSummary,
   PlatformData,
+  PlatformPrices,
   PrivacyNotice,
-  SiteData, PlatformPrices } from "./types";
+  SiteData,
+} from "./types";
+import { djangoOrigin } from "./forward";
 
 /** Public pages are rebuilt at most every five minutes (ISR). */
 export const REVALIDATE_SECONDS = 300;
-
-function djangoOrigin(): string {
-  return process.env.DJANGO_ORIGIN ?? "http://127.0.0.1:8000";
-}
 
 /** `tags`: Django can refresh these straight away (the platform website, business tools §5.7;
  * school sites after a profile change, Stage 7). */
