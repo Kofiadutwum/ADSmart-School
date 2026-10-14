@@ -5,7 +5,9 @@ Money and audit records stay (the ledger can't be changed), so a pupil is anonym
 deleted: their name becomes "Former pupil" and their contacts, pick-up people, photo, medical and
 special-needs records are removed.
 
-Ruling: staff records are not yet included, because no leaving date is recorded for staff.
+Staff who left longer ago than the school's staff period are anonymised the same way: their
+name becomes "Former staff member", and their phone, email, qualifications, licence and
+emergency contact are removed. Pay and audit records stay.
 """
 
 from datetime import timedelta
@@ -18,7 +20,7 @@ from django.utils import timezone
 from apps.audit.models import AuditLog
 from apps.audit.services import record
 from apps.care.models import MedicalRecord, SpecialNeed
-from apps.people.models import EmergencyContact, PickupPerson, Student
+from apps.people.models import EmergencyContact, PickupPerson, Staff, Student
 from apps.school.models import School
 from apps.support.models import RetentionRule
 
@@ -58,10 +60,38 @@ def anonymise(pupil: Student) -> None:
     )
 
 
-class Command(BaseCommand):
-    help = (
-        "Report (or with --apply, anonymise) pupils kept longer than their school's retention rule."
+def staff_due_for_removal(school: School):
+    rule = RetentionRule.objects.filter(school=school).first()
+    years = rule.staff_years if rule else 7
+    cutoff = timezone.localdate() - timedelta(days=365 * years)
+    return (
+        Staff.objects.for_school(school)
+        .filter(left_on__lt=cutoff, user__is_active=False)
+        .exclude(first_name="Former", surname="staff member")
     )
+
+
+@transaction.atomic
+def anonymise_staff(staff: Staff) -> None:
+    staff.first_name, staff.surname = "Former", "staff member"
+    staff.phone = staff.email = staff.qualifications = ""
+    staff.licence_number = staff.emergency_contact = ""
+    staff.save()
+    user = staff.user
+    user.display_name, user.phone, user.email = "Former staff member", "", ""
+    user.login = f"former-staff-{staff.pk}"  # frees the username; the account stays switched off
+    user.save(update_fields=["display_name", "phone", "email", "login"])
+    record(
+        AuditLog.Action.UPDATED,
+        actor=None,
+        entity=staff,
+        new={"retention": "anonymised"},
+        school=staff.school,
+    )
+
+
+class Command(BaseCommand):
+    help = "Report (or with --apply, anonymise) former pupils and staff past the retention rule."
 
     def add_arguments(self, parser):
         parser.add_argument("--apply", action="store_true", help="Make the changes")
@@ -71,7 +101,7 @@ class Command(BaseCommand):
         for school in School.objects.order_by("name"):
             pupils = list(due_for_removal(school))
             if not pupils:
-                continue
+                continue  # staff are counted below
             total += len(pupils)
             self.stdout.write(
                 f"{school.name}: {len(pupils)} former pupils past the retention period"
@@ -79,5 +109,19 @@ class Command(BaseCommand):
             if options["apply"]:
                 for pupil in pupils:
                     anonymise(pupil)
+        staff_total = 0
+        for school in School.objects.order_by("name"):
+            members = list(staff_due_for_removal(school))
+            if not members:
+                continue
+            staff_total += len(members)
+            self.stdout.write(
+                f"{school.name}: {len(members)} former staff past the retention period"
+            )
+            if options["apply"]:
+                for member in members:
+                    anonymise_staff(member)
         verb = "Anonymised" if options["apply"] else "Would anonymise"
-        self.stdout.write(self.style.SUCCESS(f"{verb} {total} former pupils."))
+        self.stdout.write(
+            self.style.SUCCESS(f"{verb} {total} former pupils and {staff_total} former staff.")
+        )

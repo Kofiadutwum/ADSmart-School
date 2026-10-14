@@ -2,6 +2,7 @@
 
 import { CircleCheck, CircleDashed } from "lucide-react";
 import { LoadState, useLoad } from "@/components/portal/kit";
+import { ghs } from "@/lib/money";
 import type { SchoolDashboard } from "@/lib/types";
 
 /** The Administrator's dashboard and the Head Teacher's school summary (Phase 1 spec §7.2–7.3). */
@@ -15,6 +16,7 @@ export function DashboardView() {
       </div>
       <LoadState error={error} loading={!data && !error} empty={false} emptyText="" />
       {data && <Counts counts={data.counts} />}
+      <Today />
       {data && <Checklist items={data.checklist} />}
     </div>
   );
@@ -96,6 +98,44 @@ function Checklist({ items }: { items: SchoolDashboard["checklist"] }) {
           </li>
         ))}
       </ul>
+    </section>
+  );
+}
+
+type TodayFigures = {
+  pupils: number;
+  marked_today: number;
+  present_today: number;
+  absent_today: number;
+  collected_today: number;
+  outstanding_fees: number;
+  debtors: number;
+};
+
+/** Today at school: the register and the money (SMS spec §31). */
+function Today() {
+  const { data } = useLoad<TodayFigures>("/api/school/dashboard-figures");
+  if (!data) return null;
+  const cards: [string, string, string?][] = [
+    ["Present today", String(data.present_today), data.marked_today ? `of ${data.marked_today} marked` : "No register taken yet"],
+    ["Absent today", String(data.absent_today)],
+    ["Collected today", ghs(data.collected_today)],
+    ["Fees still owed", ghs(data.outstanding_fees), `${data.debtors} pupils`],
+  ];
+  return (
+    <section aria-labelledby="today-title" className="space-y-4">
+      <h2 id="today-title" className="text-xl font-semibold">
+        Today
+      </h2>
+      <dl className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {cards.map(([label, value, note]) => (
+          <div key={label} className="rounded-card border border-line bg-card p-5">
+            <dt className="text-sm text-ink-muted">{label}</dt>
+            <dd className="mt-1 text-2xl font-semibold tabular-nums">{value}</dd>
+            {note && <dd className="mt-1 text-sm text-ink-muted">{note}</dd>}
+          </div>
+        ))}
+      </dl>
     </section>
   );
 }

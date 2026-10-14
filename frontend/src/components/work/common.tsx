@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { patchJson, postJson } from "@/lib/client-api";
 import { ghs } from "@/lib/money";
 import { useActiveRole } from "@/components/school-portal/school-portal-shell";
+import { CAREGIVER, TEACHER } from "@/lib/school-roles";
 
 /** The page title and a line saying what the page is for. */
 export function PageHead({ title, intro, children }: { title: string; intro?: string; children?: ReactNode }) {
@@ -48,6 +49,52 @@ export function Section({
 export function useRoleIs(...names: string[]): boolean {
   const role = useActiveRole();
   return role !== null && names.includes(role);
+}
+
+/** Teachers choose from their own classes and subjects; leaders from the whole school's. */
+export function useTeachingSources(): { classes: string; subjects: string } {
+  return useRoleIs(TEACHER, CAREGIVER)
+    ? { classes: "my-classes", subjects: "my-subjects" }
+    : { classes: "classes", subjects: "subjects" };
+}
+
+/** Bars drawn with the site's own styles, with the same numbers in a table for screen readers. */
+export function BarChart({
+  title,
+  head,
+  rows,
+  format = String,
+}: {
+  title: string;
+  head: [string, string];
+  rows: { label: string; value: number }[];
+  format?: (value: number) => string;
+}) {
+  const max = Math.max(1, ...rows.map((row) => row.value));
+  return (
+    <figure className="space-y-4">
+      <figcaption className="font-semibold">{title}</figcaption>
+      {rows.length === 0 ? (
+        <p className="text-ink-muted">Nothing yet.</p>
+      ) : (
+        <>
+          <div aria-hidden className="flex h-40 items-end gap-1 border-b border-line">
+            {rows.map((row) => (
+              <div key={row.label} className="flex h-full flex-1 flex-col justify-end" title={`${row.label}: ${format(row.value)}`}>
+                <div className="min-h-px w-full rounded-t bg-indigo/70" style={{ height: `${(row.value / max) * 100}%` }} />
+              </div>
+            ))}
+          </div>
+          <Table caption={title} head={head} rows={rows.map((row) => [row.label, format(row.value)])} />
+        </>
+      )}
+    </figure>
+  );
+}
+
+/** "2026-03-01" → "Mar 2026". */
+export function monthLabel(value: string): string {
+  return new Date(value).toLocaleDateString("en-GB", { month: "short", year: "numeric" });
 }
 
 /** A drop-down of the school's pupils, classes, terms and so on. */

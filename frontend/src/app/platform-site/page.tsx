@@ -5,12 +5,13 @@ import { ArticlesSection } from "@/components/platform/articles-section";
 import { FaqSection } from "@/components/platform/faq-section";
 import { LeadForm } from "@/components/platform/lead-form";
 import { PhotoGrid } from "@/components/platform/photo-grid";
+import { PricesSection } from "@/components/platform/prices-section";
 import { TestimonialsSection } from "@/components/platform/testimonials-section";
 import { TipsSignup } from "@/components/platform/tips-signup";
 import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { SectionHeading } from "@/components/ui/section-heading";
-import { getPlatform } from "@/lib/api";
+import { getPlatform, getPlatformPrices } from "@/lib/api";
 
 export const revalidate = 300;
 const GALLERY_ON_HOME = 12;
@@ -40,7 +41,7 @@ const FEATURES: { title: string; text: string; Icon: LucideIcon }[] = [
 ];
 
 export default async function PlatformHomePage() {
-  const platform = await getPlatform();
+  const [platform, prices] = await Promise.all([getPlatform(), getPlatformPrices()]);
   return (
     <>
       <section className="bg-brand-mesh on-dark relative isolate overflow-hidden pt-32 pb-20 text-white sm:pt-40 sm:pb-28">
@@ -124,6 +125,7 @@ export default async function PlatformHomePage() {
       )}
 
       <TestimonialsSection testimonials={platform.testimonials} />
+      <PricesSection prices={prices} />
       <ArticlesSection articles={platform.latest_articles} />
       <FaqSection faqs={platform.faqs} />
 

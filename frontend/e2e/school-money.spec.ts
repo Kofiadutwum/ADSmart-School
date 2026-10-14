@@ -10,7 +10,7 @@ async function signInAs(page: Page, username: string, phone: string) {
   await confirmWithTextedCode(page, e164(phone));
 }
 
-test("the Accountant sets a daily rate and the Head Teacher approves it", async ({ page, browser }, testInfo) => {
+test("the Accountant sets a daily rate, the Head Teacher approves it and sends an announcement", async ({ page, browser }, testInfo) => {
   const project = testInfo.project.name as Project;
   // Phones and desktops run side by side at one school, so each sets a different category.
   const category = project === "phone" ? "Early Years" : "JHS";
@@ -31,7 +31,10 @@ test("the Accountant sets a daily rate and the Head Teacher approves it", async 
   await expect(rate.getByText("Waiting for approval")).toBeVisible();
   await expect(rate.getByText("GH₵10.00")).toBeVisible();
 
-  const head = await browser.newPage();
+  // A second person signed in at the same time: their own browser, same screen size.
+  const { baseURL, viewport, userAgent, deviceScaleFactor, isMobile, hasTouch } = testInfo.project.use;
+  const context = await browser.newContext({ baseURL, viewport, userAgent, deviceScaleFactor, isMobile, hasTouch });
+  const head = await context.newPage();
   await signInAs(head, accounts.head_teachers[project], accounts.phones.head_teachers[project]);
   await expect(head.getByRole("heading", { name: "Dashboard" })).toBeVisible();
   await (await mainNav(head)).getByRole("link", { name: "Daily charges" }).click();
@@ -39,24 +42,21 @@ test("the Accountant sets a daily rate and the Head Teacher approves it", async 
   const pending = head.getByRole("article").filter({ hasText: category });
   await pending.getByRole("button", { name: "Approve" }).click();
   await expect(pending.getByText("Approved")).toBeVisible();
-  await head.close();
-});
 
-test("an Administrator sends an announcement to staff", async ({ page }, testInfo) => {
-  const project = testInfo.project.name as Project;
+  // The Head Teacher also sends an announcement to staff. Each test number may receive only
+  // three sign-in codes an hour, so this reuses the Head Teacher's session.
   const title = `Staff meeting ${project}`;
-
-  await signInAs(page, accounts.staff[project], accounts.phones.staff[project]);
-  await (await mainNav(page)).getByRole("link", { name: "Messages" }).click();
-  await expect(page.getByRole("heading", { level: 1, name: "Announcements" })).toBeVisible();
-  await page.getByRole("button", { name: "Add announcement" }).click();
-  await page.getByLabel(/^title/i).fill(title);
-  await page.getByLabel(/^message/i).fill("Staff meeting on Friday at 2 pm in the hall.");
-  await page.getByLabel(/^to/i).selectOption({ label: "Staff" });
-  await page.getByRole("button", { name: "Add announcement" }).click();
-  const card = page.getByRole("article").filter({ hasText: title });
+  await (await mainNav(head)).getByRole("link", { name: "Messages" }).click();
+  await expect(head.getByRole("heading", { level: 1, name: "Announcements" })).toBeVisible();
+  await head.getByRole("button", { name: "Add announcement" }).click();
+  await head.getByLabel(/^title/i).fill(title);
+  await head.getByLabel(/^message/i).fill("Staff meeting on Friday at 2 pm in the hall.");
+  await head.getByLabel(/^to/i).selectOption({ label: "Staff" });
+  await head.getByRole("button", { name: "Add announcement" }).click();
+  const card = head.getByRole("article").filter({ hasText: title });
   await card.getByRole("button", { name: "Send" }).click();
   await card.getByRole("button", { name: "Yes" }).click();
   await expect(card.getByText("Sent", { exact: true })).toBeVisible();
-  await expectAccessibleInBothThemes(page);
+  await expectAccessibleInBothThemes(head);
+  await context.close();
 });

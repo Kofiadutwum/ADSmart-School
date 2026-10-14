@@ -7,8 +7,7 @@ import type {
   PlatformArticleSummary,
   PlatformData,
   PrivacyNotice,
-  SiteData,
-} from "./types";
+  SiteData, PlatformPrices } from "./types";
 
 /** Public pages are rebuilt at most every five minutes (ISR). */
 export const REVALIDATE_SECONDS = 300;
@@ -69,6 +68,10 @@ export async function getPlatform(): Promise<PlatformData> {
   const platform = await fetchJson<Partial<PlatformData>>("/api/public/platform", PLATFORM_TAGS);
   if (!platform) throw new Error("Website API is missing /api/public/platform");
   return { gallery: [], latest_articles: [], testimonials: [], faqs: [], whatsapp_channel: "", ...platform } as PlatformData;
+}
+
+export async function getPlatformPrices(): Promise<PlatformPrices | null> {
+  return fetchJson<PlatformPrices>("/api/public/platform/prices", PLATFORM_TAGS);
 }
 
 export async function getPlatformPrivacyNotice(): Promise<PrivacyNotice | null> {

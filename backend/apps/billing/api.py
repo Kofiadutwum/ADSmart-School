@@ -114,6 +114,7 @@ def bill_row(bill: PlatformBill, detail: bool = False) -> dict:
 def payment_row(payment: BillPayment) -> dict:
     return {
         "id": payment.pk,
+        "receipt_number": payment.receipt_number,
         "bill": payment.bill.number,
         "amount": payment.amount,
         "method": payment.method,
@@ -563,6 +564,19 @@ class StatisticsView(PlatformView):
                 "by_status": dict(
                     leads.values("status").annotate(n=Count("id")).values_list("status", "n")
                 ),
+                "per_month": [
+                    {"month": row["month"], "count": row["n"]}
+                    for row in Lead.objects.filter(created_at__gte=twelve)
+                    .annotate(month=TruncMonth("created_at"))
+                    .values("month")
+                    .annotate(n=Count("id"))
+                    .order_by("month")
+                ],
+                "became_schools_percent": round(
+                    leads.filter(status=Lead.Status.ONBOARDED).count() * 100 / leads.count()
+                )
+                if leads.count()
+                else None,
             },
             "sizes": per_school,
             "support": {
@@ -585,26 +599,40 @@ class StatisticsView(PlatformView):
             },
         }
         if roles.has_role(request.user, roles.PLATFORM_OWNER, roles.PLATFORM_FINANCE):
-            data["money"] = money_figures()
+            data["money"] = {
+                **money_figures(),
+                "collected_per_month": [
+                    {"month": row["month"], "amount": row["total"]}
+                    for row in BillPayment.objects.filter(received_on__gte=twelve.date())
+                    .annotate(month=TruncMonth("received_on"))
+                    .values("month")
+                    .annotate(total=Sum("amount"))
+                    .order_by("month")
+                ],
+            }
         return Response(data)
 
 
 class PricesView(PublicView):
-    """The prices section of the owner's website: active plans shown on the website only."""
+    """The prices section of the owner's website: active plans shown on the website only, and
+    the one-time setup fee a new school pays with its first bill."""
 
     def get(self, request):
         plans = Plan.objects.filter(active=True, show_on_website=True)
         return Response(
-            [
-                {
-                    "name": plan.name,
-                    "audience": plan.audience,
-                    "yearly_price": plan.yearly_price,
-                    "from_price": plan.from_price,
-                    "includes": [line for line in plan.includes.splitlines() if line.strip()],
-                }
-                for plan in plans
-            ]
+            {
+                "plans": [
+                    {
+                        "name": plan.name,
+                        "audience": plan.audience,
+                        "yearly_price": plan.yearly_price,
+                        "from_price": plan.from_price,
+                        "includes": [line for line in plan.includes.splitlines() if line.strip()],
+                    }
+                    for plan in plans
+                ],
+                "setup_fee": BillingSettings.current().setup_fee,
+            }
         )
 
 

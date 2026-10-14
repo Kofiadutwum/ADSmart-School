@@ -5,6 +5,7 @@ demo record into a real one. The school always keeps one active Administrator.""
 from django.contrib.auth.models import Group
 from django.db import transaction
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.response import Response
 
@@ -201,6 +202,9 @@ class StaffDetailView(SchoolView):
         if active_after != user.is_active:
             user.is_active = active_after
             user.save(update_fields=["is_active"])
+            # The leaving date starts the retention clock (SMS spec §30).
+            staff.left_on = None if active_after else timezone.localdate()
+            staff.save(update_fields=["left_on"])
             action = (
                 AuditLog.Action.ACCOUNT_REACTIVATED
                 if active_after

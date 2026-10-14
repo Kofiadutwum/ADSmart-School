@@ -64,6 +64,7 @@ class Subscription(models.Model):
     discount_amount = models.PositiveIntegerField(default=0)
     discount_reason = models.CharField(max_length=200, blank=True)
     reminders_off = models.BooleanField(default=False)
+    setup_charged = models.BooleanField(default=False, help_text="The one-time setup fee is billed")
     paused_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
@@ -71,11 +72,17 @@ class Subscription(models.Model):
 
 
 class BillCounter(models.Model):
-    year = models.PositiveSmallIntegerField(unique=True)
+    """The last number used, per kind (ADS bills, RCT receipts) and year, so there are no gaps."""
+
+    kind = models.CharField(max_length=3, default="ADS")
+    year = models.PositiveSmallIntegerField()
     last = models.PositiveIntegerField(default=0)
 
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["kind", "year"], name="billing_one_counter")]
+
     def __str__(self):
-        return f"{self.year}: {self.last}"
+        return f"{self.kind} {self.year}: {self.last}"
 
 
 class PlatformBill(models.Model):
@@ -129,6 +136,7 @@ class BillPayment(models.Model):
         PAYSTACK = "PAYSTACK", "Online (Paystack)"
 
     bill = models.ForeignKey(PlatformBill, on_delete=models.PROTECT, related_name="payments")
+    receipt_number = models.CharField(max_length=20, blank=True)
     amount = models.PositiveIntegerField()
     method = models.CharField(max_length=8, choices=Method.choices)
     reference = models.CharField(max_length=80, blank=True)
@@ -168,6 +176,9 @@ class BillingSettings(models.Model):
     grace_days = models.PositiveSmallIntegerField(default=21, help_text="Days after the due date")
     reminder_days = models.PositiveSmallIntegerField(default=7)
     bill_days_before = models.PositiveSmallIntegerField(default=14)
+    setup_fee = models.PositiveIntegerField(
+        default=100_000, help_text="One-time setup for a new school, in pesewas; 0 for none"
+    )
     trial_days = models.PositiveSmallIntegerField(default=30)
     business_name = models.CharField(max_length=120, default="ADsmartschool")
     business_address = models.CharField(max_length=300, blank=True)

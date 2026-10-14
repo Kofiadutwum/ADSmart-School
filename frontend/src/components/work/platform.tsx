@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { deleteJson, patchJson, postJson, putJson } from "@/lib/client-api";
 import { ghs, toPesewas } from "@/lib/money";
 import { CONTENT, OWNER, SUPPORT, canUse } from "@/lib/platform-roles";
-import { ActButton, Money, Panel, Section, Stat, Table, when, words } from "./common";
+import { ActButton, BarChart, Money, Panel, Section, Stat, Table, monthLabel, when, words } from "./common";
 import { Conversation, NoticesEditor } from "./school";
 
 const API = "/api/platform";
@@ -306,6 +306,7 @@ export function SubscriptionScreen() {
     `${API}/billing/subscriptions/${encodeURIComponent(slug)}`,
   );
   const plans = useLoad<{ id: number; name: string; yearly_price: number; active: boolean }[]>(`${API}/billing/plans`);
+  const groups = useLoad<{ id: number; name: string }[]>(`${API}/billing/groups`);
   if (!data) return <LoadState error={error} loading={!error} empty={false} emptyText="" />;
   return (
     <Section title={data.name} tabs={BILLING_TABS}>
@@ -314,7 +315,7 @@ export function SubscriptionScreen() {
           <RecordForm
             idPrefix="subscription"
             submitLabel="Save"
-            row={{ id: 0, plan: data.plan_id, discount_percent: data.discount_percent, discount_amount: data.discount_amount, discount_reason: data.discount_reason, reminders_off: data.reminders_off }}
+            row={{ id: 0, plan: data.plan_id, group: data.group_id, discount_percent: data.discount_percent, discount_amount: data.discount_amount, discount_reason: data.discount_reason, reminders_off: data.reminders_off }}
             fields={[
               {
                 name: "plan",
@@ -323,12 +324,25 @@ export function SubscriptionScreen() {
                 required: true,
                 choices: (plans.data ?? []).map((p) => [String(p.id), `${p.name} (${ghs(p.yearly_price)} a year)`] as const),
               },
+              {
+                name: "group",
+                label: "School group (one bill for all campuses)",
+                type: "choice",
+                choices: (groups.data ?? []).map((g) => [String(g.id), g.name] as const),
+                hint: "Leave empty for a school billed on its own",
+              },
               { name: "discount_percent", label: "Standing discount (%)", type: "number" },
               { name: "discount_amount", label: "or a fixed discount", type: "money" },
               { name: "discount_reason", label: "Why" },
               { name: "reminders_off", label: "Don't send reminders", type: "boolean" },
             ]}
-            send={(body) => putJson<Row>(`${API}/billing/subscriptions/${encodeURIComponent(slug)}`, { ...body, plan: Number(body.plan) })}
+            send={(body) =>
+              putJson<Row>(`${API}/billing/subscriptions/${encodeURIComponent(slug)}`, {
+                ...body,
+                plan: Number(body.plan),
+                group: body.group ? Number(body.group) : null,
+              })
+            }
             onSaved={(row) => setData(row as unknown as typeof data)}
           />
           <p className="text-sm text-ink-muted">A new plan takes effect from the next bill. Its price is kept for this school even if the plan&apos;s price changes later.</p>
@@ -416,6 +430,7 @@ export function BillingSettingsScreen() {
             { name: "bill_days_before", label: "Make bills this many days before the billing date", type: "number" },
             { name: "trial_days", label: "Default free trial (days)", type: "number" },
             { name: "reminder_days", label: "Reminder interval (days)", type: "number" },
+            { name: "setup_fee", label: "One-time setup fee for a new school", type: "money", hint: "Added to a school's first bill; 0 for none" },
             { name: "pause_for_non_payment", label: "Pause schools that don't pay", type: "boolean" },
             { name: "grace_days", label: "Pause this many days after the due date", type: "number" },
           ]}
@@ -432,11 +447,11 @@ export function BillingSettingsScreen() {
 type Stats = {
   as_of: string;
   schools: { total: number; by_status: Record<string, number>; new_per_month: { month: string; count: number }[] };
-  join_requests: { total: number; by_status: Record<string, number> };
+  join_requests: { total: number; by_status: Record<string, number>; per_month: { month: string; count: number }[]; became_schools_percent: number | null };
   sizes: { name: string; pupils: number; staff: number; parents: number; signed_in_30_days: number; quiet: boolean }[];
   support: { open: number; average_hours_to_first_reply: number | null };
   website: { visits: number; top_pages: [string, number][]; join_requests_per_100_visits: number | null };
-  money?: Overview;
+  money?: Overview & { collected_per_month: { month: string; amount: number }[] };
 };
 
 export function StatisticsScreen() {
@@ -463,9 +478,31 @@ export function StatisticsScreen() {
             <Stat label="Open support conversations" value={data.support.open} />
             <Stat label="Website visits" value={data.website.visits} />
             {data.money && <Stat label="Outstanding" value={<Money value={data.money.outstanding} />} />}
+            <Stat label="Join requests that became schools" value={data.join_requests.became_schools_percent === null ? "—" : `${data.join_requests.became_schools_percent}%`} />
           </dl>
-          <Panel title="New schools per month">
-            <Table caption="New schools per month" head={["Month", "Schools"]} rows={data.schools.new_per_month.map((row) => [new Date(row.month).toLocaleDateString("en-GB", { month: "long", year: "numeric" }), row.count])} />
+          {data.money && (
+            <Panel title="Money">
+              <BarChart
+                title="Collected per month (last 12 months)"
+                head={["Month", "Collected"]}
+                rows={data.money.collected_per_month.map((row) => ({ label: monthLabel(row.month), value: row.amount }))}
+                format={(value) => ghs(value)}
+              />
+            </Panel>
+          )}
+          <Panel title="Schools">
+            <BarChart
+              title="New schools per month (last 12 months)"
+              head={["Month", "Schools"]}
+              rows={data.schools.new_per_month.map((row) => ({ label: monthLabel(row.month), value: row.count }))}
+            />
+          </Panel>
+          <Panel title="Join requests">
+            <BarChart
+              title="Join requests per month (last 12 months)"
+              head={["Month", "Requests"]}
+              rows={data.join_requests.per_month.map((row) => ({ label: monthLabel(row.month), value: row.count }))}
+            />
           </Panel>
           <Panel title="School sizes and real use">
             <Table

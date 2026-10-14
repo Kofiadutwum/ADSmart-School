@@ -381,7 +381,7 @@ type Billing = {
   next_bill_on: string | null;
   billing_paused: boolean;
   bills: Bill[];
-  payments: { id: number; bill: string; amount: number; method: string; received_on: string }[];
+  payments: { id: number; receipt_number: string; bill: string; amount: number; method: string; received_on: string }[];
   how_to_pay: { bank: string; momo: string };
 };
 
@@ -441,7 +441,7 @@ export function SchoolBillingScreen() {
             </Panel>
           )}
           {data.payments.length > 0 && (
-            <Table caption="Receipts" head={["Bill", "Paid", "How", "Amount"]} rows={data.payments.map((p) => [p.bill, when(p.received_on), words(p.method), ghs(p.amount)])} />
+            <Table caption="Receipts" head={["Receipt", "Bill", "Paid", "How", "Amount"]} rows={data.payments.map((p) => [p.receipt_number || "—", p.bill, when(p.received_on), words(p.method), ghs(p.amount)])} />
           )}
         </div>
       )}

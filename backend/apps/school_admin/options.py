@@ -73,6 +73,31 @@ SOURCES = {
     "templates": lambda school: _named("learning.LessonNoteTemplate", school),
 }
 
+# Lists that depend on who is asking: a teacher's own classes and subjects this year.
+PERSONAL = {"my-classes", "my-subjects"}
+
+
+def _mine(kind: str, school, user) -> list[dict]:
+    from apps.academics.models import ClassTeacherAssignment, TeachingAssignment
+
+    staff = Staff.objects.filter(user=user).first()
+    year = current_year(school)
+    teaching = TeachingAssignment.objects.filter(staff=staff, school_class__academic_year=year)
+    if kind == "my-subjects":
+        subjects = {row.subject_id: row.subject.name for row in teaching.select_related("subject")}
+        return [
+            {"id": pk, "name": name} for pk, name in sorted(subjects.items(), key=lambda i: i[1])
+        ]
+    classes = {
+        row.school_class_id: row.school_class.name
+        for row in teaching.select_related("school_class")
+    }
+    for row in ClassTeacherAssignment.objects.filter(
+        staff=staff, school_class__academic_year=year
+    ).select_related("school_class"):
+        classes[row.school_class_id] = row.school_class.name
+    return [{"id": pk, "name": name} for pk, name in sorted(classes.items(), key=lambda i: i[1])]
+
 
 def _named(label: str, school) -> list[dict]:
     """Any school register, named as the model names itself."""
@@ -91,6 +116,8 @@ class OptionsView(SchoolView):
     read_roles = tuple(STAFF_ROLES)
 
     def get(self, request, kind):
+        if kind in PERSONAL:
+            return Response(_mine(kind, self.school, request.user))
         source = SOURCES.get(kind)
         if source is None:
             raise Http404

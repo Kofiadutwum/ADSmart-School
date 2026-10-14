@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { patchJson, postJson } from "@/lib/client-api";
 import { ghs, toPesewas } from "@/lib/money";
 import { ACCOUNTANT, CANTEEN, HEAD_TEACHER, PROPRIETOR } from "@/lib/school-roles";
-import { ActButton, DatePick, Money, Panel, Picker, Section, Table, today, useRoleIs, when, words } from "./common";
+import { ActButton, DatePick, Money, Panel, Picker, Section, Table, today, useRoleIs, useTeachingSources, when, words } from "./common";
 
 const API = "/api/school/finance";
 export const DAILY_TABS = [
@@ -53,12 +53,13 @@ type DailyList = {
 };
 
 export function DailyListScreen() {
+  const sources = useTeachingSources();
   const [klass, setKlass] = useState("");
   const [date, setDate] = useState(today());
   return (
     <DailySection title="Daily charges" intro="Mark who paid the canteen, extra classes and bus today. What isn't paid comes out of the pupil's wallet when the day is closed.">
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <Picker id="daily-class" label="Class" source="classes" value={klass} onChange={setKlass} />
+        <Picker id="daily-class" label="Class" source={sources.classes} value={klass} onChange={setKlass} />
         <DatePick id="daily-date" label="Day" value={date} onChange={setDate} />
       </div>
       {klass ? <DayList key={`${klass}-${date}`} klass={klass} date={date} /> : <p className="text-ink-muted">Choose a class.</p>}

@@ -30,9 +30,8 @@ def money(pesewas: int) -> str:
 
 def next_bill_number(prefix: str = "ADS", year: int | None = None) -> str:
     year = year or timezone.localdate().year
-    key = year if prefix == "ADS" else -year  # receipts count separately from bills
-    BillCounter.objects.get_or_create(year=key)
-    counter = BillCounter.objects.select_for_update().get(year=key)
+    BillCounter.objects.get_or_create(kind=prefix, year=year)
+    counter = BillCounter.objects.select_for_update().get(kind=prefix, year=year)
     counter.last += 1
     counter.save(update_fields=["last"])
     return f"{prefix}-{year}-{counter.last:04d}"
@@ -117,7 +116,8 @@ def issue_bill(
             (
                 f"{subscription.plan.name} plan, {start:%d %b %Y} to {end:%d %b %Y}",
                 subscription.price,
-            )
+            ),
+            *setup_lines(subscription),
         ]
         discount = (
             subscription.price * subscription.discount_percent // 100 + subscription.discount_amount
@@ -162,6 +162,23 @@ def issue_bill(
         )
     )
     return bill
+
+
+def setup_lines(subscription: Subscription) -> list[tuple[str, int]]:
+    """The one-time setup fee, on a school's first bill only (a group's: one per new campus)."""
+    fee = BillingSettings.current().setup_fee
+    campuses = (
+        list(subscription.group.subscriptions.select_related("school"))
+        if subscription.group_id
+        else [subscription]
+    )
+    lines = []
+    for campus in campuses:
+        if fee and not campus.setup_charged:
+            lines.append((f"One-time setup: {campus.school.name}", fee))
+            campus.setup_charged = True
+            campus.save(update_fields=["setup_charged"])
+    return lines
 
 
 def bill_contacts(bill: PlatformBill) -> list[User]:
@@ -222,6 +239,7 @@ def record_bill_payment(
         raise ApiError("bad_amount", "Enter an amount above zero.")
     payment = BillPayment.objects.create(
         bill=bill,
+        receipt_number=next_bill_number("RCT"),
         amount=amount,
         method=method,
         reference=reference,
@@ -229,7 +247,32 @@ def record_bill_payment(
         recorded_by=by,
     )
     settle(bill)
+    transaction.on_commit(lambda: email_receipt(payment))
     return payment
+
+
+def email_receipt(payment: BillPayment) -> int:
+    """The receipt by email to the school's Administrators and Proprietor (BT §3.6)."""
+    from django.core.mail import send_mail
+
+    bill = payment.bill
+    payer = bill.school.name if bill.school_id else bill.group.name
+    text = (
+        f"Receipt {payment.receipt_number}\n\n"
+        f"{payer}\nBill {bill.number}\n"
+        f"Amount: GHS {money(payment.amount)}\n"
+        f"Method: {payment.get_method_display()}\n"
+        + (f"Reference: {payment.reference}\n" if payment.reference else "")
+        + f"Date: {payment.received_on:%d %b %Y}\n\n"
+        f"Thank you. The receipt is also on the Billing page in your school portal."
+    )
+    sent = 0
+    for user in bill_contacts(bill):
+        if user.email:
+            sent += send_mail(
+                f"ADsmartschool receipt {payment.receipt_number}", text, None, [user.email]
+            )
+    return sent
 
 
 @transaction.atomic

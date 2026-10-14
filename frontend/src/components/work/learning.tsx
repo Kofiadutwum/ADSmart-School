@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { FormAlert } from "@/components/ui/form-alert";
 import { patchJson, postForm, postJson, putJson } from "@/lib/client-api";
 import { ADMINISTRATOR, CAREGIVER, FRONT_DESK, HEAD_TEACHER, TEACHER } from "@/lib/school-roles";
-import { ActButton, DatePick, Panel, Picker, Section, Table, today, useRoleIs, when, words } from "./common";
+import { ActButton, DatePick, Panel, Picker, Section, Table, today, useRoleIs, useTeachingSources, when, words } from "./common";
 
 const API = "/api/school/learning";
 const LEADERS = [ADMINISTRATOR, HEAD_TEACHER];
@@ -31,6 +31,7 @@ const MARKS = [
 ] as const;
 
 export function RegisterScreen() {
+  const sources = useTeachingSources();
   const [klass, setKlass] = useState("");
   const [date, setDate] = useState(today());
   const staffDesk = useRoleIs(FRONT_DESK, ...LEADERS);
@@ -40,7 +41,7 @@ export function RegisterScreen() {
       {classTaker && (
         <>
           <div className="mb-6 grid gap-4 sm:grid-cols-3">
-            <Picker id="register-class" label="Class" source="classes" value={klass} onChange={setKlass} />
+            <Picker id="register-class" label="Class" source={sources.classes} value={klass} onChange={setKlass} />
             <DatePick id="register-date" label="Day" value={date} onChange={setDate} />
           </div>
           {klass && <ClassRegister key={`${klass}-${date}`} klass={klass} date={date} />}
@@ -200,14 +201,15 @@ type MarkSheet = {
 };
 
 export function MarksScreen() {
+  const sources = useTeachingSources();
   const [klass, setKlass] = useState("");
   const [subject, setSubject] = useState("");
   const [term, setTerm] = useState("");
   return (
     <Section title="Marks" intro="Enter marks for the subjects you teach. Once submitted they go to the Head Teacher.">
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <Picker id="marks-class" label="Class" source="classes" value={klass} onChange={setKlass} />
-        <Picker id="marks-subject" label="Subject" source="subjects" value={subject} onChange={setSubject} />
+        <Picker id="marks-class" label="Class" source={sources.classes} value={klass} onChange={setKlass} />
+        <Picker id="marks-subject" label="Subject" source={sources.subjects} value={subject} onChange={setSubject} />
         <Picker id="marks-term" label="Term" source="terms" value={term} onChange={setTerm} />
       </div>
       {klass && subject && term ? (
@@ -604,6 +606,7 @@ export function ReportCardScreen() {
 export function LessonNotesScreen() {
   const teacher = useRoleIs(TEACHER, CAREGIVER);
   const leader = useRoleIs(...LEADERS);
+  const sources = useTeachingSources();
   return (
     <Section title="Lesson notes" intro="Teachers write a note for each week; the Head Teacher reviews it.">
       <RecordsView
@@ -611,8 +614,8 @@ export function LessonNotesScreen() {
         noun="lesson note"
         title={(row) => `${String(row.subject_label)}, ${String(row.school_class_label)} · week of ${when(row.week_start)}`}
         fields={[
-          { name: "school_class", label: "Class", type: "option", options: "classes", required: true },
-          { name: "subject", label: "Subject", type: "option", options: "subjects", required: true },
+          { name: "school_class", label: "Class", type: "option", options: sources.classes, required: true },
+          { name: "subject", label: "Subject", type: "option", options: sources.subjects, required: true },
           { name: "week_start", label: "Week starting", type: "date", required: true },
           { name: "template", label: "Template", type: "option", options: "templates" },
           { name: "status", label: "Status", readOnly: true, type: "choice", choices: [["DRAFT", "Draft"], ["SUBMITTED", "Submitted"], ["RETURNED", "Returned for changes"], ["REVIEWED", "Reviewed"], ["APPROVED", "Approved"]] },
@@ -632,6 +635,24 @@ export function LessonNotesScreen() {
           </>
         )}
       />
+      {leader && (
+        <div className="mt-10">
+          <Panel title="Note templates">
+            <p className="text-sm text-ink-muted">The headings a teacher fills in for each week, for example Objectives, Activities and Assessment.</p>
+            <RecordsView
+              path={`${API}/note-templates`}
+              noun="template"
+              fields={[
+                { name: "name", label: "Name", required: true },
+                { name: "sections", label: "Section headings", type: "lines", required: true, hint: "One heading per line" },
+              ]}
+              canAdd
+              canEdit
+              canDelete
+            />
+          </Panel>
+        </div>
+      )}
     </Section>
   );
 }
@@ -840,6 +861,7 @@ export function ResourceCard({ item, filePath }: { item: Resource; filePath: str
 }
 
 function ShareResource({ onDone }: { onDone: () => void }) {
+  const sources = useTeachingSources();
   const [values, setValues] = useState({ title: "", kind: "LINK", url: "", description: "", school_class: "", subject: "" });
   const [file, setFile] = useState<File | null>(null);
   const { error, attempt, busy, run, fail } = useSubmit();
@@ -877,8 +899,8 @@ function ShareResource({ onDone }: { onDone: () => void }) {
               <input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="mt-1 block min-h-11 w-full" />
             </label>
           )}
-          <Picker id="resource-class" label="Class" source="classes" value={values.school_class} onChange={set("school_class")} includeAll="Every class" />
-          <Picker id="resource-subject" label="Subject" source="subjects" value={values.subject} onChange={set("subject")} includeAll="—" />
+          <Picker id="resource-class" label="Class" source={sources.classes} value={values.school_class} onChange={set("school_class")} includeAll="Every class" />
+          <Picker id="resource-subject" label="Subject" source={sources.subjects} value={values.subject} onChange={set("subject")} includeAll="—" />
           <InputField id="resource-description" label="Description" value={values.description} onChange={set("description")} />
         </div>
         <Button type="submit" disabled={busy}>
@@ -894,6 +916,7 @@ function ShareResource({ onDone }: { onDone: () => void }) {
 type Question = { id: number; kind: string; text: string; options: string[]; answer: string; marks: number; approved: boolean; from_ai: boolean };
 
 export function QuizzesScreen() {
+  const sources = useTeachingSources();
   return (
     <Section title="Quizzes" intro="Write questions, or have AI draft them for you to check. Pupils answer once and are marked straight away.">
       <RecordsView
@@ -902,8 +925,8 @@ export function QuizzesScreen() {
         fields={[
           { name: "title", label: "Title", required: true },
           { name: "topic", label: "Topic", required: true },
-          { name: "school_class", label: "Class", type: "option", options: "classes", required: true },
-          { name: "subject", label: "Subject", type: "option", options: "subjects", required: true },
+          { name: "school_class", label: "Class", type: "option", options: sources.classes, required: true },
+          { name: "subject", label: "Subject", type: "option", options: sources.subjects, required: true },
           { name: "status", label: "Status", readOnly: true, type: "choice", choices: [["DRAFT", "Draft"], ["PUBLISHED", "Open to pupils"], ["CLOSED", "Closed"]] },
         ]}
         canAdd

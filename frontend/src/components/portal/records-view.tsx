@@ -14,7 +14,7 @@ export type Choice = readonly [string, string];
 export type FieldSpec = {
   name: string;
   label: string;
-  type?: "text" | "textarea" | "number" | "money" | "date" | "time" | "boolean" | "choice" | "option" | "list";
+  type?: "text" | "textarea" | "number" | "money" | "date" | "time" | "boolean" | "choice" | "option" | "list" | "lines";
   /** For "choice": the stored value and what people read. */
   choices?: readonly Choice[];
   /** For "option": a list from /api/school/options/<kind>, or a full API path. */
@@ -71,6 +71,7 @@ export function display(field: FieldSpec, row: Row): string {
     case "choice":
       return field.choices?.find(([stored]) => stored === value)?.[1] ?? String(value);
     case "list":
+    case "lines":
       return Array.isArray(value) ? value.join(", ") : String(value);
     case "date":
       return new Date(`${String(value).slice(0, 10)}T00:00:00`).toLocaleDateString("en-GB", {
@@ -96,6 +97,7 @@ function startValues(fields: FieldSpec[], row?: Row): Values {
     if (field.type === "boolean") values[field.name] = Boolean(value);
     else if (field.type === "money") values[field.name] = row ? toCedis(value as number) : "";
     else if (field.type === "list") values[field.name] = Array.isArray(value) ? value.join(", ") : "";
+    else if (field.type === "lines") values[field.name] = Array.isArray(value) ? value.join("\n") : "";
     else values[field.name] = value === null || value === undefined ? "" : String(value);
   }
   return values;
@@ -126,6 +128,8 @@ function payload(fields: FieldSpec[], values: Values): { data: Record<string, un
       else data[field.name] = Number(text);
     } else if (field.type === "list") {
       data[field.name] = text.split(",").map((part) => part.trim()).filter(Boolean);
+    } else if (field.type === "lines") {
+      data[field.name] = text.split("\n").map((part) => part.trim()).filter(Boolean);
     } else {
       data[field.name] = text;
     }
@@ -170,7 +174,7 @@ function FieldInput({
           value: String(value),
           onChange: (event: { target: { value: string } }) => onChange(event.target.value),
         };
-        if (field.type === "textarea") return <textarea {...common} className={textareaClasses} />;
+        if (field.type === "textarea" || field.type === "lines") return <textarea {...common} className={textareaClasses} />;
         if (field.type === "choice" || field.type === "option") {
           const list: readonly Choice[] =
             field.type === "choice" ? (field.choices ?? []) : options.map((item) => [String(item.id), item.name] as const);
@@ -236,7 +240,7 @@ export function RecordForm({
       <FormAlert message={error} focusKey={attempt} />
       <div className="grid gap-4 sm:grid-cols-2">
         {editable.map((field) => (
-          <div key={field.name} className={field.type === "textarea" ? "sm:col-span-2" : undefined}>
+          <div key={field.name} className={field.type === "textarea" || field.type === "lines" ? "sm:col-span-2" : undefined}>
             <FieldInput
               field={field}
               id={`${idPrefix}-${field.name}`}
