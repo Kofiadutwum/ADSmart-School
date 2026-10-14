@@ -4,6 +4,8 @@ import json
 import tomllib
 from pathlib import Path
 
+import pytest
+
 import release
 
 BACKEND = Path(__file__).resolve().parent.parent
@@ -54,3 +56,9 @@ def test_the_build_updates_the_database_only_when_there_is_one():
 
     release.build({"DATABASE_URL": "postgres://example"}, run=ran.append)
     assert ran == ["migrate", "createcachetable"]
+
+
+@pytest.mark.django_db
+def test_the_start_up_commands_run_with_the_options_each_accepts():
+    for command in ("migrate", "createcachetable"):
+        release.run_command(command)  # raised TypeError on Render before the fix

@@ -12,13 +12,19 @@ def build(environ: Mapping[str, str], run: Callable[[str], object]) -> None:
     run("createcachetable")
 
 
+def run_command(command: str) -> None:
+    from django.core.management import call_command
+
+    # Only migrate can ask questions; createcachetable refuses the option.
+    call_command(command, **({"interactive": False} if command == "migrate" else {}))
+
+
 def main() -> None:
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
     import django
-    from django.core.management import call_command
 
     django.setup()
-    build(os.environ, run=lambda command: call_command(command, interactive=False))
+    build(os.environ, run=run_command)
 
 
 if __name__ == "__main__":
