@@ -33,6 +33,7 @@ def test_render_updates_the_database_then_starts_gunicorn_on_the_free_plan():
     assert "plan: free" in blueprint and "region: frankfurt" in blueprint
     assert "startCommand: python release.py && gunicorn config.wsgi:application" in blueprint
     assert "healthCheckPath: /api/health" in blueprint
+    assert "buildFilter:\n      paths:\n        - backend/**" in blueprint  # website pushes skip it
     secrets = ("DATABASE_URL", "CLOUDINARY_URL", "PROXY_SECRET", "CRON_SECRET", "BREVO_API_KEY")
     for secret in secrets:  # typed into Render, never committed
         assert f"key: {secret}\n        sync: false" in blueprint

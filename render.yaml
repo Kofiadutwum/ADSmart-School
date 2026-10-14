@@ -13,6 +13,12 @@ services:
     startCommand: python release.py && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 60 --access-logfile -
     healthCheckPath: /api/health
     autoDeploy: true
+    # Redeploy only when the backend changes, so a website-only push never restarts the backend
+    # while Vercel is building pages that read from it.
+    buildFilter:
+      paths:
+        - backend/**
+        - render.yaml
     envVars:
       - key: PYTHON_VERSION
         value: 3.14.7
