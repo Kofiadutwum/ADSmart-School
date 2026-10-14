@@ -116,15 +116,17 @@ Keep them somewhere private, such as a password manager. **PROXY_SECRET**, **REV
 You already have the `adsmartschool` project on Vercel (folder `frontend`). Open it, then
 **Settings**, then **Environment Variables**, and set:
 
-| Name | Value |
-|---|---|
-| `DJANGO_ORIGIN` | your **backend address** from step 6 |
-| `PLATFORM_DOMAIN` | `adsmartschool.vercel.app` |
-| `ADMIN_HOST` | `adsmartschool-admin.vercel.app` |
-| `PROXY_SECRET` | the **same** PROXY_SECRET as on Render |
-| `REVALIDATE_SECRET` | the **same** REVALIDATE_SECRET as on Render |
-| `CRON_SECRET` | the **same** CRON_SECRET as on Render |
-| `NEXT_PUBLIC_MEDIA_ORIGIN` | `https://res.cloudinary.com/<your cloud name>/` |
+| Name | Value | Type |
+|---|---|---|
+| `DJANGO_ORIGIN` | your **backend address** from step 6 | Config |
+| `PLATFORM_DOMAIN` | `adsmartschool.vercel.app` | Config |
+| `ADMIN_HOST` | `adsmartschool-admin.vercel.app` | Config |
+| `NEXT_PUBLIC_MEDIA_ORIGIN` | `https://res.cloudinary.com/<your cloud name>/` | Config (Vercel refuses Secret for `NEXT_PUBLIC_` names) |
+| `PROXY_SECRET` | the **same** PROXY_SECRET as on Render | Secret |
+| `REVALIDATE_SECRET` | the **same** REVALIDATE_SECRET as on Render | Secret |
+| `CRON_SECRET` | the **same** CRON_SECRET as on Render | Secret |
+
+For **Environments**, tick Production, Preview and Development.
 
 Then:
 
