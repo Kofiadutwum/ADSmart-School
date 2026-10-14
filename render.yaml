@@ -1,0 +1,54 @@
+# Render blueprint for the ADsmartschool backend (Django). The website runs on Vercel, the
+# database on Neon (Frankfurt) and photos on Cloudinary. See docs/deploy/hosting.md.
+# Secrets are marked "sync: false": Render asks for them when the blueprint is first applied.
+services:
+  - type: web
+    name: adsmartschool-api
+    runtime: python
+    plan: free
+    region: frankfurt
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    # The free plan has no pre-deploy step, so the database is brought up to date at start-up.
+    startCommand: python release.py && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 60 --access-logfile -
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.14.7
+      - key: DJANGO_DEBUG
+        value: "false"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: CONN_MAX_AGE
+        value: "60"
+      - key: PHOTO_MAX_MB
+        value: "4"
+      - key: SITE_URL_TEMPLATE
+        value: https://{host}
+      - key: PLATFORM_NAME
+        value: ADsmartschool
+      - key: DATABASE_URL
+        sync: false
+      - key: CLOUDINARY_URL
+        sync: false
+      - key: PLATFORM_DOMAIN
+        sync: false
+      - key: ADMIN_HOST
+        sync: false
+      - key: FRONTEND_ORIGIN
+        sync: false
+      - key: PLATFORM_EMAIL
+        sync: false
+      - key: PLATFORM_PHONE
+        sync: false
+      - key: PROXY_SECRET
+        sync: false
+      - key: REVALIDATE_SECRET
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: DJANGO_DEFAULT_FROM_EMAIL
+        sync: false

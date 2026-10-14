@@ -1,4 +1,5 @@
-"""Vercel's build step (Plan 6A): bring the database up to date before the new code goes live."""
+"""Run before the server starts on Render: bring the database up to date, so the new code
+never runs against old tables. (Render's free plan has no separate pre-deploy step.)"""
 
 import os
 from collections.abc import Callable, Mapping

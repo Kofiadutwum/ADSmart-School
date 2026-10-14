@@ -125,6 +125,10 @@ if env("DATABASE_URL", default=""):
     DATABASES = {"default": env.db("DATABASE_URL")}
     # A pooled address (Neon's "-pooler") shares connections between requests, so it cannot
     # keep server-side cursors open (Django docs: transaction pooling).
+    # Keep a connection open between requests on a long-running server (Render), and check
+    # it is still alive before use; Neon closes idle ones.
+    DATABASES["default"]["CONN_MAX_AGE"] = env.int("CONN_MAX_AGE", default=0)
+    DATABASES["default"]["CONN_HEALTH_CHECKS"] = True
     if "-pooler." in env("DATABASE_URL"):
         DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
 else:

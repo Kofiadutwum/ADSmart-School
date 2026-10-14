@@ -14,14 +14,8 @@ dependencies = [
     "tzdata==2026.5",
     "psycopg[binary]==3.3.6",
     "cloudinary==1.46.3",
+    "gunicorn==26.2.0",
 ]
-
-# Vercel's Python runtime (Plan 6A): the WSGI app, and a build step that updates the database.
-[tool.vercel]
-entrypoint = "config.wsgi:application"
-
-[tool.vercel.scripts]
-build = "python vercel_build.py"
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings_test"

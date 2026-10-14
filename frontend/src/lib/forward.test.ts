@@ -41,4 +41,9 @@ describe("forwarding to Django", () => {
     expect(plain.get("x-proxy-secret")).toBeNull();
     expect(plain.get("x-forwarded-host")).toBe("a.example");
   });
+
+  it("passes on the daily cron's secret so the backend can check it", () => {
+    const cron = new Headers({ host: "a.example", authorization: "Bearer the-cron-secret" });
+    expect(signedHeaders(cron, "proxy-secret").get("authorization")).toBe("Bearer the-cron-secret");
+  });
 });

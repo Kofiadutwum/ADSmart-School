@@ -38,6 +38,50 @@ def test_email_goes_through_smtp_when_a_server_is_given():
     }
 
 
+def test_email_goes_through_brevo_when_its_key_is_given():
+    brevo = mailers({"BREVO_API_KEY": "xkeysib-test", "SMTP_HOST": "smtp.gmail.com"})["default"]
+    assert brevo == {"BACKEND": "config.mail.BrevoBackend", "OPTIONS": {"api_key": "xkeysib-test"}}
+
+
+def test_the_brevo_mailer_posts_each_message_to_its_api(monkeypatch):
+    import json
+
+    from django.core.mail import EmailMessage
+
+    from config import mail
+
+    sent = []
+
+    class Answer:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    def fake_open(request, timeout=0):
+        sent.append((request.full_url, request.headers, json.loads(request.data)))
+        return Answer()
+
+    monkeypatch.setattr(mail.urllib.request, "urlopen", fake_open)
+    message = EmailMessage(
+        "Your code",
+        "Your code is 123456.",
+        "ADsmartschool <owner@example.com>",
+        ["head@school.example"],
+    )
+    assert mail.BrevoBackend(api_key="xkeysib-test").send_messages([message]) == 1
+    url, headers, body = sent[0]
+    assert url == "https://api.brevo.com/v3/smtp/email"
+    assert headers["Api-key"] == "xkeysib-test"
+    assert body == {
+        "sender": {"name": "ADsmartschool", "email": "owner@example.com"},
+        "to": [{"email": "head@school.example"}],
+        "subject": "Your code",
+        "textContent": "Your code is 123456.",
+    }
+
+
 def test_email_stays_in_the_console_without_a_server():
     assert mailers({})["default"]["BACKEND"] == "django.core.mail.backends.console.EmailBackend"
 
