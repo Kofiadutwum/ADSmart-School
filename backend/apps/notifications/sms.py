@@ -4,6 +4,7 @@ School messages (announcements, reminders, absence, receipts) use the school's S
 one per 160 characters; sign-in codes and account notices are free (SMS spec §24).
 """
 
+import logging
 import math
 from datetime import timedelta
 
@@ -14,6 +15,8 @@ from django.utils.module_loading import import_string
 
 from apps.notifications.models import SmsCreditEntry, SmsMessage
 from apps.people.demo import is_demo_only_phone
+
+logger = logging.getLogger(__name__)
 
 
 class Purpose:
@@ -67,6 +70,8 @@ def send_sms(
             message.status = SmsMessage.Status.SENT
         except Exception as exc:  # a gateway error is logged for staff, never shown raw
             message.status, message.error = SmsMessage.Status.FAILED, str(exc)[:500]
+            # Only the last digits: the log is for finding the provider's reason, not the person.
+            logger.warning("Text to …%s (%s) failed: %s", to[-4:], purpose, message.error)
     message.save()
     if billable and message.status == SmsMessage.Status.SENT:
         SmsCreditEntry.objects.create(

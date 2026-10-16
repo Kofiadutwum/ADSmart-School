@@ -45,6 +45,7 @@ class ArkeselBackend:
     URL = "https://sms.arkesel.com/api/v2/sms/send"
 
     def send(self, to: str, body: str) -> str:
+        import urllib.error
         import urllib.request
 
         payload = json.dumps(
@@ -56,8 +57,13 @@ class ArkeselBackend:
             headers={"api-key": settings.SMS_API_KEY, "Content-Type": "application/json"},
             method="POST",
         )
-        with urllib.request.urlopen(request, timeout=10) as response:  # noqa: S310 - fixed URL
-            answer = json.loads(response.read() or b"{}")
+        try:
+            with urllib.request.urlopen(request, timeout=10) as response:  # noqa: S310 - fixed URL
+                answer = json.loads(response.read() or b"{}")
+        except urllib.error.HTTPError as exc:
+            # Arkesel's reason (bad key, unapproved sender name, no credit) for the logs.
+            reason = exc.read().decode(errors="replace")[:300]
+            raise RuntimeError(f"Arkesel refused the message ({exc.code}): {reason}") from exc
         if answer.get("status") != "success":
             raise RuntimeError(f"Arkesel refused the message: {answer.get('message', 'unknown')}")
         data = answer.get("data") or [{}]

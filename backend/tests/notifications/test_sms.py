@@ -44,6 +44,31 @@ def test_backend_failures_are_logged_not_raised(settings):
     assert message.status == SmsMessage.Status.FAILED and "gateway down" in message.error
 
 
+def test_a_failed_text_is_logged_with_the_reason_but_not_the_whole_number(settings, caplog):
+    settings.SMS_BACKEND = "tests.notifications.test_sms.BrokenBackend"
+
+    sms.send_sms(TO, "code", purpose=sms.Purpose.SIGN_IN_CODE)
+
+    assert "gateway down" in caplog.text
+    assert "4567" in caplog.text and TO not in caplog.text
+
+
+def test_an_arkesel_refusal_names_arkesels_reason(monkeypatch, settings):
+    import io
+    import urllib.error
+
+    from apps.notifications.backends import ArkeselBackend
+
+    def refuse(request, timeout=0):
+        body = io.BytesIO(b'{"status":"error","message":"Invalid Sender ID"}')
+        raise urllib.error.HTTPError(request.full_url, 422, "Unprocessable", {}, body)
+
+    monkeypatch.setattr("urllib.request.urlopen", refuse)
+
+    with pytest.raises(RuntimeError, match=r"Arkesel refused the message \(422\).*Invalid Sender"):
+        ArkeselBackend().send(TO, "code")
+
+
 def test_console_backend_appends_to_the_outbox_file(tmp_path, settings):
     settings.SMS_FILE_PATH = str(tmp_path / "sms.jsonl")
     ConsoleBackend().send(TO, "Your code is 123456")
