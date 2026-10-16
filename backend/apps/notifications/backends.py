@@ -54,7 +54,12 @@ class ArkeselBackend:
         request = urllib.request.Request(
             self.URL,
             data=payload,
-            headers={"api-key": settings.SMS_API_KEY, "Content-Type": "application/json"},
+            headers={
+                "api-key": settings.SMS_API_KEY,
+                "Content-Type": "application/json",
+                # Cloudflare in front of Arkesel blocks Python's default agent (error 1010).
+                "User-Agent": "ADsmartschool/1.0",
+            },
             method="POST",
         )
         try:

@@ -69,6 +69,24 @@ def test_an_arkesel_refusal_names_arkesels_reason(monkeypatch, settings):
         ArkeselBackend().send(TO, "code")
 
 
+def test_arkesel_is_called_with_a_named_user_agent(monkeypatch, settings):
+    import io
+
+    from apps.notifications.backends import ArkeselBackend
+
+    seen = []
+
+    def answer(request, timeout=0):
+        seen.append(request)
+        return io.BytesIO(b'{"status":"success","data":[{"id":"msg-1"}]}')
+
+    monkeypatch.setattr("urllib.request.urlopen", answer)
+
+    assert ArkeselBackend().send(TO, "code") == "msg-1"
+    # Cloudflare in front of Arkesel refuses Python's default agent with "error code: 1010".
+    assert seen[0].get_header("User-agent").startswith("ADsmartschool")
+
+
 def test_console_backend_appends_to_the_outbox_file(tmp_path, settings):
     settings.SMS_FILE_PATH = str(tmp_path / "sms.jsonl")
     ConsoleBackend().send(TO, "Your code is 123456")
