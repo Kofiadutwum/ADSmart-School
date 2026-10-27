@@ -29,6 +29,7 @@ CLASSIFIED = {
     "api/auth/login": "accounts of the address used only (tests/accounts/test_sign_in.py)",
     "api/auth/logout": NO_SCHOOL_DATA,
     "api/auth/me": "the signed-in user only (tests/accounts/test_sessions.py)",
+    "api/auth/privacy": "the signed-in user's own notice (tests/consent/test_notice_acceptance.py)",
     "api/auth/sessions": OWN_SESSIONS,
     "api/auth/sessions/<int:pk>": OWN_SESSIONS,
     "api/auth/password": "the signed-in user only (tests/accounts/test_sessions.py)",

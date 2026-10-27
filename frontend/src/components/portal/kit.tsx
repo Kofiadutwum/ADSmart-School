@@ -68,6 +68,28 @@ export function ConfirmDelete({
   );
 }
 
+export const NOTICE_TICK_ERROR = "Tick to confirm they have been given the school's privacy notice.";
+
+/** Staff typing in someone's details confirm that person was given the privacy notice (Act 843). */
+export function NoticeTick({
+  label,
+  checked,
+  onChange,
+  error,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (value: boolean) => void;
+  error?: string;
+}) {
+  return (
+    <div>
+      <Tick label={label} checked={checked} onChange={onChange} />
+      {error && <p className="text-sm text-danger">{error}</p>}
+    </div>
+  );
+}
+
 export function Tick({
   label,
   checked,

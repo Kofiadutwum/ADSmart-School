@@ -4,10 +4,32 @@ from django.utils import timezone
 
 from apps.audit.models import AuditLog
 from apps.audit.services import record
-from apps.consent.models import Consent, PrivacyNotice
+from apps.consent.models import Consent, NoticeAcceptance, PrivacyNotice
 from apps.people.models import Parent, Student
 
 PARENT_TYPES = {Consent.Type.SMS_CONTACT}
+
+
+def notice_to_accept(user) -> PrivacyNotice | None:
+    """The privacy notice this person must accept before using the portal, if any: their
+    school's for school accounts, the platform's for the team (Act 843)."""
+    notice = PrivacyNotice.approved_current(user.school)
+    if notice is None or NoticeAcceptance.objects.filter(user=user, notice=notice).exists():
+        return None
+    return notice
+
+
+def accept_notice(user, notice: PrivacyNotice, *, request=None) -> NoticeAcceptance:
+    acceptance = NoticeAcceptance.objects.create(user=user, notice=notice)
+    record(
+        AuditLog.Action.CONSENT_GIVEN,
+        actor=user,
+        entity=user,
+        new={"privacy_notice": notice.version},
+        request=request,
+        school=user.school,
+    )
+    return acceptance
 
 
 def _field(subject, consent_type: str) -> str:

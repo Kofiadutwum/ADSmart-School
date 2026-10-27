@@ -11,7 +11,20 @@ from tests.records import make_parent, make_student
 pytestmark = pytest.mark.django_db
 
 PARENTS = "/api/school/parents"
-NEW = {"first_name": "Akosua", "surname": "Owusu", "phone": "024 555 0001", "title": "Mrs"}
+NEW = {
+    "first_name": "Akosua",
+    "surname": "Owusu",
+    "phone": "024 555 0001",
+    "title": "Mrs",
+    "privacy_notice_given": True,
+}
+
+
+def test_adding_a_parent_needs_them_told_about_the_privacy_notice(admin, school):
+    response = admin.post(PARENTS, {**NEW, "privacy_notice_given": False}, format="json")
+
+    assert response.status_code == 400
+    assert "privacy notice" in response.json()["fields"]["privacy_notice_given"][0]
 
 
 @pytest.fixture(autouse=True)

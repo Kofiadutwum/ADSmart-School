@@ -1,7 +1,8 @@
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { usePathname, useRouter } from "next/navigation";
 import { describe, expect, it, vi } from "vitest";
-import { mockApi } from "@/test/http";
+import { bodyOf, mockApi } from "@/test/http";
 import { AuthProvider } from "./auth-provider";
 
 const ME = {
@@ -31,6 +32,26 @@ describe("AuthProvider", () => {
     render(<AuthProvider><p>private</p></AuthProvider>);
     await waitFor(() => expect(useRouter().replace).toHaveBeenCalledWith("/account"));
     expect(screen.queryByText("private")).not.toBeInTheDocument();
+  });
+
+  it("asks for the privacy notice to be read and accepted before showing the portal", async () => {
+    const notice = { id: 7, title: "Privacy notice", version: "2", body: "We keep your details safe." };
+    const fetchMock = mockApi([
+      ["GET", "/api/auth/me", 200, { ...ME, privacy_notice: notice }],
+      ["POST", "/api/auth/privacy", 200, { ...ME, privacy_notice: null }],
+    ]);
+    const user = userEvent.setup();
+    render(<AuthProvider><p>private</p></AuthProvider>);
+
+    expect(await screen.findByText("We keep your details safe.")).toBeInTheDocument();
+    expect(screen.queryByText("private")).not.toBeInTheDocument();
+    const accept = screen.getByRole("button", { name: "Accept and continue" });
+    expect(accept).toBeDisabled();
+    await user.click(screen.getByRole("checkbox", { name: /i have read and accept/i }));
+    await user.click(accept);
+
+    expect(await screen.findByText("private")).toBeInTheDocument();
+    expect(bodyOf(fetchMock, "POST", "/api/auth/privacy")).toEqual({ notice: 7 });
   });
 
   it("offers a retry when the school can't be reached", async () => {

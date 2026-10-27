@@ -95,6 +95,26 @@ class MeView(APIView):
         return Response(me_payload(request.user))
 
 
+class PrivacyAcceptSerializer(serializers.Serializer):
+    notice = serializers.IntegerField()
+
+
+class PrivacyAcceptView(APIView):
+    """Accepting the privacy notice the portal asks about (Act 843); recorded and audited."""
+
+    def post(self, request):
+        from apps.consent.services import accept_notice, notice_to_accept
+
+        data = validated(PrivacyAcceptSerializer, request)
+        notice = notice_to_accept(request.user)
+        if notice is None or data["notice"] != notice.pk:
+            raise ApiError(
+                "not_this_notice", "Reload the page and read the current privacy notice.", 400
+            )
+        accept_notice(request.user, notice, request=request)
+        return Response(me_payload(request.user))
+
+
 class SessionsView(APIView):
     def get(self, request):
         now = timezone.now()

@@ -51,6 +51,32 @@ class PrivacyNotice(models.Model):
             school=school, effective_from__lte=today or timezone.localdate()
         ).first()
 
+    @classmethod
+    def approved_current(cls, school=None) -> PrivacyNotice | None:
+        """The notice people are asked to accept: the latest one in force that isn't a draft."""
+        return cls.objects.filter(
+            school=school, is_draft=False, effective_from__lte=timezone.localdate()
+        ).first()
+
+
+class NoticeAcceptance(models.Model):
+    """A person accepted a version of the privacy notice before using the portal (Act 843).
+    Never changed or deleted: a new version is accepted with a new row."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notice_acceptances"
+    )
+    notice = models.ForeignKey(PrivacyNotice, on_delete=models.PROTECT, related_name="+")
+    accepted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["user", "notice"], name="consent_one_acceptance")
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.user} accepted {self.notice}"
+
 
 class Consent(SchoolOwned):
     """A pupil's or a parent's consent (Phase 1 spec §3.5). Its history is in the audit log.

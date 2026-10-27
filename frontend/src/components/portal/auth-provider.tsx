@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { AcceptNotice } from "@/components/portal/accept-notice";
 import { Button } from "@/components/ui/button";
 import { ApiRequestError, getJson, postJson } from "@/lib/client-api";
 import { publicPath } from "@/lib/hosts";
@@ -68,6 +69,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   if (state.status === "signed_in" && !mustChangePassword) {
+    const notice = state.me.must_change_password ? null : state.me.privacy_notice;
+    if (notice) {
+      return (
+        <AcceptNotice
+          me={state.me}
+          notice={notice}
+          onAccepted={(me) => setState({ status: "signed_in", me })}
+          onSignOut={() => void signOut()}
+        />
+      );
+    }
     return <AuthContext value={{ me: state.me, refresh, signOut }}>{children}</AuthContext>;
   }
   if (state.status === "offline") {

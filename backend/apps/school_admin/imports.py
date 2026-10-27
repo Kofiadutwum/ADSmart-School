@@ -36,7 +36,7 @@ from apps.school_admin.dashboard import current_year
 from apps.school_admin.parents import ParentSerializer
 from apps.school_admin.pupils import NewPupilSerializer
 from apps.school_admin.staff import NewStaffSerializer
-from apps.school_admin.views import SchoolView
+from apps.school_admin.views import NOTICE_GIVEN, SchoolView
 
 MAX_BYTES = 2 * 1024 * 1024
 # shortcut: one request must finish within the server's 60-second limit, so big lists are split
@@ -489,6 +489,9 @@ class ImportView(SchoolView):
         upload = request.FILES.get("file")
         if upload is None:
             raise serializers.ValidationError({"file": ["Choose a spreadsheet file."]})
+        commit = request.data.get("commit") == "1"
+        if commit and request.data.get("privacy_notice_given") != "1":
+            raise serializers.ValidationError({"privacy_notice_given": [NOTICE_GIVEN]})
         body = {"kind": kind, "imported": False, "problems": [], "summary": None}
         try:
             found = records(kind, read_rows(upload))
@@ -498,7 +501,7 @@ class ImportView(SchoolView):
         check, save = CHECKS[kind]
         result = check(self.school, found)
         body.update(problems=result.problems, summary=result.summary)
-        if request.data.get("commit") == "1" and not result.problems:
+        if commit and not result.problems:
             with transaction.atomic():
                 body.update(save(self.school, result, request.user), imported=True)
         return Response(body)

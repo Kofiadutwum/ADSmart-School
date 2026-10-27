@@ -124,7 +124,11 @@ export type Me = {
   roles: string[];
   must_change_password: boolean;
   school: { name: string; slug: string } | null;
+  /** The privacy notice still to be accepted before the portal opens (Act 843), or null. */
+  privacy_notice?: NoticeToAccept | null;
 };
+
+export type NoticeToAccept = { id: number; title: string; version: string; body: string };
 
 export type SignInResult =
   | { status: "signed_in"; user: Me }

@@ -34,10 +34,13 @@ describe("ImportView", () => {
     expect(await screen.findByText(/ready to import 2 pupils/i)).toHaveTextContent(
       "1 new parent account, 1 parent already registered, placed in Basic 2A",
     );
+    expect(screen.getByRole("button", { name: "Import 2 pupils" })).toBeDisabled();
+    await user.click(screen.getByRole("checkbox", { name: /privacy notice/i }));
     await user.click(screen.getByRole("button", { name: "Import 2 pupils" }));
     expect(await screen.findByText(/imported 2 pupils/i)).toBeInTheDocument();
     const sent = fetchMock.mock.calls[2][1]?.body as FormData;
     expect(sent.get("commit")).toBe("1");
+    expect(sent.get("privacy_notice_given")).toBe("1");
     expect((sent.get("file") as File).name).toBe("pupils.csv");
     expect((fetchMock.mock.calls[0][1]?.body as FormData).get("commit")).toBeNull();
   });
@@ -65,7 +68,8 @@ describe("ImportView", () => {
 
     await user.upload(screen.getByLabelText(/spreadsheet file/i), file("staff.xlsx"));
     await user.click(screen.getByRole("button", { name: "Check the file" }));
-    await user.click(await screen.findByRole("button", { name: "Import 1 staff member" }));
+    await user.click(await screen.findByRole("checkbox", { name: /privacy notice/i }));
+    await user.click(screen.getByRole("button", { name: "Import 1 staff member" }));
     const table = await screen.findByRole("table", { name: /one-time passwords/i });
     expect(within(table).getByText("tulip-river-42")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /print/i })).toBeInTheDocument();

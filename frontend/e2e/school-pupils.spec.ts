@@ -33,6 +33,7 @@ test("an Administrator admits a pupil with their family, and the parent sees the
   await admit.getByLabel(/^surname/i).fill(surname);
   await admit.getByLabel(/^date of birth/i).fill("2018-02-01");
   await admit.getByLabel(/^gender/i).selectOption({ label: "Male" });
+  await admit.getByRole("checkbox", { name: /privacy notice/i }).check();
   await admit.getByRole("button", { name: "Admit", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1, name: pupil })).toBeVisible();
   await expect(page.getByText(/Student ID \d{7}/)).toBeVisible();
@@ -44,6 +45,7 @@ test("an Administrator admits a pupil with their family, and the parent sees the
   await newParent.getByLabel(/^surname/i).fill(surname);
   await newParent.getByLabel(/^mobile number/i).fill(mobile);
   await newParent.getByRole("checkbox", { name: "Main contact" }).check();
+  await newParent.getByRole("checkbox", { name: /privacy notice/i }).check();
   await newParent.getByRole("button", { name: "Add parent" }).click();
   const card = page.getByRole("article", { name: mother });
   await card.getByRole("button", { name: "Send activation text" }).click();

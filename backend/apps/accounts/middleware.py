@@ -12,6 +12,11 @@ from apps.accounts.sessions import belongs_here, is_expired
 
 TOUCH_EVERY = timedelta(minutes=1)
 OPEN_WHILE_PASSWORD_CHANGE = ("/api/auth/", "/api/public/", "/api/health")
+PRIVACY_ACCEPTANCE_REQUIRED = {
+    "code": "privacy_acceptance_required",
+    "message": "Read and accept the privacy notice to continue.",
+    "fields": {},
+}
 PASSWORD_CHANGE_REQUIRED = {
     "code": "password_change_required",
     "message": "Choose a new password to continue.",
@@ -44,4 +49,18 @@ class SessionActivityMiddleware:
             and not request.path.startswith(OPEN_WHILE_PASSWORD_CHANGE)
         ):
             return JsonResponse(PASSWORD_CHANGE_REQUIRED, status=403)
+        if (
+            request.user.is_authenticated
+            and request.path.startswith("/api/")
+            and not request.path.startswith(OPEN_WHILE_PASSWORD_CHANGE)
+            and _notice_to_accept(request.user) is not None
+        ):
+            # Nobody uses the portal, so no information is taken, before the notice is accepted.
+            return JsonResponse(PRIVACY_ACCEPTANCE_REQUIRED, status=403)
         return self.get_response(request)
+
+
+def _notice_to_accept(user):
+    from apps.consent.services import notice_to_accept  # consent depends on people → accounts
+
+    return notice_to_accept(user)

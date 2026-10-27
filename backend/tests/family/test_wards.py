@@ -72,7 +72,7 @@ def test_a_wards_photo_is_shown_only_with_consent(family):
 
 
 def test_a_parent_reads_the_notice_and_changes_consents(family, school):
-    PrivacyNotice.objects.create(
+    notice = PrivacyNotice.objects.create(
         school=school,
         version="3",
         title="How we use data",
@@ -81,6 +81,7 @@ def test_a_parent_reads_the_notice_and_changes_consents(family, school):
         is_draft=False,
     )
     client, ward = family["client"], family["ward"]
+    assert client.post("/api/auth/privacy", {"notice": notice.pk}, format="json").status_code == 200
     body = client.get("/api/parent/consents").json()
     assert body["notice"]["version"] == "3"
     assert body["wards"][0]["id"] == ward.pk

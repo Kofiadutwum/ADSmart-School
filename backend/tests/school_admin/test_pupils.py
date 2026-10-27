@@ -20,7 +20,16 @@ NEW = {
     "date_of_birth": "2018-02-01",
     "gender": "M",
     "admission_date": "2026-09-08",
+    "privacy_notice_given": True,
 }
+
+
+def test_admission_needs_the_family_told_about_the_privacy_notice(admin, school):
+    response = admin.post(PUPILS, {**NEW, "privacy_notice_given": False}, format="json")
+
+    assert response.status_code == 400
+    assert "privacy notice" in response.json()["fields"]["privacy_notice_given"][0]
+    assert not Student.objects.exists()
 
 
 def contact(name, phone="024 111 2222", relationship="Aunt"):

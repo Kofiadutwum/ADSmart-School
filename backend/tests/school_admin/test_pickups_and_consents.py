@@ -64,9 +64,10 @@ def test_a_pick_up_person_photo_is_kept_and_served_privately(admin, school):
 
 
 def test_records_a_pupils_consents_against_the_privacy_notice(admin, school):
-    PrivacyNotice.objects.create(
+    notice = PrivacyNotice.objects.create(
         school=school, version="2", body="Text", effective_from=date(2026, 1, 1), is_draft=False
     )
+    admin.post("/api/auth/privacy", {"notice": notice.pk}, format="json")
     pupil = make_student(school)
     url = f"/api/school/pupils/{pupil.pk}/consents"
     rows = {row["type"]: row for row in admin.get(url).json()}

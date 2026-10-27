@@ -3,7 +3,15 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { CHECK_FORM, InputField, LoadState, useLoad, useSubmit } from "@/components/portal/kit";
+import {
+  CHECK_FORM,
+  InputField,
+  LoadState,
+  NOTICE_TICK_ERROR,
+  NoticeTick,
+  useLoad,
+  useSubmit,
+} from "@/components/portal/kit";
 import { Field, inputClasses } from "@/components/site/field";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { FormAlert } from "@/components/ui/form-alert";
@@ -179,6 +187,7 @@ function AdmitForm({ classes, onCancel }: { classes: ClassesData | null; onCance
     address: "",
     school_class: "",
   });
+  const [informed, setInformed] = useState(false);
   const { error, errors, attempt, busy, run, fail } = useSubmit();
   const set = (name: keyof Admission) => (value: string) => setValues({ ...values, [name]: value });
 
@@ -189,9 +198,14 @@ function AdmitForm({ classes, onCancel }: { classes: ClassesData | null; onCance
       if (!values[name].trim()) found[name] = "Fill this in.";
     }
     if (!values.gender) found.gender = "Choose one.";
+    if (!informed) found.privacy_notice_given = NOTICE_TICK_ERROR;
     if (Object.keys(found).length > 0) return fail(CHECK_FORM, found);
     void run(async () => {
-      const body = { ...values, school_class: values.school_class ? Number(values.school_class) : null };
+      const body = {
+        ...values,
+        school_class: values.school_class ? Number(values.school_class) : null,
+        privacy_notice_given: informed,
+      };
       const pupil = await postJson<PupilDetail>(PUPILS, body);
       router.push(`/pupils/${pupil.id}`);
     });
@@ -289,6 +303,12 @@ function AdmitForm({ classes, onCancel }: { classes: ClassesData | null; onCance
           )}
         </Field>
       </div>
+      <NoticeTick
+        label="The family has been given the school's privacy notice."
+        checked={informed}
+        onChange={setInformed}
+        error={errors.privacy_notice_given}
+      />
       <div className="flex flex-wrap gap-3">
         <Button type="submit" disabled={busy}>
           {busy ? "Admitting…" : "Admit"}

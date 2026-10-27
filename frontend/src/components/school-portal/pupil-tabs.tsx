@@ -1,7 +1,18 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { ConfirmDelete, InputField, LoadState, Tick, useAction, useLoad, useSubmit } from "@/components/portal/kit";
+import {
+  CHECK_FORM,
+  ConfirmDelete,
+  InputField,
+  LoadState,
+  NOTICE_TICK_ERROR,
+  NoticeTick,
+  Tick,
+  useAction,
+  useLoad,
+  useSubmit,
+} from "@/components/portal/kit";
 import { Field, inputClasses } from "@/components/site/field";
 import { Button } from "@/components/ui/button";
 import { FormAlert } from "@/components/ui/form-alert";
@@ -253,14 +264,17 @@ function AddParent({ pupil, onAdded }: { pupil: PupilDetail; onAdded: (row: Guar
   const [relationship, setRelationship] = useState<Relationship>("MOTHER");
   const [payer, setPayer] = useState(false);
   const [primary, setPrimary] = useState(false);
-  const { error, errors, attempt, busy, run } = useSubmit();
+  const [informed, setInformed] = useState(false);
+  const { error, errors, attempt, busy, run, fail } = useSubmit();
   const set = (name: keyof typeof NEW_PARENT) => (value: string) => setValues({ ...values, [name]: value });
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!informed) return fail(CHECK_FORM, { privacy_notice_given: NOTICE_TICK_ERROR });
     const link = { student: pupil.id, relationship, is_payer: payer, is_primary_contact: primary };
     void run(async () => {
-      const parent = await postJson<ParentRow>("/api/school/parents", { ...values, link });
+      const body = { ...values, link, privacy_notice_given: informed };
+      const parent = await postJson<ParentRow>("/api/school/parents", body);
       const child = parent.children.find((each) => each.student === pupil.id);
       if (child) {
         onAdded({
@@ -348,6 +362,12 @@ function AddParent({ pupil, onAdded }: { pupil: PupilDetail; onAdded: (row: Guar
         <Tick label="Pays fees" checked={payer} onChange={setPayer} />
         <Tick label="Main contact" checked={primary} onChange={setPrimary} />
       </div>
+      <NoticeTick
+        label="This parent has been given the school's privacy notice."
+        checked={informed}
+        onChange={setInformed}
+        error={errors.privacy_notice_given}
+      />
       <Button type="submit" disabled={busy}>
         Add parent
       </Button>

@@ -26,7 +26,7 @@ from apps.people.models import EmergencyContact, Enrolment, Gender, Student
 from apps.people.services import add_emergency_contact, admit_student, change_student_status, enrol
 from apps.platform_content.uploads import validate_photo
 from apps.school_admin.dashboard import current_year
-from apps.school_admin.views import SchoolView, audit_row
+from apps.school_admin.views import NoticeGivenField, SchoolView, audit_row
 
 LIST_LIMIT = 200  # shortcut: the first 200 matches; add paging once schools pass that
 HISTORY_LIMIT = 200
@@ -106,6 +106,10 @@ class NewPupilSerializer(serializers.Serializer):
     school_class = serializers.IntegerField(required=False, allow_null=True)
 
 
+class AdmitSerializer(NewPupilSerializer):
+    privacy_notice_given = NoticeGivenField()
+
+
 class ProfileSerializer(serializers.Serializer):
     first_name = serializers.CharField(max_length=60)
     middle_name = serializers.CharField(max_length=60, allow_blank=True)
@@ -152,7 +156,8 @@ class PupilsView(SchoolView):
 
     @transaction.atomic
     def post(self, request):
-        data = validated(NewPupilSerializer, request)
+        data = validated(AdmitSerializer, request)
+        data.pop("privacy_notice_given")
         class_id = data.pop("school_class", None)
         school_class = None
         if class_id is not None:

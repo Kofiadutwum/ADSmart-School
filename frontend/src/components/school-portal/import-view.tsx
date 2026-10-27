@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { useAction } from "@/components/portal/kit";
+import { NoticeTick, useAction } from "@/components/portal/kit";
 import { inputClasses } from "@/components/site/field";
 import { PageHead, Panel, Table } from "@/components/work/common";
 import { Button, buttonClasses } from "@/components/ui/button";
@@ -73,19 +73,24 @@ export function ImportView({ initialKind }: { initialKind: Kind }) {
   const [kind, setKind] = useState<Kind>(initialKind);
   const [file, setFile] = useState<File | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const [informed, setInformed] = useState(false);
   const { act, busy, alert } = useAction();
 
   const choose = (next: Kind) => {
     setKind(next);
     setFile(null);
     setOutcome(null);
+    setInformed(false);
   };
   const send = (commit: boolean) =>
     act(async () => {
       if (!file) return;
       const form = new FormData();
       form.append("file", file);
-      if (commit) form.append("commit", "1");
+      if (commit) {
+        form.append("commit", "1");
+        form.append("privacy_notice_given", informed ? "1" : "0");
+      }
       setOutcome(await postForm<Outcome>(`${API}/${kind}`, form));
     });
   const clean = outcome && !outcome.imported && outcome.problems.length === 0 && outcome.summary;
@@ -171,7 +176,12 @@ export function ImportView({ initialKind }: { initialKind: Kind }) {
           {clean && (
             <div className="space-y-3">
               <p>{readyText(kind, outcome.summary)}</p>
-              <Button disabled={busy} onClick={() => void send(true)}>
+              <NoticeTick
+                label={`The ${kind === "pupils" ? "families" : "staff"} listed have been given the school's privacy notice.`}
+                checked={informed}
+                onChange={setInformed}
+              />
+              <Button disabled={busy || !informed} onClick={() => void send(true)}>
                 {busy ? "Importing…" : `Import ${what(kind, outcome.summary)}`}
               </Button>
             </div>

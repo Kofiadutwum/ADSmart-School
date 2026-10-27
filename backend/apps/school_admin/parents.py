@@ -20,7 +20,7 @@ from apps.people.demo import mark_real
 from apps.people.models import Guardianship, Parent
 from apps.people.services import create_parent, link_guardian
 from apps.school_admin.pupils import pupil_of
-from apps.school_admin.views import SchoolView
+from apps.school_admin.views import NoticeGivenField, SchoolView
 
 LIST_LIMIT = 200  # shortcut: the first 200 matches; add paging once schools pass that
 TAKEN = "A parent with this number is already registered at this school."
@@ -119,6 +119,7 @@ class ParentSerializer(serializers.Serializer):
 
 class NewParentSerializer(ParentSerializer):
     link = NewLinkSerializer(required=False)
+    privacy_notice_given = NoticeGivenField()
 
 
 def _number_taken(school, phone: str, exclude: Parent | None = None) -> bool:
@@ -165,6 +166,7 @@ class ParentsView(SchoolView):
     @transaction.atomic
     def post(self, request):
         data = validated(NewParentSerializer, request)
+        data.pop("privacy_notice_given")
         link = data.pop("link", None)
         if _number_taken(self.school, data["phone"]):
             raise serializers.ValidationError({"phone": [TAKEN]})

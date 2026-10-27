@@ -34,10 +34,20 @@ def sheet(rows, name="pupils.csv"):
 
 
 def send(client, kind, upload, commit=False):
-    data = {"file": upload, **({"commit": "1"} if commit else {})}
-    response = client.post(IMPORT + kind, data, format="multipart")
+    saving = {"commit": "1", "privacy_notice_given": "1"} if commit else {}
+    response = client.post(IMPORT + kind, {"file": upload, **saving}, format="multipart")
     assert response.status_code == 200, response.content
     return response.json()
+
+
+def test_saving_needs_the_people_listed_told_about_the_privacy_notice(admin, school):
+    upload = sheet([FAMILY[:4], ["Kwame", "Asante", "01/02/2018", "M"]])
+
+    response = admin.post(IMPORT + "pupils", {"file": upload, "commit": "1"}, format="multipart")
+
+    assert response.status_code == 400
+    assert "privacy notice" in response.json()["fields"]["privacy_notice_given"][0]
+    assert not Student.objects.exists()
 
 
 def test_checking_a_file_says_what_would_be_imported_and_saves_nothing(admin, school):

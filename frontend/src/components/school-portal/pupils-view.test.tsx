@@ -76,8 +76,13 @@ describe("PupilsView", () => {
     await user.selectOptions(within(form).getByLabelText(/^gender/i), "Female");
     await user.selectOptions(within(form).getByLabelText(/^first class/i), "Basic 2A");
     await user.click(within(form).getByRole("button", { name: "Admit" }));
+    expect(await within(form).findByText(/tick to confirm/i)).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalledWith("/api/school/pupils", expect.objectContaining({ method: "POST" }));
+    await user.click(within(form).getByRole("checkbox", { name: /privacy notice/i }));
+    await user.click(within(form).getByRole("button", { name: "Admit" }));
     expect(useRouter().push).toHaveBeenCalledWith("/pupils/7");
     expect(bodyOf(fetchMock, "POST", "/api/school/pupils")).toMatchObject({
+      privacy_notice_given: true,
       first_name: "Ama",
       surname: "Mensah",
       date_of_birth: "2019-03-14",

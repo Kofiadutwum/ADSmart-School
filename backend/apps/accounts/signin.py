@@ -187,9 +187,19 @@ def complete_login(request, user: User, *, remember: bool) -> None:
     record(AuditLog.Action.SIGN_IN, actor=user, entity=user, request=request)
 
 
+def notice_row(notice) -> dict | None:
+    if notice is None:
+        return None
+    return {"id": notice.pk, "title": notice.title, "version": notice.version, "body": notice.body}
+
+
 def me_payload(user: User) -> dict:
+    # Imported here: consent depends on people, which depends on accounts.
+    from apps.consent.services import notice_to_accept
+
     school = user.school
     return {
+        "privacy_notice": notice_row(notice_to_accept(user)),
         "id": user.pk,
         "kind": user.kind,
         "username": user.login,

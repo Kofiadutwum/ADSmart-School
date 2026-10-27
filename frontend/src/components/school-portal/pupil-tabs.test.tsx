@@ -87,9 +87,11 @@ describe("ParentsTab", () => {
     await user.type(within(form).getByLabelText(/^surname/i), "Mensah");
     await user.type(within(form).getByLabelText(/^mobile number/i), "024 555 0002");
     await user.selectOptions(within(form).getByLabelText(/^relationship/i), "Father");
+    await user.click(within(form).getByRole("checkbox", { name: /privacy notice/i }));
     await user.click(within(form).getByRole("button", { name: "Add parent" }));
     expect(await screen.findByRole("article", { name: "Kojo Mensah" })).toBeInTheDocument();
     expect(bodyOf(fetchMock, "POST", "/api/school/parents")).toMatchObject({
+      privacy_notice_given: true,
       first_name: "Kojo",
       phone: "024 555 0002",
       link: { student: 4, relationship: "FATHER", is_payer: false, is_primary_contact: false },

@@ -3,6 +3,7 @@ own school, so another school's records are never fetched."""
 
 from datetime import date
 
+from rest_framework import serializers
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -15,6 +16,18 @@ from apps.people.models import Staff
 from apps.people.services import STAFF_ROLES
 from apps.school_admin import dashboard
 from apps.school_admin.permissions import SchoolRolePermission
+
+NOTICE_GIVEN = "Tick to confirm they have been given the school's privacy notice."
+
+
+class NoticeGivenField(serializers.BooleanField):
+    """Staff typing in someone's details confirm that person was given the privacy notice, so no
+    information is taken without it (Act 843)."""
+
+    def to_internal_value(self, data):
+        if not super().to_internal_value(data):
+            raise serializers.ValidationError(NOTICE_GIVEN)
+        return True
 
 
 class SchoolView(APIView):
