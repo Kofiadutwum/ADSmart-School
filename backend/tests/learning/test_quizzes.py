@@ -84,8 +84,41 @@ def test_a_quiz_with_unchecked_questions_cant_be_published(school, quiz):
     )
 
 
+def test_ai_drafting_uses_groq_first_with_a_named_agent(school, quiz, settings, monkeypatch):
+    settings.GROQ_API_KEY, settings.GROQ_MODEL = "groq-key", "openai/gpt-oss-120b"
+    settings.ANTHROPIC_API_KEY = "also-set"
+    sent = {}
+
+    class Answer:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            text = 'Here: [{"text": "Q?", "options": ["A", "B"], "answer": "B"}]'
+            return json.dumps({"choices": [{"message": {"content": text}}]}).encode()
+
+    def fake_open(request, timeout=0):
+        sent["request"] = request
+        return Answer()
+
+    monkeypatch.setattr(quizzes.urllib.request, "urlopen", fake_open)
+
+    drafted = quizzes.ask_ai("Fractions", "Basic 4–6", "easy", 1)
+
+    assert drafted == [{"text": "Q?", "options": ["A", "B"], "answer": "B"}]
+    request = sent["request"]
+    assert request.full_url == "https://api.groq.com/openai/v1/chat/completions"
+    assert request.get_header("Authorization") == "Bearer groq-key"
+    # Cloudflare in front of Groq refuses Python's default agent ("error code: 1010").
+    assert request.get_header("User-agent").startswith("ADsmartschool")
+    assert json.loads(request.data)["model"] == "openai/gpt-oss-120b"
+
+
 def test_ai_drafting_is_off_without_a_key(school, quiz, settings):
-    settings.ANTHROPIC_API_KEY = ""
+    settings.ANTHROPIC_API_KEY = settings.GROQ_API_KEY = ""
     with pytest.raises(Exception, match="isn't set up"):
         quizzes.ask_ai("Photosynthesis", "Basic 4–6", "easy", 3)
 

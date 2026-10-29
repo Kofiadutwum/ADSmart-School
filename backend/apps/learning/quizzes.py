@@ -7,7 +7,9 @@ API key it answers 503 and the teacher writes the questions by hand.
 """
 
 import json
+import logging
 import re
+import urllib.error
 import urllib.request
 from decimal import Decimal
 
@@ -29,6 +31,7 @@ from apps.learning.attendance import own_staff
 from apps.learning.models import Quiz, QuizAnswer, QuizAttempt, QuizQuestion
 from apps.school_admin.views import SchoolView
 
+logger = logging.getLogger(__name__)
 LEADERS = (roles.ADMINISTRATOR, roles.HEAD_TEACHER)
 TEACHERS = (roles.TEACHER,)
 
@@ -160,8 +163,44 @@ class DraftSerializer(serializers.Serializer):
     difficulty = serializers.ChoiceField(choices=["easy", "medium", "hard"], default="medium")
 
 
+def _post_json(url: str, payload: dict, headers: dict) -> dict:
+    request = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode(),
+        # Cloudflare in front of Groq refuses Python's default agent (error 1010).
+        headers={"content-type": "application/json", "User-Agent": "ADsmartschool/1.0", **headers},
+        method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=60) as response:  # noqa: S310 - fixed hosts
+        return json.loads(response.read())
+
+
+def _draft_text(prompt: str) -> str:
+    """The AI's reply: Groq's free tier when its key is set, otherwise Anthropic."""
+    messages = [{"role": "user", "content": prompt}]
+    if settings.GROQ_API_KEY:
+        answer = _post_json(
+            "https://api.groq.com/openai/v1/chat/completions",
+            {"model": settings.GROQ_MODEL, "max_completion_tokens": 4000, "messages": messages},
+            {"Authorization": f"Bearer {settings.GROQ_API_KEY}"},
+        )
+        return answer["choices"][0]["message"]["content"] or ""
+    answer = _post_json(
+        "https://api.anthropic.com/v1/messages",
+        {"model": settings.AI_MODEL, "max_tokens": 2000, "messages": messages},
+        {"x-api-key": settings.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01"},
+    )
+    return "".join(part.get("text", "") for part in answer.get("content", []))
+
+
+def _reason(exc: Exception) -> str:
+    if isinstance(exc, urllib.error.HTTPError):
+        return f"{exc.code}: {exc.read().decode(errors='replace')[:300]}"
+    return str(exc)
+
+
 def ask_ai(topic: str, level: str, difficulty: str, count: int) -> list[dict]:
-    if not settings.ANTHROPIC_API_KEY:
+    if not (settings.GROQ_API_KEY or settings.ANTHROPIC_API_KEY):
         raise ApiError("ai_off", "AI drafting isn't set up. Write the questions yourself.", 503)
     prompt = (
         f"Write {count} multiple-choice quiz questions for pupils in {level} in Ghana "
@@ -169,29 +208,12 @@ def ask_ai(topic: str, level: str, difficulty: str, count: int) -> list[dict]:
         "Reply with JSON only: a list of objects with "
         '"text", "options" (4 strings) and "answer" (one of the options).'
     )
-    request = urllib.request.Request(
-        "https://api.anthropic.com/v1/messages",
-        data=json.dumps(
-            {
-                "model": settings.AI_MODEL,
-                "max_tokens": 2000,
-                "messages": [{"role": "user", "content": prompt}],
-            }
-        ).encode(),
-        headers={
-            "x-api-key": settings.ANTHROPIC_API_KEY,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
-        },
-        method="POST",
-    )
     try:
-        with urllib.request.urlopen(request, timeout=60) as response:  # noqa: S310 - fixed host
-            answer = json.loads(response.read())
-        text = "".join(part.get("text", "") for part in answer.get("content", []))
+        text = _draft_text(prompt)
         found = re.search(r"\[.*\]", text, re.S)
         items = json.loads(found.group(0)) if found else []
-    except (OSError, ValueError) as exc:
+    except (OSError, ValueError, KeyError, IndexError, TypeError) as exc:
+        logger.warning("AI drafting failed: %s", _reason(exc))  # the provider's reason, for staff
         raise ApiError(
             "ai_unavailable",
             "The AI couldn't draft questions just now. Try again or write them yourself.",

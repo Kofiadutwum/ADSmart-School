@@ -211,6 +211,9 @@ USSD_SECRET = env("USSD_SECRET", default="")
 # Stage 22: AI-assisted questions. Only topic, level and difficulty are ever sent.
 ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default="")
 AI_MODEL = env("AI_MODEL", default="claude-sonnet-5-5")
+# Groq's free tier drafts quiz questions; used first when its key is set.
+GROQ_API_KEY = env("GROQ_API_KEY", default="")
+GROQ_MODEL = env("GROQ_MODEL", default="openai/gpt-oss-120b")
 
 # Phase 1 spec §9: seed_demo adds one sign-in per role for trying the system. Development only.
 DEMO_LOGINS_ENABLED = env.bool("DEMO_LOGINS_ENABLED", default=False)
