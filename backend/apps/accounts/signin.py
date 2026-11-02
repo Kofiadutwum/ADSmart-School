@@ -19,6 +19,7 @@ from apps.audit.models import AuditLog
 from apps.audit.services import client_ip, record
 from apps.core.exceptions import ApiError
 from apps.core.phones import format_gh_local
+from apps.notifications.sms import sms_available
 from apps.school.hosts import ADMIN, SCHOOL, UNAVAILABLE, Site, resolve_host
 
 WINDOW_SECONDS = 15 * 60
@@ -158,7 +159,7 @@ def start_second_factor(request, user: User, *, remember: bool) -> dict:
     return {
         "status": "second_factor",
         "email": _masked_email(user.email),
-        "phone": _masked_phone(user.phone),
+        "phone": _masked_phone(user.phone) if sms_available() else None,
     }
 
 

@@ -56,6 +56,28 @@ def test_a_code_from_one_school_does_not_work_at_another(api, parent, other_scho
     assert set_password(api, texted_code(), **OTHER).json() == BAD_CODE
 
 
+def test_a_parent_with_an_email_gets_the_code_by_email(api, parent, mailoutbox):
+    parent.email = "ama@example.com"
+    parent.save()
+
+    assert request_code(api).json() == SENT
+
+    assert MemoryBackend.outbox == []
+    (mail,) = mailoutbox
+    assert mail.to == ["ama@example.com"]
+    code = re.search(r"\d{6}", mail.body).group()
+    assert set_password(api, code).json()["status"] == "signed_in"
+
+
+def test_staff_are_not_offered_a_text_while_texting_is_off(api, school, make_user, settings):
+    settings.SMS_BACKEND = "apps.notifications.backends.UnavailableBackend"
+    make_user("head", phone=PHONE, email="head@example.com", role="Head Teacher")
+
+    body = sign_in(api, "head").json()
+
+    assert body["status"] == "second_factor" and body["phone"] is None and body["email"]
+
+
 def test_an_invalid_number_is_a_field_error(api, school):
     assert request_code(api, "12345").json()["fields"] == {"phone": [MOBILE_MESSAGE]}
 

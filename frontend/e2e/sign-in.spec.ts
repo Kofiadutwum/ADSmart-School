@@ -59,7 +59,7 @@ test("a parent activates their account with an SMS code from their school", asyn
   await page.getByRole("button", { name: "Send code" }).click();
   await expect(page.getByText("If this number is registered, a code has been sent.")).toBeVisible();
 
-  await page.getByLabel(/code from the sms/i).fill(lastCodeTo(e164(local)));
+  await page.getByLabel(/code we sent you/i).fill(lastCodeTo(e164(local)));
   await page.getByLabel(/^new password/i).fill(accounts.password);
   await page.getByLabel(/type it again/i).fill(accounts.password);
   await page.getByRole("button", { name: /set password/i }).click();

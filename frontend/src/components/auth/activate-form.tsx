@@ -13,7 +13,7 @@ import { PasswordInput } from "./password-input";
 const CHECK_FORM = "Please check the highlighted fields.";
 const PHONE_MESSAGE = "Enter a Ghana mobile number, e.g. 024 123 4567.";
 const PASSWORD_HINT = "At least 8 characters. A short sentence is easy to remember.";
-/** First-time activation and forgotten passwords for parents, by SMS code (spec §5.2). `home`:
+/** First-time activation and forgotten passwords for parents, by a code sent by email or text (spec §5.2). `home`:
  * where they land once their password is set. */
 export function ActivateForm({ home = "/account" }: { home?: string }) {
   const router = useRouter();
@@ -60,7 +60,7 @@ export function ActivateForm({ home = "/account" }: { home?: string }) {
   async function savePassword(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const problems: Record<string, string> = {};
-    if (!/^\d{6}$/.test(code.trim())) problems.code = "Enter the 6-digit code from the SMS.";
+    if (!/^\d{6}$/.test(code.trim())) problems.code = "Enter the 6-digit code we sent you.";
     if (password.length < 8) problems.password = PASSWORD_HINT;
     else if (password !== confirm) problems.confirm = "The two passwords don't match.";
     if (Object.keys(problems).length > 0) return fail(CHECK_FORM, problems);
@@ -78,7 +78,7 @@ export function ActivateForm({ home = "/account" }: { home?: string }) {
   if (step === "phone") {
     return (
       <form noValidate onSubmit={requestCode} className="space-y-5">
-        <p>Enter the mobile number the school has for you. We&apos;ll text you a 6-digit code.</p>
+        <p>Enter the mobile number the school has for you. We&apos;ll send a 6-digit code to your email, or by text if the school has no email for you.</p>
         <FormAlert message={error} focusKey={attempt} />
         <Field id="activate-phone" label="Mobile number" required error={errors.phone}>
           {(props) => (
@@ -113,7 +113,7 @@ export function ActivateForm({ home = "/account" }: { home?: string }) {
         </p>
       )}
       <FormAlert message={error} focusKey={attempt} />
-      <Field id="activate-code" label="Code from the SMS" required error={errors.code}>
+      <Field id="activate-code" label="Code we sent you" required error={errors.code}>
         {(props) => (
           <input
             {...props}

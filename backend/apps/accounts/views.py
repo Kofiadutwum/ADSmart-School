@@ -254,7 +254,7 @@ class RequestCodeSerializer(serializers.Serializer):
 
 class SetPasswordSerializer(RequestCodeSerializer):
     code = serializers.RegexField(
-        r"^\d{6}$", error_messages={"invalid": "Enter the 6-digit code from the SMS."}
+        r"^\d{6}$", error_messages={"invalid": "Enter the 6-digit code we sent you."}
     )
     password = serializers.CharField(max_length=PASSWORD_MAX, trim_whitespace=False)
     remember = serializers.BooleanField(default=False)
@@ -277,8 +277,11 @@ class ParentRequestCodeView(OpenView):
         school = request_school(request)
         phone = validated(RequestCodeSerializer, request)["phone"]
         user = active_parent(school, phone)
-        if user is not None:
-            send_code(user, SmsCode.Purpose.ACTIVATION, phone)  # outcome not revealed (§5.2)
+        if user is not None:  # outcome not revealed (§5.2)
+            if user.email:
+                email_code(user, SmsCode.Purpose.ACTIVATION)
+            else:
+                send_code(user, SmsCode.Purpose.ACTIVATION, phone)
         return Response({"message": CODE_SENT})
 
 

@@ -19,7 +19,7 @@ describe("parent activation", () => {
     await user.click(screen.getByRole("button", { name: "Send code" }));
     expect(await screen.findByText(SENT.message)).toBeInTheDocument();
 
-    await user.type(screen.getByLabelText(/code from the sms/i), "123456");
+    await user.type(screen.getByLabelText(/code we sent you/i), "123456");
     await user.type(screen.getByLabelText(/^new password/i), "our family passphrase");
     await user.type(screen.getByLabelText(/type it again/i), "our family passphrase");
     await user.click(screen.getByRole("button", { name: /set password/i }));
@@ -57,7 +57,7 @@ describe("parent activation", () => {
     render(<ActivateForm />);
     await user.type(screen.getByLabelText(/mobile number/i), "0241234567");
     await user.click(screen.getByRole("button", { name: "Send code" }));
-    await user.type(await screen.findByLabelText(/code from the sms/i), "123456");
+    await user.type(await screen.findByLabelText(/code we sent you/i), "123456");
     await user.type(screen.getByLabelText(/^new password/i), "password1234");
     await user.type(screen.getByLabelText(/type it again/i), "password1234");
     await user.click(screen.getByRole("button", { name: /set password/i }));

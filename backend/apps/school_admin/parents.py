@@ -2,6 +2,9 @@
 payer and primary contact, send the activation text and reset access. Demo numbers are never
 texted (§9): send_sms refuses them and the screen is told so."""
 
+import logging
+
+from django.core.mail import send_mail
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
@@ -22,6 +25,7 @@ from apps.people.services import create_parent, link_guardian
 from apps.school_admin.pupils import pupil_of
 from apps.school_admin.views import NoticeGivenField, SchoolView
 
+logger = logging.getLogger(__name__)
 LIST_LIMIT = 200  # shortcut: the first 200 matches; add paging once schools pass that
 TAKEN = "A parent with this number is already registered at this school."
 
@@ -212,13 +216,26 @@ class ParentDetailView(SchoolView):
 
 def send_activation(parent: Parent, request) -> dict:
     school = parent.school
-    message = send_sms(
-        parent.phone,
+    text = (
         f"{school.name}: your parent account is ready. To sign in, open "
-        f"{school.base_url()}/activate and enter this phone number to get a code.",
-        purpose=Purpose.ACCOUNT_NOTICE,
-        school=school,
+        f"{school.base_url()}/activate and enter this phone number to get a code."
     )
+    if parent.email and not parent.is_demo:  # by email first: texting may not be set up
+        try:
+            send_mail(f"{school.name}: your parent account", text, None, [parent.email])
+            sent = True
+        except Exception:  # never shown raw; logged for staff
+            logger.exception("Could not email an activation notice")
+            sent = False
+        record(
+            AuditLog.Action.ACTIVATION_SENT,
+            actor=request.user,
+            entity=parent,
+            new={"status": "EMAILED" if sent else "FAILED"},
+            request=request,
+        )
+        return {"sent": sent, "reason": "" if sent else "failed"}
+    message = send_sms(parent.phone, text, purpose=Purpose.ACCOUNT_NOTICE, school=school)
     record(
         AuditLog.Action.ACTIVATION_SENT,
         actor=request.user,

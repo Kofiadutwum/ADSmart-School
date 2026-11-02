@@ -51,6 +51,11 @@ def credit_balance(school) -> int:
     return SmsCreditEntry.objects.filter(school=school).aggregate(total=Sum("change"))["total"] or 0
 
 
+def sms_available() -> bool:
+    """False while no text provider is set up: codes and notices then go by email."""
+    return not settings.SMS_BACKEND.endswith("UnavailableBackend")
+
+
 def send_sms(
     to: str, body: str, *, purpose: str, redacted_body: str | None = None, school=None
 ) -> SmsMessage:
