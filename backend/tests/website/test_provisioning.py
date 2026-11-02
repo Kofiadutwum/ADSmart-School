@@ -11,6 +11,18 @@ from apps.website.services import is_site_public
 
 pytestmark = pytest.mark.django_db
 
+
+def test_photos_prepared_at_start_up_are_reused_when_a_school_is_added(monkeypatch):
+    call_command("prepare_placeholders")
+
+    def no_upload(filename):
+        raise AssertionError("uploaded during the request")
+
+    monkeypatch.setattr(provisioning, "_store_placeholder", no_upload)
+    school = create_school(**DETAILS)
+
+    assert PhotoSlot.objects.for_school(school).filter(is_placeholder=True).exists()
+
 DETAILS = {
     "slug": "brightfuture",
     "name": "Bright Future Academy",

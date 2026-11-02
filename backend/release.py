@@ -10,6 +10,7 @@ def build(environ: Mapping[str, str], run: Callable[[str], object]) -> None:
         return
     run("migrate")
     run("createcachetable")
+    run("prepare_placeholders")  # too slow to do while a school is being added
 
 
 def run_command(command: str) -> None:

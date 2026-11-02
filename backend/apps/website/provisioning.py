@@ -1,6 +1,7 @@
 """Creating schools and their starting websites (amendment §5, §7.4)."""
 
 from django.conf import settings
+from django.core.cache import cache
 from django.core.files import File
 from django.core.files.storage import default_storage
 from django.db import transaction
@@ -16,7 +17,24 @@ SEED_DIR = settings.BASE_DIR / "seed"
 
 
 def _shared_placeholder(filename: str) -> tuple[str, list[dict]]:
-    """One stored copy of a placeholder photo and its renditions, shared by every school."""
+    """One stored copy of a placeholder photo and its renditions, shared by every school.
+    Remembered in the cache: uploading them all takes longer than one request may last."""
+    key = f"placeholder-photo:{filename}"
+    remembered = cache.get(key)
+    if remembered:
+        return remembered
+    name, renditions = _store_placeholder(filename)
+    cache.set(key, (name, renditions), timeout=None)
+    return name, renditions
+
+
+def prepare_placeholders() -> None:
+    """Run at start-up, so adding a school never waits on the photo uploads."""
+    for photo in seed_data.PHOTOS:
+        _shared_placeholder(photo.filename)
+
+
+def _store_placeholder(filename: str) -> tuple[str, list[dict]]:
     name = f"placeholders/{filename}"
     known = (
         PhotoSlot.objects.filter(image=name)
