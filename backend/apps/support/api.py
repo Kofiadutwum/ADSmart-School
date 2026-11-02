@@ -11,6 +11,7 @@ import urllib.parse
 import urllib.request
 from datetime import timedelta
 
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Count, Q, Sum
 from django.shortcuts import get_object_or_404
@@ -369,6 +370,9 @@ class DomainSerializer(serializers.Serializer):
 
     def validate_domain(self, value):
         value = value.strip().lower().rstrip(".")
+        own = {settings.PLATFORM_DOMAIN, f"www.{settings.PLATFORM_DOMAIN}", settings.ADMIN_HOST}
+        if value in own:
+            raise serializers.ValidationError("That is ADsmartschool's own address.")
         if SchoolDomain.objects.filter(domain=value).exists():
             raise serializers.ValidationError("That address is already in use.")
         return value
@@ -417,7 +421,12 @@ class DomainDetailView(PlatformSchoolView):
     def post(self, request, slug, pk):
         domain = self.domain(slug, pk)
         action = validated(DomainActionSerializer, request)["action"]
-        if action == "check":
+        if action == "check" and domain.domain.endswith(".vercel.app"):
+            # Free test addresses: Vercel only lets a name be added to the project that owns it,
+            # and only the platform team adds addresses here, so no DNS record is needed.
+            domain.verified_at = timezone.now()
+            domain.save(update_fields=["verified_at"])
+        elif action == "check":
             try:
                 values = txt_records(f"_adsmartschool.{domain.domain}")
             except OSError as exc:
