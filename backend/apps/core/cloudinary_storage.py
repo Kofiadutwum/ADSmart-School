@@ -10,6 +10,8 @@ import urllib.error
 import urllib.request
 
 import cloudinary
+import cloudinary.api
+import cloudinary.exceptions
 import cloudinary.uploader
 import cloudinary.utils
 from django.core.files.base import ContentFile
@@ -20,6 +22,11 @@ from django.utils.deconstruct import deconstructible
 def _parts(name: str) -> tuple[str, str]:
     public_id, extension = posixpath.splitext(name.replace("\\", "/"))
     return public_id, extension.lstrip(".").lower()
+
+
+def _download(url: str, name: str) -> ContentFile:
+    with urllib.request.urlopen(url, timeout=20) as response:  # noqa: S310 - Cloudinary
+        return ContentFile(response.read(), name=name)
 
 
 @deconstructible
@@ -33,17 +40,26 @@ class CloudinaryStorage(Storage):
         return name
 
     def _open(self, name, mode="rb"):
-        with urllib.request.urlopen(self.url(name), timeout=20) as response:  # noqa: S310
-            return ContentFile(response.read(), name=name)
+        try:
+            return _download(self.url(name), name)
+        except urllib.error.HTTPError as exc:
+            if exc.code != 404:
+                raise
+            # The CDN can still hold a "not found" from before the upload; the versioned
+            # address of the stored photo has never been asked for, so it answers fresh.
+            public_id, _ = _parts(name)
+            stored = cloudinary.api.resource(public_id, resource_type="image")
+            return _download(stored["secure_url"], name)
 
     def exists(self, name):
-        """A HEAD request to the delivery address: no Admin API quota is used."""
-        request = urllib.request.Request(self.url(name), method="HEAD")
+        """Asked of Cloudinary's Admin API, never the delivery address: the CDN remembers a
+        "not found" for a while, which would hide a photo uploaded straight afterwards."""
+        public_id, _ = _parts(name)
         try:
-            with urllib.request.urlopen(request, timeout=10) as response:  # noqa: S310
-                return response.status == 200
-        except urllib.error.HTTPError:
-            return False  # other errors (no network) are raised: never guess
+            cloudinary.api.resource(public_id, resource_type="image")
+        except cloudinary.exceptions.NotFound:
+            return False  # other errors (bad key, no network) are raised: never guess
+        return True
 
     def delete(self, name):
         public_id, _ = _parts(name)
