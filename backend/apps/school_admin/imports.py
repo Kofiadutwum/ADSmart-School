@@ -39,9 +39,9 @@ from apps.school_admin.staff import NewStaffSerializer
 from apps.school_admin.views import NOTICE_GIVEN, SchoolView
 
 MAX_BYTES = 2 * 1024 * 1024
-# shortcut: one request must finish within the server's 60-second limit, so big lists are split
-# into several files; move the saving to a background job if schools find that tiresome.
-MAX_ROWS = 500
+# Saving goes a batch at a time (ImportView, start/count), so the server's 60-second limit only
+# bounds checking a whole file, which takes seconds even at this size.
+MAX_ROWS = 3000
 MAX_COLUMNS = 40
 MAX_SCANNED = 50_000  # rows read before giving up on a sheet full of empty formatted rows
 
@@ -259,6 +259,7 @@ class Result:
     summary: dict
     plans: list
     existing: dict
+    skipped: int = 0  # rows already saved by an earlier batch of the same file
 
 
 PUPIL_HEADERS = {key: header for key, header, _ in PUPIL_COLUMNS}
@@ -294,7 +295,7 @@ def _parent(number: int, values: dict) -> tuple[list[str], tuple | None]:
     return [], (data["phone"], data, relationship)
 
 
-def check_pupils(school, found) -> Result:
+def check_pupils(school, found, skip_existing=False) -> Result:
     year = current_year(school)
     classes = {}
     if year:
@@ -307,7 +308,7 @@ def check_pupils(school, found) -> Result:
         )
     }
     seen: dict[tuple, int] = {}
-    problems, plans = [], []
+    problems, plans, skipped = [], [], 0
     for number, values in found:
         row_problems, reported = _missing(values, PUPIL_COLUMNS)
         data = {key: values[key] for key in PUPIL_FIELDS if values.get(key)}
@@ -343,6 +344,9 @@ def check_pupils(school, found) -> Result:
                 data["surname"].lower(),
                 _date(data["date_of_birth"]),
             )
+            if who in known and skip_existing:
+                skipped += 1  # saved by an earlier batch of the same file
+                continue
             if who in known:
                 row_problems.append(
                     f"{data['first_name']} {data['surname']} is already a pupil at the school."
@@ -375,7 +379,7 @@ def check_pupils(school, found) -> Result:
         "classes": sorted({plan.school_class.name for plan in plans if plan.school_class}),
         "unplaced": sum(1 for plan in plans if plan.school_class is None),
     }
-    return Result(problems, summary, plans, existing)
+    return Result(problems, summary, plans, existing, skipped)
 
 
 def save_pupils(school, result: Result, by) -> dict:
@@ -406,7 +410,7 @@ STAFF_HEADERS = {key: header for key, header, _ in STAFF_COLUMNS}
 ROLE_NAMES = {squash(name): name for name in STAFF_ROLES}
 
 
-def check_staff(school, found) -> Result:
+def check_staff(school, found, skip_existing=False) -> Result:
     seen: dict[str, int] = {}
     problems, plans, logins = [], [], {}
     for number, values in found:
@@ -448,13 +452,13 @@ def check_staff(school, found) -> Result:
         )
     )
     for number, login in logins.items():
-        if login in taken:
+        if login in taken and not skip_existing:
             problems.append(
                 {"row": number, "message": f"Username: {login} is already used at this school."}
             )
     problems.sort(key=lambda problem: problem["row"])
-    plans = [data for number, data in plans if logins.get(number) not in taken]
-    return Result(problems, {"staff": len(plans)}, plans, {})
+    kept = [data for number, data in plans if logins.get(number) not in taken]
+    return Result(problems, {"staff": len(kept)}, kept, {}, skipped=len(plans) - len(kept))
 
 
 def save_staff(school, result: Result, by) -> dict:
@@ -499,8 +503,19 @@ class ImportView(SchoolView):
             body["problems"] = [{"row": 1, "message": str(problem)}]
             return Response(body)
         check, save = CHECKS[kind]
-        result = check(self.school, found)
-        body.update(problems=result.problems, summary=result.summary)
+        batch = commit and request.data.get("count")
+        if batch:
+            # Big files are saved a batch at a time, each well inside the server's time limit.
+            # Rows an earlier batch already saved are skipped, so a batch can be sent again.
+            try:
+                start, count = int(request.data.get("start", 0)), int(request.data["count"])
+            except ValueError as exc:
+                raise serializers.ValidationError({"count": ["Send whole numbers."]}) from exc
+            result = check(self.school, found[start : start + count], skip_existing=True)
+            body.update(done=min(start + count, len(found)), total=len(found))
+        else:
+            result = check(self.school, found)
+        body.update(problems=result.problems, summary=result.summary, skipped=result.skipped)
         if commit and not result.problems:
             with transaction.atomic():
                 body.update(save(self.school, result, request.user), imported=True)

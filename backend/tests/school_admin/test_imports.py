@@ -40,6 +40,50 @@ def send(client, kind, upload, commit=False):
     return response.json()
 
 
+def batch(client, kind, rows, start, count):
+    data = {"file": sheet(rows), "commit": "1", "privacy_notice_given": "1"}
+    data.update(start=str(start), count=str(count))
+    response = client.post(IMPORT + kind, data, format="multipart")
+    assert response.status_code == 200, response.content
+    return response.json()
+
+
+def test_a_big_file_is_saved_in_batches_and_a_resent_batch_adds_nothing_twice(admin, school):
+    make_class(make_year(school), "basic_2", "A")
+    rows = [
+        FAMILY,
+        ["Kwame", "Asante", "01/02/2018", "M", "Basic 2A", "Akosua", "Asante", "0245550101", ""],
+        ["Yaw", "Boateng", "02/03/2018", "M", "Basic 2A", "Kofi", "Boateng", "0245550202", ""],
+        ["Efua", "Asante", "15/06/2019", "F", "Basic 2A", "Akosua", "Asante", "0245550101", ""],
+    ]
+
+    first = batch(admin, "pupils", rows, 0, 2)
+    resent = batch(admin, "pupils", rows, 0, 2)  # e.g. the answer was lost on a weak connection
+    last = batch(admin, "pupils", rows, 2, 2)
+
+    assert first["imported"] and (first["done"], first["total"]) == (2, 3)
+    assert resent["imported"] and resent["skipped"] == 2
+    assert last["done"] == 3
+    assert Student.objects.count() == 3
+    assert Parent.objects.get(first_name="Akosua").guardianships.count() == 2  # across batches
+
+
+def test_staff_batches_give_their_passwords_and_skip_resent_rows(admin, school):
+    rows = [
+        STAFF_HEAD,
+        ["Abena", "Owusu", "abena", "Teacher", "", ""],
+        ["Kojo", "Mensah", "kojo", "Teacher", "", ""],
+    ]
+
+    first = batch(admin, "staff", rows, 0, 1)
+    resent = batch(admin, "staff", rows, 0, 1)
+    second = batch(admin, "staff", rows, 1, 1)
+
+    assert [row["username"] for row in first["passwords"]] == ["abena"]
+    assert resent["passwords"] == [] and resent["skipped"] == 1
+    assert [row["username"] for row in second["passwords"]] == ["kojo"]
+
+
 def test_saving_needs_the_people_listed_told_about_the_privacy_notice(admin, school):
     upload = sheet([FAMILY[:4], ["Kwame", "Asante", "01/02/2018", "M"]])
 

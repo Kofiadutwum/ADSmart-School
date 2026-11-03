@@ -8,6 +8,8 @@ const PUPILS = "/api/school/import/pupils";
 const STAFF = "/api/school/import/staff";
 const SUMMARY = { pupils: 2, new_parents: 1, existing_parents: 1, classes: ["Basic 2A"], unplaced: 0 };
 const file = (name = "pupils.csv") => new File(["First name"], name, { type: "text/csv" });
+const CLEAN = { kind: "pupils", imported: false, problems: [], summary: SUMMARY };
+const SAVED = { kind: "pupils", imported: true, problems: [], summary: SUMMARY };
 
 describe("ImportView", () => {
   it("lists a file's problems by row, then imports it once it is clean", async () => {
@@ -18,8 +20,8 @@ describe("ImportView", () => {
         200,
         { kind: "pupils", imported: false, problems: [{ row: 3, message: "Surname is missing." }], summary: SUMMARY },
       ],
-      ["POST", PUPILS, 200, { kind: "pupils", imported: false, problems: [], summary: SUMMARY }],
-      ["POST", PUPILS, 200, { kind: "pupils", imported: true, problems: [], summary: SUMMARY }],
+      ["POST", PUPILS, 200, CLEAN],
+      ["POST", PUPILS, 200, { ...SAVED, done: 2, total: 2 }],
     ]);
     const user = userEvent.setup();
     render(<ImportView initialKind="pupils" />);
@@ -41,8 +43,32 @@ describe("ImportView", () => {
     const sent = fetchMock.mock.calls[2][1]?.body as FormData;
     expect(sent.get("commit")).toBe("1");
     expect(sent.get("privacy_notice_given")).toBe("1");
+    expect([sent.get("start"), sent.get("count")]).toEqual(["0", "50"]);
     expect((sent.get("file") as File).name).toBe("pupils.csv");
     expect((fetchMock.mock.calls[0][1]?.body as FormData).get("commit")).toBeNull();
+  });
+
+  it("saves in batches and carries on from where a dropped connection stopped", async () => {
+    const fetchMock = mockApi([
+      ["POST", PUPILS, 200, CLEAN],
+      ["POST", PUPILS, 200, { ...SAVED, done: 50, total: 120 }],
+      ["POST", PUPILS, 503, { code: "unavailable", message: "The server is busy.", fields: {} }],
+      ["POST", PUPILS, 200, { ...SAVED, done: 100, total: 120 }],
+      ["POST", PUPILS, 200, { ...SAVED, done: 120, total: 120 }],
+    ]);
+    const user = userEvent.setup();
+    render(<ImportView initialKind="pupils" />);
+    await user.upload(screen.getByLabelText(/spreadsheet file/i), file());
+    await user.click(screen.getByRole("button", { name: "Check the file" }));
+    await user.click(await screen.findByRole("checkbox", { name: /privacy notice/i }));
+    await user.click(screen.getByRole("button", { name: "Import 2 pupils" }));
+
+    expect(await screen.findByText(/50 of 120 rows saved/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Continue importing" }));
+
+    expect(await screen.findByText(/imported 2 pupils/i)).toBeInTheDocument();
+    const starts = fetchMock.mock.calls.slice(1).map((call) => (call[1]?.body as FormData).get("start"));
+    expect(starts).toEqual(["0", "50", "50", "100"]);
   });
 
   it("shows staff one-time passwords once, ready to print", async () => {
@@ -57,6 +83,8 @@ describe("ImportView", () => {
           imported: true,
           problems: [],
           summary: { staff: 1 },
+          done: 1,
+          total: 1,
           passwords: [{ name: "Abena Owusu", username: "abena", one_time_password: "tulip-river-42" }],
         },
       ],

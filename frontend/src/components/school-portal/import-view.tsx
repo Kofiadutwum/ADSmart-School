@@ -20,9 +20,13 @@ type Outcome = {
   problems: Problem[];
   summary: PupilSummary | StaffSummary | null;
   passwords?: Password[];
+  done?: number;
+  total?: number;
 };
 
 const API = "/api/school/import";
+/** Rows per request: staff are slower, because each gets a securely stored password. */
+const BATCH: Record<Kind, number> = { pupils: 50, staff: 10 };
 const plural = (count: number, one: string, many = `${one}s`) => `${count} ${count === 1 ? one : many}`;
 
 /** Each column of the template and how to fill it in. */
@@ -74,6 +78,7 @@ export function ImportView({ initialKind }: { initialKind: Kind }) {
   const [file, setFile] = useState<File | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [informed, setInformed] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number; passwords: Password[] } | null>(null);
   const { act, busy, alert } = useAction();
 
   const choose = (next: Kind) => {
@@ -81,17 +86,45 @@ export function ImportView({ initialKind }: { initialKind: Kind }) {
     setFile(null);
     setOutcome(null);
     setInformed(false);
+    setProgress(null);
   };
-  const send = (commit: boolean) =>
+  const check = () =>
     act(async () => {
       if (!file) return;
       const form = new FormData();
       form.append("file", file);
-      if (commit) {
+      setProgress(null);
+      setOutcome(await postForm<Outcome>(`${API}/${kind}`, form));
+    });
+  // Saved a batch at a time, so no request runs into the server's time limit. A batch sent
+  // again (after a dropped connection) adds nobody twice, so Continue is always safe.
+  const save = (from: number, earlier: Password[]) =>
+    act(async () => {
+      if (!file || !outcome) return;
+      let start = from;
+      const passwords = [...earlier];
+      for (;;) {
+        const form = new FormData();
+        form.append("file", file);
         form.append("commit", "1");
         form.append("privacy_notice_given", informed ? "1" : "0");
+        form.append("start", String(start));
+        form.append("count", String(BATCH[kind]));
+        const result = await postForm<Outcome>(`${API}/${kind}`, form);
+        if (result.problems.length > 0) {
+          setOutcome(result);
+          return;
+        }
+        passwords.push(...(result.passwords ?? []));
+        start = result.done ?? start;
+        const total = result.total ?? start;
+        setProgress({ done: start, total, passwords });
+        if (start >= total) {
+          setOutcome({ ...outcome, imported: true, passwords });
+          setProgress(null);
+          return;
+        }
       }
-      setOutcome(await postForm<Outcome>(`${API}/${kind}`, form));
     });
   const clean = outcome && !outcome.imported && outcome.problems.length === 0 && outcome.summary;
 
@@ -128,7 +161,7 @@ export function ImportView({ initialKind }: { initialKind: Kind }) {
         <p className="text-ink-muted">
           Open it in Excel or Google Sheets, keep the first row as it is, and add one{" "}
           {kind === "pupils" ? "pupil" : "member of staff"} per row. Columns can be in any order, and you can leave out the
-          ones you don&apos;t need. Up to 500 rows per file; split longer lists.
+          ones you don&apos;t need. Up to 3,000 rows per file.
           {kind === "pupils" &&
             " Brothers and sisters who share a parent's phone number share one parent account, and the parents listed are also added as the pupil's emergency contacts."}
         </p>
@@ -154,7 +187,7 @@ export function ImportView({ initialKind }: { initialKind: Kind }) {
             setOutcome(null);
           }}
         />
-        <Button variant="outline" disabled={!file || busy} onClick={() => void send(false)}>
+        <Button variant="outline" disabled={!file || busy} onClick={() => void check()}>
           {busy && !clean ? "Checking…" : "Check the file"}
         </Button>
         {alert}
@@ -181,9 +214,18 @@ export function ImportView({ initialKind }: { initialKind: Kind }) {
                 checked={informed}
                 onChange={setInformed}
               />
-              <Button disabled={busy || !informed} onClick={() => void send(true)}>
-                {busy ? "Importing…" : `Import ${what(kind, outcome.summary)}`}
-              </Button>
+              {progress && (
+                <p role="status">
+                  {busy ? "Importing…" : "Stopped:"} {progress.done} of {progress.total} rows saved.
+                </p>
+              )}
+              {progress && !busy ? (
+                <Button onClick={() => void save(progress.done, progress.passwords)}>Continue importing</Button>
+              ) : (
+                <Button disabled={busy || !informed} onClick={() => void save(0, [])}>
+                  {busy ? "Importing…" : `Import ${what(kind, outcome.summary)}`}
+                </Button>
+              )}
             </div>
           )}
           {outcome?.imported && (
