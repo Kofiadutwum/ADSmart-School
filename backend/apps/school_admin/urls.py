@@ -19,6 +19,7 @@ from apps.school_admin import (
     pupils,
     reports,
     rollover,
+    sign_ins,
     staff,
     views,
 )
@@ -51,6 +52,7 @@ urlpatterns = [
     path("staff/<int:pk>/reset-password", staff.StaffResetPasswordView.as_view()),
     path("staff/<int:pk>/make-real", staff.StaffMakeRealView.as_view()),
     path("import/<str:kind>", imports.ImportView.as_view()),
+    path("sign-ins/<str:kind>", sign_ins.SignInsView.as_view()),
     path("import/<str:kind>/template", imports.ImportTemplateView.as_view()),
     path("audit", views.AuditView.as_view()),
     path("pupils", pupils.PupilsView.as_view()),

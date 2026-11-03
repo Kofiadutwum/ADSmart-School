@@ -71,6 +71,7 @@ const SCHOOL_NAV: NavItem[] = [
   { href: "/enrolment", label: "Enrolment", roles: [ADMINISTRATOR], group: "People" },
   { href: "/staff", label: "Staff", roles: LEADERS, group: "People" },
   { href: "/import", label: "Import", roles: [ADMINISTRATOR], group: "People" },
+  { href: "/sign-ins", label: "Sign-in lists", roles: [ADMINISTRATOR], group: "People" },
   { href: "/leave", label: "Leave", roles: ALL_STAFF, group: "People" },
   { href: "/register", label: "Attendance", roles: [...LEADERS, ...TEACHING, FRONT_DESK], group: "Learning" },
   { href: "/marks", label: "Marks", roles: [TEACHER], group: "Learning" },

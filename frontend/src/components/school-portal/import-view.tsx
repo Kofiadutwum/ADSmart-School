@@ -27,7 +27,7 @@ type Slips = { passwords: Password[]; pupils: PupilSlip[]; parents: ParentSlip[]
 const NO_SLIPS: Slips = { passwords: [], pupils: [], parents: [] };
 
 /** A spreadsheet of sign-in details to cut into slips; opens in Excel. */
-function download(name: string, head: string[], rows: string[][]) {
+export function download(name: string, head: string[], rows: string[][]) {
   const cell = (value: string) => `"${value.replaceAll('"', '""')}"`;
   const text = "﻿" + [head, ...rows].map((row) => row.map(cell).join(",")).join("\r\n");
   const link = document.createElement("a");

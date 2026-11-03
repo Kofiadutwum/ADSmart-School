@@ -34,6 +34,7 @@ describe("school roles", () => {
       "Enrolment",
       "Staff",
       "Import",
+      "Sign-in lists",
       "Leave",
       "Attendance",
       "Results",

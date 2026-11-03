@@ -118,6 +118,7 @@ CLASSIFIED = {
     "api/school/staff/<int:pk>/make-real": SCHOOL_STAFF,
     "api/school/import/<str:kind>": SCHOOL_STAFF,
     "api/school/import/<str:kind>/template": SCHOOL_STAFF,
+    "api/school/sign-ins/<str:kind>": SCHOOL_STAFF,
     "api/school/classes": SCHOOL_STAFF,
     "api/school/classes/<int:pk>": SCHOOL_STAFF,
     "api/school/classes/<int:pk>/class-teacher": SCHOOL_STAFF,
