@@ -444,6 +444,87 @@ class TeachingView(SchoolView):
         return Response(teaching_row(row), status=201)
 
 
+class BulkTeachingSerializer(serializers.Serializer):
+    staff = serializers.IntegerField()
+    classes = serializers.ListField(child=serializers.IntegerField(), allow_empty=False)
+    subjects = serializers.ListField(child=serializers.IntegerField(), allow_empty=False)
+    term = serializers.IntegerField(required=False, allow_null=True)
+
+
+def _all_owned(model, school, pks, field: str) -> list:
+    found = list(model.objects.for_school(school).filter(pk__in=pks))
+    if len(found) != len(set(pks)):
+        raise serializers.ValidationError({field: ["Choose only from this school."]})
+    return found
+
+
+class BulkTeachingView(SchoolView):
+    """One teacher, several subjects in several classes, for one term or the whole year. Pairs
+    a class doesn't study are skipped; whoever else taught a pair is replaced."""
+
+    @transaction.atomic
+    def post(self, request):
+        data = validated(BulkTeachingSerializer, request)
+        staff = _teacher(self.school, data["staff"])
+        classes = sorted(
+            _all_owned(SchoolClass, self.school, data["classes"], "classes"),
+            key=lambda each: (GROUP_ORDER[each.year_group], each.stream),
+        )
+        subjects = sorted(
+            _all_owned(Subject, self.school, data["subjects"], "subjects"),
+            key=lambda each: each.name,
+        )
+        if data.get("term"):
+            term = _owned(Term, self.school, data["term"], "term")
+            if any(each.academic_year_id != term.academic_year_id for each in classes):
+                raise serializers.ValidationError(
+                    {"term": ["Choose a term of these classes' year."]}
+                )
+            terms_of = {each.academic_year_id: [term] for each in classes}
+        else:
+            years = {each.academic_year_id for each in classes}
+            terms_of = {year: [] for year in years}
+            for each in Term.objects.filter(academic_year_id__in=years).order_by("number"):
+                terms_of[each.academic_year_id].append(each)
+            if not all(terms_of.values()):
+                raise serializers.ValidationError({"term": ["Add the year's terms first."]})
+
+        added, replaced, skipped = [], [], []
+        for subject in subjects:
+            for school_class in classes:
+                if school_class.band not in subject.bands:
+                    skipped.append({"subject": subject.name, "class": school_class.name})
+                    continue
+                for term in terms_of[school_class.academic_year_id]:
+                    pair = TeachingAssignment.objects.filter(
+                        school_class=school_class, subject=subject, term=term
+                    )
+                    for old in pair.exclude(staff=staff).select_related("staff"):
+                        replaced.append({**_described(old), "term": term.number})
+                        record(
+                            AuditLog.Action.DELETED,
+                            actor=request.user,
+                            entity=old,
+                            old=_described(old),
+                            request=request,
+                        )
+                        old.delete()
+                    if pair.filter(staff=staff).exists():
+                        continue
+                    row = TeachingAssignment.objects.create(
+                        staff=staff, school_class=school_class, subject=subject, term=term
+                    )
+                    record(
+                        AuditLog.Action.CREATED,
+                        actor=request.user,
+                        entity=row,
+                        new=_described(row),
+                        request=request,
+                    )
+                    added.append(teaching_row(row))
+        return Response({"added": added, "replaced": replaced, "skipped": skipped}, status=201)
+
+
 class TeachingDetailView(SchoolView):
     @transaction.atomic
     def delete(self, request, pk):

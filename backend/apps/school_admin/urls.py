@@ -46,6 +46,7 @@ urlpatterns = [
     path("subjects", classes.SubjectsView.as_view()),
     path("subjects/<int:pk>", classes.SubjectDetailView.as_view()),
     path("teaching", classes.TeachingView.as_view()),
+    path("teaching/bulk", classes.BulkTeachingView.as_view()),
     path("teaching/<int:pk>", classes.TeachingDetailView.as_view()),
     path("staff", staff.StaffListView.as_view()),
     path("staff/<int:pk>", staff.StaffDetailView.as_view()),

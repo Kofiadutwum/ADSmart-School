@@ -12,6 +12,7 @@ import { deleteJson, getJson, patchJson, postJson, putJson } from "@/lib/client-
 import { formatDateTime } from "@/lib/dates";
 import type { ClassesData, EmploymentStatus, OneTimePassword, StaffDetail, SubjectRow } from "@/lib/types";
 import { RoleChoices, StaffBadges } from "./staff-view";
+import { TeachingPicker } from "./teaching-picker";
 
 const TEXT = [
   "first_name",
@@ -193,7 +194,19 @@ function Assignments({ url, staff, canEdit, onSaved }: AssignmentsProps) {
           </li>
         ))}
       </ul>
-      {canEdit && <AssignChoices staffId={staff.id} busy={busy} change={change} />}
+      {canEdit && (
+        <AssignChoices
+          staffId={staff.id}
+          busy={busy}
+          change={change}
+          onTaught={() =>
+            void act(async () => {
+              setNotice(null);
+              onSaved(await getJson<StaffDetail>(url));
+            })
+          }
+        />
+      )}
       {alert}
       {notice && (
         <p role="status" className="text-sm">
@@ -208,14 +221,14 @@ type ChoicesProps = {
   staffId: number;
   busy: boolean;
   change: (action: () => Promise<unknown>, done: string) => Promise<void>;
+  onTaught: () => void;
 };
 
-/** Two small forms: make this person class teacher of a class, or add a subject they teach. */
-function AssignChoices({ staffId, busy, change }: ChoicesProps) {
+/** Two forms: make this person class teacher of a class, or give them subjects in classes. */
+function AssignChoices({ staffId, busy, change, onTaught }: ChoicesProps) {
   const classes = useLoad<ClassesData>("/api/school/classes");
   const subjects = useLoad<SubjectRow[]>("/api/school/subjects");
   const [classTeacher, setClassTeacher] = useState({ school_class: "", term: "" });
-  const [teach, setTeach] = useState({ school_class: "", subject: "", term: "" });
   if (!classes.data || !subjects.data) return null;
   if (!classes.data.year || classes.data.terms.length === 0) {
     return (
@@ -258,17 +271,6 @@ function AssignChoices({ staffId, busy, change }: ChoicesProps) {
         }),
       "Saved.",
     );
-  const addSubject = () =>
-    change(
-      () =>
-        postJson("/api/school/teaching", {
-          staff: staffId,
-          school_class: Number(teach.school_class),
-          subject: Number(teach.subject),
-          term: Number(teach.term),
-        }),
-      "Added.",
-    );
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -289,16 +291,8 @@ function AssignChoices({ staffId, busy, change }: ChoicesProps) {
         </Button>
       </div>
       <div className="space-y-3">
-        <h3 className="font-semibold">Add a subject they teach</h3>
-        {pick("teach-class", "Class", teach.school_class, rows, (value) => setTeach({ ...teach, school_class: value }))}
-        {pick("teach-subject", "Subject", teach.subject, subjects.data, (value) => setTeach({ ...teach, subject: value }))}
-        {pick("teach-term", "Term", teach.term, terms, (value) => setTeach({ ...teach, term: value }))}
-        <Button
-          disabled={busy || !teach.school_class || !teach.subject || !teach.term}
-          onClick={() => void addSubject()}
-        >
-          Add subject
-        </Button>
+        <h3 className="font-semibold">Add subjects they teach</h3>
+        <TeachingPicker staffId={staffId} data={classes.data} subjects={subjects.data} onDone={onTaught} />
       </div>
     </div>
   );

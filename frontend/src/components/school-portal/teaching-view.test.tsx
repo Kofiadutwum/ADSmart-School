@@ -61,28 +61,28 @@ const ROW = {
 };
 
 describe("TeachingView", () => {
-  it("assigns a teacher, offering only subjects the class studies", async () => {
+  it("assigns a teacher to ticked subjects and classes, then shows the new teaching", async () => {
     const fetchMock = mockApi([
       ["GET", "/api/school/classes", 200, CLASSES],
       ["GET", "/api/school/subjects", 200, SUBJECTS],
       ["GET", "/api/school/teaching?term=4", 200, []],
-      ["POST", "/api/school/teaching", 201, ROW],
+      ["POST", "/api/school/teaching/bulk", 201, { added: [ROW], replaced: [], skipped: [] }],
+      ["GET", "/api/school/teaching?term=4", 200, [ROW]],
     ]);
     const user = userEvent.setup();
     render(<TeachingView canEdit />);
     const form = await screen.findByRole("form", { name: "Assign teaching" });
     await user.selectOptions(within(form).getByLabelText(/^teacher/i), "Abena Owusu");
-    await user.selectOptions(within(form).getByLabelText(/^class/i), "Basic 2A");
-    const subject = within(form).getByLabelText(/^subject/i);
-    expect(within(subject).queryByRole("option", { name: "Social Studies" })).not.toBeInTheDocument();
-    await user.selectOptions(subject, "Mathematics");
+    await user.click(within(form).getByRole("checkbox", { name: "Mathematics" }));
+    await user.click(within(form).getByRole("checkbox", { name: "Basic 2A" }));
     await user.click(within(form).getByRole("button", { name: "Assign" }));
     expect(await screen.findByRole("cell", { name: "Abena Owusu" })).toBeInTheDocument();
-    expect(bodyOf(fetchMock, "POST", "/api/school/teaching")).toEqual({
+    expect(within(form).getByRole("status")).toHaveTextContent("Added 1 assignment.");
+    expect(bodyOf(fetchMock, "POST", "/api/school/teaching/bulk")).toEqual({
       staff: 5,
-      school_class: 9,
-      subject: 1,
-      term: 4,
+      subjects: [1],
+      classes: [9],
+      term: null,
     });
   });
 

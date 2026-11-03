@@ -125,6 +125,7 @@ CLASSIFIED = {
     "api/school/subjects": SCHOOL_STAFF,
     "api/school/subjects/<int:pk>": SCHOOL_STAFF,
     "api/school/teaching": SCHOOL_STAFF,
+    "api/school/teaching/bulk": SCHOOL_STAFF,
     "api/school/teaching/<int:pk>": SCHOOL_STAFF,
     "api/school/years": SCHOOL_STAFF,
     "api/school/years/<int:pk>": SCHOOL_STAFF,

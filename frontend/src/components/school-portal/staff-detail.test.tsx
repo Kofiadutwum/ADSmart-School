@@ -107,7 +107,7 @@ describe("StaffDetailView", () => {
       ["GET", "/api/school/subjects", 200, subjects],
       ["PUT", "/api/school/classes/9/class-teacher", 200, basic],
       ["GET", URL, 200, classTeacher],
-      ["POST", "/api/school/teaching", 201, {}],
+      ["POST", "/api/school/teaching/bulk", 201, { added: [{}], replaced: [], skipped: [] }],
       ["GET", URL, 200, classTeacher],
       ["DELETE", "/api/school/teaching/1", 204],
       ["GET", URL, 200, { ...classTeacher, teaching: [] }],
@@ -120,15 +120,20 @@ describe("StaffDetailView", () => {
     expect(await screen.findByText("Class teacher of Basic 2A (Term 1)")).toBeInTheDocument();
     expect(bodyOf(fetchMock, "PUT", "/api/school/classes/9/class-teacher")).toEqual({ term: 4, staff: 4 });
 
-    await user.selectOptions(screen.getByLabelText(/^class/i, { selector: "#teach-class" }), "9");
-    await user.selectOptions(screen.getByLabelText(/^subject/i), "2");
-    await user.selectOptions(screen.getByLabelText(/^term/i, { selector: "#teach-term" }), "4");
-    await user.click(screen.getByRole("button", { name: "Add subject" }));
-    expect(await screen.findByRole("status")).toHaveTextContent("Added.");
-    expect(bodyOf(fetchMock, "POST", "/api/school/teaching")).toEqual({ staff: 4, school_class: 9, subject: 2, term: 4 });
+    await user.click(screen.getByRole("checkbox", { name: "English" }));
+    await user.click(screen.getByRole("checkbox", { name: "Basic 2A" }));
+    await user.selectOptions(screen.getByLabelText(/^term/i, { selector: "#picker-term" }), "4");
+    await user.click(screen.getByRole("button", { name: "Assign" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Added 1 assignment.");
+    expect(bodyOf(fetchMock, "POST", "/api/school/teaching/bulk")).toEqual({
+      staff: 4,
+      subjects: [2],
+      classes: [9],
+      term: 4,
+    });
 
     await user.click(screen.getByRole("button", { name: "Remove Mathematics, Basic 2A, Term 1" }));
-    expect(await screen.findByRole("status")).toHaveTextContent("Removed.");
+    expect(await screen.findByText("Removed.")).toBeInTheDocument();
     expect(screen.queryByText("Mathematics, Basic 2A (Term 1)")).not.toBeInTheDocument();
   });
 
