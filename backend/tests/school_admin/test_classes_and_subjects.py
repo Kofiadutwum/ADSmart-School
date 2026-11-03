@@ -184,3 +184,15 @@ def test_me_lists_a_teachers_classes(client_for, school, year, term):
     body = teacher.get("/api/school/me").json()
     assert body["teaching"][0]["subject"] == "Mathematics"
     assert body["class_teacher_of"][0]["class"] == "Basic 2"
+
+
+def test_a_class_lists_who_teaches_each_subject(admin, school, year, term, teacher):
+    basic = make_class(year, "basic_1")
+    maths = subject(school, "Mathematics", "MATH", ["lower_primary"])
+    TeachingAssignment.objects.create(staff=teacher, school_class=basic, subject=maths, term=term)
+
+    row = admin.get("/api/school/classes").json()["classes"][0]
+
+    assert row["subject_teachers"] == [
+        {"term": 1, "subject": "Mathematics", "staff_id": teacher.pk, "staff_name": "Abena Owusu"}
+    ]

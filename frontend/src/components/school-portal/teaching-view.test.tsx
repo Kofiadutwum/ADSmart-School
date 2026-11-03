@@ -25,6 +25,7 @@ const CLASSES: ClassesData = {
       academic_year: 2,
       pupils: 0,
       class_teachers: [],
+      subject_teachers: [],
     },
   ],
   year_groups: [],

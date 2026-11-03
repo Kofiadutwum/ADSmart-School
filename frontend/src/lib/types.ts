@@ -316,6 +316,7 @@ export type SchoolClassRow = {
   academic_year: number;
   pupils: number;
   class_teachers: ClassTeacher[];
+  subject_teachers: { term: number; subject: string; staff_id: number; staff_name: string }[];
 };
 export type Choice = { id: number; name: string };
 export type ClassesData = {

@@ -212,6 +212,18 @@ function ClassCard({ row, data, canEdit, onSaved, onDeleted }: CardProps) {
           );
         })}
       </ul>
+      {row.subject_teachers.length > 0 && (
+        <div className="text-sm">
+          <h4 className="font-medium">Subject teachers</h4>
+          <ul className="mt-1 space-y-0.5 text-ink-muted">
+            {row.subject_teachers.map((each) => (
+              <li key={`${each.term}-${each.subject}-${each.staff_id}`}>
+                {each.subject}: {each.staff_name} (Term {each.term})
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {notice && (
         <p role="status" className="text-sm">
           {notice}

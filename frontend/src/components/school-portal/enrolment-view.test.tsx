@@ -15,6 +15,7 @@ const BASIC_2A = {
   academic_year: 2,
   pupils: 0,
   class_teachers: [],
+  subject_teachers: [],
 };
 const CLASSES: ClassesData = {
   year: { id: 2, name: "2026/2027" },

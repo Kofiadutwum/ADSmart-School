@@ -21,6 +21,7 @@ const BASIC_2A = {
   academic_year: 2,
   pupils: 31,
   class_teachers: [{ term_id: 4, term: 1, staff_id: 5, staff_name: "Abena Owusu" }],
+  subject_teachers: [{ term: 1, subject: "Mathematics", staff_id: 6, staff_name: "Yaw Boateng" }],
 };
 const DATA: ClassesData = {
   year: { id: 2, name: "2026/2027" },
@@ -38,10 +39,18 @@ const DATA: ClassesData = {
 };
 
 describe("ClassesView", () => {
+  it("shows who teaches each subject in a class", async () => {
+    mockApi([["GET", "/api/school/classes", 200, DATA]]);
+    render(<ClassesView canEdit />);
+    const card = await screen.findByRole("article", { name: "Basic 2A" });
+    expect(within(card).getByText("Mathematics: Yaw Boateng (Term 1)")).toBeInTheDocument();
+  });
+
   it("lists classes and changes a class teacher", async () => {
     const changed = {
       ...BASIC_2A,
       class_teachers: [{ term_id: 4, term: 1, staff_id: 6, staff_name: "Yaw Boateng" }],
+      subject_teachers: [],
     };
     const fetchMock = mockApi([
       ["GET", "/api/school/classes", 200, DATA],
@@ -65,6 +74,7 @@ describe("ClassesView", () => {
       stream: "",
       pupils: 0,
       class_teachers: [],
+      subject_teachers: [],
     };
     const fetchMock = mockApi([
       ["GET", "/api/school/classes", 200, { ...DATA, classes: [] }],

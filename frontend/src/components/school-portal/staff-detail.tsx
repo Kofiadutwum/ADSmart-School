@@ -2,15 +2,15 @@
 
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
-import { firstProblem, InputField, LoadState, textareaClasses, useLoad, useSubmit } from "@/components/portal/kit";
+import { firstProblem, InputField, LoadState, textareaClasses, useAction, useLoad, useSubmit } from "@/components/portal/kit";
 import { OneTimePasswordNote } from "@/components/portal/one-time-password-note";
 import { SaveBar } from "@/components/portal/save-bar";
 import { Field, inputClasses } from "@/components/site/field";
 import { Button } from "@/components/ui/button";
 import { FormAlert } from "@/components/ui/form-alert";
-import { patchJson, postJson } from "@/lib/client-api";
+import { deleteJson, getJson, patchJson, postJson, putJson } from "@/lib/client-api";
 import { formatDateTime } from "@/lib/dates";
-import type { EmploymentStatus, OneTimePassword, StaffDetail } from "@/lib/types";
+import type { ClassesData, EmploymentStatus, OneTimePassword, StaffDetail, SubjectRow } from "@/lib/types";
 import { RoleChoices, StaffBadges } from "./staff-view";
 
 const TEXT = [
@@ -68,7 +68,7 @@ export function StaffDetailView({ id, canEdit }: { id: number; canEdit: boolean 
         </p>
       </div>
       {canEdit && <Actions url={url} staff={data} onSaved={setData} />}
-      <Assignments staff={data} />
+      <Assignments url={url} staff={data} canEdit={canEdit} onSaved={setData} />
       <ProfileFields key={data.id} url={url} staff={data} canEdit={canEdit} onSaved={setData} />
     </div>
   );
@@ -126,36 +126,181 @@ function Actions({ url, staff, onSaved }: ActionsProps) {
   );
 }
 
-function Assignments({ staff }: { staff: StaffDetail }) {
-  if (staff.teaching.length === 0 && staff.class_teacher_of.length === 0) return null;
-  const link = "text-indigo underline-offset-4 hover:underline";
+type AssignmentsProps = { url: string; staff: StaffDetail; canEdit: boolean; onSaved: (staff: StaffDetail) => void };
+type ClassTeacherOf = StaffDetail["class_teacher_of"][number];
+
+/** The classes this person looks after and the subjects they teach this year. The Administrator
+ * changes them here; making someone class teacher replaces whoever had that class and term. */
+function Assignments({ url, staff, canEdit, onSaved }: AssignmentsProps) {
+  const [notice, setNotice] = useState<string | null>(null);
+  const { act, busy, alert } = useAction();
+  const empty = staff.teaching.length === 0 && staff.class_teacher_of.length === 0;
+  if (!canEdit && empty) return null;
+
+  const change = (action: () => Promise<unknown>, done: string) =>
+    act(async () => {
+      setNotice(null);
+      await action();
+      onSaved(await getJson<StaffDetail>(url));
+      setNotice(done);
+    });
+  const stopClassTeacher = (row: ClassTeacherOf) =>
+    change(
+      () => putJson(`/api/school/classes/${row.class_id}/class-teacher`, { term: row.term_id, staff: null }),
+      "Removed.",
+    );
+  const removeSubject = (id: number) => change(() => deleteJson(`/api/school/teaching/${id}`), "Removed.");
+
   return (
-    <section aria-labelledby="assignments-title" className="surface space-y-3 rounded-card p-5 shadow-elev-1">
+    <section aria-labelledby="assignments-title" className="surface space-y-4 rounded-card p-5 shadow-elev-1">
       <h2 id="assignments-title" className="text-lg font-semibold">
-        This school year
+        Classes and subjects this school year
       </h2>
-      <ul className="space-y-1">
+      {empty && <p className="text-ink-muted">No class or subject yet.</p>}
+      <ul className="space-y-2">
         {staff.class_teacher_of.map((row) => (
-          <li key={`class-${row.id}`}>
-            Class teacher of {row.class} (Term {row.term})
+          <li key={`class-${row.id}`} className="flex flex-wrap items-center justify-between gap-2">
+            <span>
+              Class teacher of {row.class} (Term {row.term})
+            </span>
+            {canEdit && (
+              <Button
+                variant="outline"
+                disabled={busy}
+                aria-label={`Stop being class teacher of ${row.class}, Term ${row.term}`}
+                onClick={() => void stopClassTeacher(row)}
+              >
+                Remove
+              </Button>
+            )}
           </li>
         ))}
         {staff.teaching.map((row) => (
-          <li key={`teaching-${row.id}`}>
-            {row.subject}, {row.class} (Term {row.term})
+          <li key={`teaching-${row.id}`} className="flex flex-wrap items-center justify-between gap-2">
+            <span>
+              {row.subject}, {row.class} (Term {row.term})
+            </span>
+            {canEdit && (
+              <Button
+                variant="outline"
+                disabled={busy}
+                aria-label={`Remove ${row.subject}, ${row.class}, Term ${row.term}`}
+                onClick={() => void removeSubject(row.id)}
+              >
+                Remove
+              </Button>
+            )}
           </li>
         ))}
       </ul>
-      <p className="text-sm">
-        <Link href="/setup/teaching" className={link}>
-          Change teaching
-        </Link>{" "}
-        ·{" "}
-        <Link href="/setup/classes" className={link}>
-          Change class teachers
-        </Link>
-      </p>
+      {canEdit && <AssignChoices staffId={staff.id} busy={busy} change={change} />}
+      {alert}
+      {notice && (
+        <p role="status" className="text-sm">
+          {notice}
+        </p>
+      )}
     </section>
+  );
+}
+
+type ChoicesProps = {
+  staffId: number;
+  busy: boolean;
+  change: (action: () => Promise<unknown>, done: string) => Promise<void>;
+};
+
+/** Two small forms: make this person class teacher of a class, or add a subject they teach. */
+function AssignChoices({ staffId, busy, change }: ChoicesProps) {
+  const classes = useLoad<ClassesData>("/api/school/classes");
+  const subjects = useLoad<SubjectRow[]>("/api/school/subjects");
+  const [classTeacher, setClassTeacher] = useState({ school_class: "", term: "" });
+  const [teach, setTeach] = useState({ school_class: "", subject: "", term: "" });
+  if (!classes.data || !subjects.data) return null;
+  if (!classes.data.year || classes.data.terms.length === 0) {
+    return (
+      <p className="text-ink-muted">
+        Add the current school year and its terms under{" "}
+        <Link href="/setup/years" className="text-indigo underline-offset-4 hover:underline">
+          Years and terms
+        </Link>{" "}
+        to give this person a class.
+      </p>
+    );
+  }
+  const { classes: rows, terms } = classes.data;
+  const pick = (
+    id: string,
+    label: string,
+    value: string,
+    options: { id: number; name: string }[],
+    onChange: (value: string) => void,
+  ) => (
+    <Field id={id} label={label}>
+      {(props) => (
+        <select {...props} value={value} onChange={(event) => onChange(event.target.value)} className={inputClasses}>
+          <option value="">Choose…</option>
+          {options.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.name}
+            </option>
+          ))}
+        </select>
+      )}
+    </Field>
+  );
+  const makeClassTeacher = () =>
+    change(
+      () =>
+        putJson(`/api/school/classes/${classTeacher.school_class}/class-teacher`, {
+          term: Number(classTeacher.term),
+          staff: staffId,
+        }),
+      "Saved.",
+    );
+  const addSubject = () =>
+    change(
+      () =>
+        postJson("/api/school/teaching", {
+          staff: staffId,
+          school_class: Number(teach.school_class),
+          subject: Number(teach.subject),
+          term: Number(teach.term),
+        }),
+      "Added.",
+    );
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      <div className="space-y-3">
+        <h3 className="font-semibold">Make class teacher</h3>
+        {pick("class-teacher-class", "Class teacher of", classTeacher.school_class, rows, (value) =>
+          setClassTeacher({ ...classTeacher, school_class: value }),
+        )}
+        {pick("class-teacher-term", "Term", classTeacher.term, terms, (value) =>
+          setClassTeacher({ ...classTeacher, term: value }),
+        )}
+        <p className="text-sm text-ink-muted">This replaces whoever is class teacher of that class in that term.</p>
+        <Button
+          disabled={busy || !classTeacher.school_class || !classTeacher.term}
+          onClick={() => void makeClassTeacher()}
+        >
+          Make class teacher
+        </Button>
+      </div>
+      <div className="space-y-3">
+        <h3 className="font-semibold">Add a subject they teach</h3>
+        {pick("teach-class", "Class", teach.school_class, rows, (value) => setTeach({ ...teach, school_class: value }))}
+        {pick("teach-subject", "Subject", teach.subject, subjects.data, (value) => setTeach({ ...teach, subject: value }))}
+        {pick("teach-term", "Term", teach.term, terms, (value) => setTeach({ ...teach, term: value }))}
+        <Button
+          disabled={busy || !teach.school_class || !teach.subject || !teach.term}
+          onClick={() => void addSubject()}
+        >
+          Add subject
+        </Button>
+      </div>
+    </div>
   );
 }
 

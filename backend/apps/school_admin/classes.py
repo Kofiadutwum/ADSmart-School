@@ -67,6 +67,17 @@ def class_row(school_class: SchoolClass) -> dict:
             }
             for row in rows
         ],
+        "subject_teachers": [
+            {
+                "term": row.term.number,
+                "subject": row.subject.name,
+                "staff_id": row.staff_id,
+                "staff_name": _name(row.staff),
+            }
+            for row in school_class.teaching.select_related("staff", "subject", "term").order_by(
+                "term__number", "subject__name"
+            )
+        ],
     }
 
 
