@@ -7,6 +7,7 @@ from django.core.files.storage import default_storage
 from django.db import transaction
 from django.utils import timezone
 
+from apps.academics.ges import add_ges_subjects
 from apps.consent.models import PrivacyNotice
 from apps.core.images import build_renditions
 from apps.school.models import School, all_levels
@@ -96,6 +97,7 @@ def provision_school(school: School) -> int:
             effective_from=timezone.localdate(),
         )
         created += 1
+    created += len(add_ges_subjects(school))
     return created
 
 

@@ -33,6 +33,12 @@ export function SubjectsView({ canEdit }: { canEdit: boolean }) {
   return (
     <div className="space-y-6">
       {canEdit && (
+        <p className="text-ink-muted">
+          The GES curriculum subjects for your levels are already here. Add any others your school teaches, such as
+          French, and edit or delete any you don&apos;t use.
+        </p>
+      )}
+      {canEdit && (
         <SubjectForm
           label="Add a subject"
           submitLabel="Add subject"

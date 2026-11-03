@@ -40,25 +40,6 @@ PUPIL_CONSENTS = (("PHOTO_USE", 0.8), ("MEDICAL_SHARING", 0.9), ("SCHOOL_TRIPS",
 PARENT_CONSENTS = (("SMS_CONTACT", 0.85),)
 SECOND_STREAMS = ("basic_1", "kg_1", "basic_4", "nursery_1", "basic_7")
 
-# (name, code, bands, is_learning_area): subjects of Ghana's standards-based curriculum.
-SUBJECTS = (
-    ("Language and Literacy", "LL", ["nursery", "kg"], True),
-    ("Numeracy", "NUM", ["nursery", "kg"], True),
-    ("Our World Our People", "OWOP", ["nursery", "kg", "lower_primary", "upper_primary"], False),
-    ("Creative Arts", "CA", ["nursery", "kg", "lower_primary", "upper_primary"], False),
-    ("English Language", "ENG", ["lower_primary", "upper_primary", "jhs"], False),
-    ("Ghanaian Language", "GHL", ["lower_primary", "upper_primary", "jhs"], False),
-    ("Mathematics", "MATH", ["lower_primary", "upper_primary", "jhs"], False),
-    ("Science", "SCI", ["lower_primary", "upper_primary", "jhs"], False),
-    ("Religious and Moral Education", "RME", ["lower_primary", "upper_primary", "jhs"], False),
-    ("Physical Education", "PE", ["lower_primary", "upper_primary", "jhs"], False),
-    ("Computing", "COMP", ["upper_primary", "jhs"], False),
-    ("History", "HIST", ["upper_primary"], False),
-    ("Social Studies", "SOC", ["jhs"], False),
-    ("Career Technology", "CT", ["jhs"], False),
-    ("Creative Arts and Design", "CAD", ["jhs"], False),
-)
-
 # One of each, whatever the school teaches: (role, qualification).
 SUPPORT_ROLES = (
     ("Administrator", "BSc Administration"),

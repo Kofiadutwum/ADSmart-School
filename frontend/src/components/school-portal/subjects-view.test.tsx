@@ -62,6 +62,12 @@ describe("SubjectsView", () => {
     });
   });
 
+  it("says the GES subjects are already in and others can be added", async () => {
+    mockApi([["GET", "/api/school/subjects", 200, [MATHS]]]);
+    render(<SubjectsView canEdit />);
+    expect(await screen.findByText(/GES curriculum subjects for your levels are already here/)).toBeInTheDocument();
+  });
+
   it("shows the levels and offers no changes to the Head Teacher", async () => {
     mockApi([["GET", "/api/school/subjects", 200, [MATHS]]]);
     render(<SubjectsView canEdit={false} />);

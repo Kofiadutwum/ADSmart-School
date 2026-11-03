@@ -16,6 +16,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.academics.calendar import create_term
+from apps.academics.ges import ges_subjects_for
 from apps.academics.models import (
     AcademicYear,
     ClassTeacherAssignment,
@@ -174,15 +175,13 @@ def _classes(year) -> list[SchoolClass]:
 
 def _subjects(school) -> list[Subject]:
     made = []
-    for name, code, bands, learning_area in demo_data.SUBJECTS:
-        taught = [band for band in bands if band in school.levels_offered]
-        if taught:
-            subject, _ = Subject.objects.get_or_create(
-                school=school,
-                code=code,
-                defaults={"name": name, "bands": taught, "is_learning_area": learning_area},
-            )
-            made.append(subject)
+    for name, code, taught, learning_area in ges_subjects_for(school.levels_offered):
+        subject, _ = Subject.objects.get_or_create(
+            school=school,
+            code=code,
+            defaults={"name": name, "bands": taught, "is_learning_area": learning_area},
+        )
+        made.append(subject)
     return made
 
 
