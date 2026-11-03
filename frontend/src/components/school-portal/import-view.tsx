@@ -21,12 +21,30 @@ type PupilSummary = {
 };
 type StaffSummary = { staff: number };
 type Password = { name: string; username: string; one_time_password: string };
+type PupilSlip = { name: string; class: string; student_id: string; password: string };
+type ParentSlip = { name: string; phone: string; children: string[]; password: string };
+type Slips = { passwords: Password[]; pupils: PupilSlip[]; parents: ParentSlip[] };
+const NO_SLIPS: Slips = { passwords: [], pupils: [], parents: [] };
+
+/** A spreadsheet of sign-in details to cut into slips; opens in Excel. */
+function download(name: string, head: string[], rows: string[][]) {
+  const cell = (value: string) => `"${value.replaceAll('"', '""')}"`;
+  const text = "﻿" + [head, ...rows].map((row) => row.map(cell).join(",")).join("\r\n");
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(new Blob([text], { type: "text/csv" }));
+  link.download = name;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
 type Outcome = {
   kind: Kind;
   imported: boolean;
   problems: Problem[];
   summary: PupilSummary | StaffSummary | null;
   passwords?: Password[];
+  pupils?: PupilSlip[];
+  parents?: ParentSlip[];
   done?: number;
   total?: number;
 };
@@ -86,7 +104,7 @@ export function ImportView({ initialKind }: { initialKind: Kind }) {
   const [file, setFile] = useState<File | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [informed, setInformed] = useState(false);
-  const [progress, setProgress] = useState<{ done: number; total: number; passwords: Password[] } | null>(null);
+  const [progress, setProgress] = useState<({ done: number; total: number } & Slips) | null>(null);
   const { act, busy, alert } = useAction();
 
   const choose = (next: Kind) => {
@@ -106,11 +124,13 @@ export function ImportView({ initialKind }: { initialKind: Kind }) {
     });
   // Saved a batch at a time, so no request runs into the server's time limit. A batch sent
   // again (after a dropped connection) adds nobody twice, so Continue is always safe.
-  const save = (from: number, earlier: Password[]) =>
+  const save = (from: number, earlier: Slips) =>
     act(async () => {
       if (!file || !outcome) return;
       let start = from;
-      const passwords = [...earlier];
+      const passwords = [...earlier.passwords];
+      const pupils = [...earlier.pupils];
+      const parents = [...earlier.parents];
       for (;;) {
         const form = new FormData();
         form.append("file", file);
@@ -124,11 +144,13 @@ export function ImportView({ initialKind }: { initialKind: Kind }) {
           return;
         }
         passwords.push(...(result.passwords ?? []));
+        pupils.push(...(result.pupils ?? []));
+        parents.push(...(result.parents ?? []));
         start = result.done ?? start;
         const total = result.total ?? start;
-        setProgress({ done: start, total, passwords });
+        setProgress({ done: start, total, passwords, pupils, parents });
         if (start >= total) {
-          setOutcome({ ...outcome, imported: true, passwords });
+          setOutcome({ ...outcome, imported: true, passwords, pupils, parents });
           setProgress(null);
           return;
         }
@@ -228,9 +250,9 @@ export function ImportView({ initialKind }: { initialKind: Kind }) {
                 </p>
               )}
               {progress && !busy ? (
-                <Button onClick={() => void save(progress.done, progress.passwords)}>Continue importing</Button>
+                <Button onClick={() => void save(progress.done, progress)}>Continue importing</Button>
               ) : (
-                <Button disabled={busy || !informed} onClick={() => void save(0, [])}>
+                <Button disabled={busy || !informed} onClick={() => void save(0, NO_SLIPS)}>
                   {busy ? "Importing…" : `Import ${what(kind, outcome.summary)}`}
                 </Button>
               )}
@@ -244,11 +266,87 @@ export function ImportView({ initialKind }: { initialKind: Kind }) {
                   See the {kind === "pupils" ? "pupils" : "staff"}
                 </Link>
               </p>
-              {kind === "pupils" && (
-                <p className="text-ink-muted">
-                  Parents can sign in once they activate their account: send each one the activation text from the Parents page
-                  when you are ready.
-                </p>
+              {outcome.pupils && outcome.pupils.length > 0 && (
+                <Panel
+                  title="Pupils' Student IDs and passwords"
+                  actions={
+                    <span className="flex flex-wrap gap-2">
+                      <Button variant="outline" onClick={() => window.print()}>
+                        Print
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() =>
+                          download(
+                            "pupil-sign-ins.csv",
+                            ["Name", "Class", "Student ID", "One-time password"],
+                            (outcome.pupils ?? []).map((row) => [row.name, row.class, row.student_id, row.password]),
+                          )
+                        }
+                      >
+                        Download (CSV)
+                      </Button>
+                    </span>
+                  }
+                >
+                  <p className="text-ink-muted">
+                    Shown only now: print or download it. Pupils from Basic 4 sign in with their Student ID and this password,
+                    then choose their own; younger pupils don&apos;t sign in.
+                  </p>
+                  <Table
+                    caption="Pupils' Student IDs and passwords"
+                    head={["Name", "Class", "Student ID", "One-time password"]}
+                    rows={outcome.pupils.map((row) => [
+                      row.name,
+                      row.class,
+                      row.student_id,
+                      <span key="password" className="font-mono">
+                        {row.password || "—"}
+                      </span>,
+                    ])}
+                  />
+                </Panel>
+              )}
+              {outcome.parents && outcome.parents.length > 0 && (
+                <Panel
+                  title="Parents' sign-ins"
+                  actions={
+                    <span className="flex flex-wrap gap-2">
+                      <Button variant="outline" onClick={() => window.print()}>
+                        Print
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() =>
+                          download(
+                            "parent-sign-ins.csv",
+                            ["Name", "Children", "Sign in with (phone)", "One-time password"],
+                            (outcome.parents ?? []).map((row) => [row.name, row.children.join(", "), row.phone, row.password]),
+                          )
+                        }
+                      >
+                        Download (CSV)
+                      </Button>
+                    </span>
+                  }
+                >
+                  <p className="text-ink-muted">
+                    Shown only now. Parents sign in with their phone number and this password, then choose their own. Parents
+                    who were already registered keep their own password and aren&apos;t listed.
+                  </p>
+                  <Table
+                    caption="Parents' sign-ins"
+                    head={["Name", "Children", "Sign in with", "One-time password"]}
+                    rows={outcome.parents.map((row) => [
+                      row.name,
+                      row.children.join(", "),
+                      row.phone,
+                      <span key="password" className="font-mono">
+                        {row.password}
+                      </span>,
+                    ])}
+                  />
+                </Panel>
               )}
               {outcome.passwords && outcome.passwords.length > 0 && (
                 <Panel

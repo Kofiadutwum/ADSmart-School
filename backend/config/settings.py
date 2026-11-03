@@ -144,6 +144,7 @@ AUTH_USER_MODEL = "accounts.User"
 PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.Argon2PasswordHasher",
     "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+    "apps.accounts.hashers.OneTimePasswordHasher",  # one-time passwords only
 ]
 
 # Shared by every process without extra services. Create with: manage.py createcachetable

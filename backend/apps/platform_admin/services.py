@@ -3,6 +3,7 @@
 import secrets
 
 from django.conf import settings
+from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import Group
 from django.db import transaction
 
@@ -27,7 +28,7 @@ def one_time_password() -> str:
 
 def issue_password(user: User) -> str:
     password = one_time_password()
-    user.set_password(password)
+    user.password = make_password(password, hasher="pbkdf2_onetime")  # replaced at first sign-in
     user.must_change_password = True
     user.save(update_fields=["password", "must_change_password"])
     return password

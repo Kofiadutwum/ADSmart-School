@@ -6,7 +6,10 @@ os.environ.setdefault("DJANGO_SECRET_KEY", "test-only-secret-key-not-used-anywhe
 
 from config.settings import *  # noqa: E402,F403
 
-PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.MD5PasswordHasher",
+    "apps.accounts.hashers.OneTimePasswordHasher",
+]
 CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
 PLATFORM_NAME = "SchoolSite"
 PLATFORM_DOMAIN = "localhost"

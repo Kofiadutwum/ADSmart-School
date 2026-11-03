@@ -102,4 +102,49 @@ describe("ImportView", () => {
     expect(within(table).getByText("tulip-river-42")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /print/i })).toBeInTheDocument();
   });
+
+  it("collects pupils' Student IDs and new parents' passwords from every batch", async () => {
+    mockApi([
+      ["POST", PUPILS, 200, CLEAN],
+      [
+        "POST",
+        PUPILS,
+        200,
+        {
+          ...SAVED,
+          done: 1,
+          total: 2,
+          pupils: [{ name: "Kofi Mensah", class: "Basic 5A", student_id: "ADS-2026-0001", password: "abcd-efgh-jkmn" }],
+          parents: [{ name: "Ama Mensah", phone: "024 123 4567", children: ["Kofi"], password: "pqrs-tuvw-xyz2" }],
+        },
+      ],
+      [
+        "POST",
+        PUPILS,
+        200,
+        {
+          ...SAVED,
+          done: 2,
+          total: 2,
+          pupils: [{ name: "Esi Mensah", class: "KG 1", student_id: "ADS-2026-0002", password: "" }],
+          parents: [],
+        },
+      ],
+    ]);
+    const user = userEvent.setup();
+    render(<ImportView initialKind="pupils" />);
+    await user.upload(screen.getByLabelText(/spreadsheet file/i), file());
+    await user.click(screen.getByRole("button", { name: "Check the file" }));
+    await user.click(await screen.findByRole("checkbox", { name: /privacy notice/i }));
+    await user.click(screen.getByRole("button", { name: "Import 2 pupils" }));
+
+    const pupils = await screen.findByRole("table", { name: /student ids/i });
+    expect(within(pupils).getByText("ADS-2026-0001")).toBeInTheDocument();
+    expect(within(pupils).getByText("abcd-efgh-jkmn")).toBeInTheDocument();
+    expect(within(pupils).getByText("ADS-2026-0002")).toBeInTheDocument();
+    const parents = screen.getByRole("table", { name: /parents' sign-ins/i });
+    expect(within(parents).getByText("024 123 4567")).toBeInTheDocument();
+    expect(within(parents).getByText("pqrs-tuvw-xyz2")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /download \(csv\)/i })).toHaveLength(2);
+  });
 });

@@ -4,6 +4,7 @@ The changes the spec asks to audit (§11.3) are recorded here: admissions, statu
 enrolments, pick-up people, guardians and new accounts.
 """
 
+from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import Group
 from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
@@ -193,7 +194,7 @@ def add_pickup_person(
 
 
 @transaction.atomic
-def give_student_login(student, password: str, *, by=None) -> User:
+def give_student_login(student, password: str, *, by=None, one_time=False) -> User:
     """Pupils from Basic 4 sign in with their Student ID and choose their own password first."""
     enrolment = (
         student.enrolments.filter(end_date__isnull=True).select_related("school_class").first()
@@ -207,8 +208,11 @@ def give_student_login(student, password: str, *, by=None) -> User:
         display_name=f"{student.first_name} {student.surname}",
         must_change_password=True,
     )
-    validate_password(password, user)
-    user.set_password(password)
+    if one_time:  # a random code from an import, changed at the first sign-in
+        user.password = make_password(password, hasher="pbkdf2_onetime")
+    else:
+        validate_password(password, user)
+        user.set_password(password)
     user.save()
     user.groups.add(Group.objects.get(name=roles.STUDENT))
     student.user = user

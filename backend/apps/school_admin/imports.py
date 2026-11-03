@@ -19,9 +19,10 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 
 from apps.academics.models import SchoolClass
-from apps.academics.structure import YEAR_GROUPS
+from apps.academics.structure import BANDS, YEAR_GROUPS
 from apps.accounts.identifiers import normalise_identifier
 from apps.accounts.models import User
+from apps.core.phones import format_gh_local
 from apps.people.models import Guardianship, Parent, Student
 from apps.people.services import (
     STAFF_ROLES,
@@ -30,9 +31,10 @@ from apps.people.services import (
     create_parent,
     create_staff,
     enrol,
+    give_student_login,
     link_guardian,
 )
-from apps.platform_admin.services import issue_password
+from apps.platform_admin.services import issue_password, one_time_password
 from apps.school_admin.dashboard import current_year
 from apps.school_admin.parents import ParentSerializer
 from apps.school_admin.pupils import NewPupilSerializer
@@ -414,9 +416,18 @@ def check_pupils(school, found, skip_existing=False) -> Result:
 
 
 def save_pupils(school, result: Result, by) -> dict:
+    """Saves the pupils, and returns everyone's sign-in details for the school to hand out:
+    each pupil's Student ID (with a one-time password from Basic 4 up) and each new parent's."""
     made: dict[str, Parent] = {}
+    pupils, parents = [], {}
     for plan in result.plans:
         pupil = admit_student(school, by=by, **plan.pupil)
+        slip = {
+            "name": pupil.full_name,
+            "class": "",
+            "student_id": pupil.student_id,
+            "password": "",
+        }
         if plan.school_class:
             if not plan.school_class.pk:  # named in the file but not set up yet
                 planned = plan.school_class
@@ -426,10 +437,23 @@ def save_pupils(school, result: Result, by) -> dict:
                     stream=planned.stream,
                 )
             enrol(pupil, plan.school_class, start_date=pupil.admission_date, by=by)
+            slip["class"] = plan.school_class.name
+            if BANDS[plan.school_class.band].student_login:
+                slip["password"] = one_time_password()
+                give_student_login(pupil, slip["password"], by=by, one_time=True)
+        pupils.append(slip)
         for index, (phone, fields, relationship) in enumerate(plan.parents):
             parent = result.existing.get(phone) or made.get(phone)
             if parent is None:
                 parent = made[phone] = create_parent(school, by=by, **fields)
+                parents[phone] = {
+                    "name": f"{parent.first_name} {parent.surname}",
+                    "phone": format_gh_local(phone),
+                    "children": [],
+                    "password": issue_password(parent.user),
+                }
+            if phone in parents:
+                parents[phone]["children"].append(pupil.first_name)
             first = index == 0  # the first parent listed pays and is the main contact
             link_guardian(
                 parent, pupil, relationship, is_payer=first, is_primary_contact=first, by=by
@@ -441,7 +465,7 @@ def save_pupils(school, result: Result, by) -> dict:
                 phone=parent.phone,
                 relationship=Guardianship.Relationship(relationship).label,
             )
-    return {}
+    return {"pupils": pupils, "parents": list(parents.values())}
 
 
 STAFF_HEADERS = {key: header for key, header, _ in STAFF_COLUMNS}

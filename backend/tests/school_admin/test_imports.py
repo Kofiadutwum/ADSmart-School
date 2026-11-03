@@ -61,6 +61,25 @@ def test_classes_named_in_the_file_are_created_when_the_school_teaches_them(admi
     assert Student.objects.get(first_name="Kwame").enrolments.get().school_class.name == "Basic 3B"
 
 
+def test_the_import_gives_sign_ins_for_older_pupils_and_new_parents(admin, school):
+    make_year(school)
+    rows = [
+        FAMILY,
+        ["Kwame", "Asante", "01/02/2015", "M", "Basic 4A", "Akosua", "Asante", "0245550101", ""],
+        ["Esi", "Asante", "03/04/2021", "F", "KG 1", "Akosua", "Asante", "0245550101", ""],
+    ]
+
+    body = send(admin, "pupils", sheet(rows), commit=True)
+
+    kwame, esi = body["pupils"]
+    assert kwame["class"] == "Basic 4A" and kwame["password"]
+    assert Student.objects.get(first_name="Kwame").user.check_password(kwame["password"])
+    assert esi["student_id"] and esi["password"] == ""  # KG pupils don't sign in
+    (akosua,) = body["parents"]
+    assert akosua["phone"] == "024 555 0101" and akosua["children"] == ["Kwame", "Esi"]
+    assert Parent.objects.get().user.check_password(akosua["password"])
+
+
 def batch(client, kind, rows, start, count):
     data = {"file": sheet(rows), "commit": "1", "privacy_notice_given": "1"}
     data.update(start=str(start), count=str(count))
