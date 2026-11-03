@@ -6,6 +6,7 @@ import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from openpyxl import Workbook
 
+from apps.academics.models import SchoolClass
 from apps.accounts import roles
 from apps.people.models import Parent, Staff, Student
 from apps.school_admin import imports
@@ -38,6 +39,26 @@ def send(client, kind, upload, commit=False):
     response = client.post(IMPORT + kind, {"file": upload, **saving}, format="multipart")
     assert response.status_code == 200, response.content
     return response.json()
+
+
+def test_classes_named_in_the_file_are_created_when_the_school_teaches_them(admin, school):
+    year = make_year(school)
+    rows = [
+        FAMILY[:5],
+        ["Kwame", "Asante", "01/02/2018", "M", "Basic 3B"],
+        ["Ama", "Owusu", "03/04/2025", "F", "Crèche"],
+    ]
+
+    checked = send(admin, "pupils", sheet(rows))
+    assert checked["problems"] == []
+    assert checked["summary"]["new_classes"] == ["Basic 3B", "Crèche"]
+    assert not SchoolClass.objects.exists()
+
+    send(admin, "pupils", sheet(rows), commit=True)
+
+    names = {each.name for each in SchoolClass.objects.filter(academic_year=year)}
+    assert names == {"Basic 3B", "Crèche"}
+    assert Student.objects.get(first_name="Kwame").enrolments.get().school_class.name == "Basic 3B"
 
 
 def batch(client, kind, rows, start, count):
@@ -133,6 +154,7 @@ def test_checking_a_file_says_what_would_be_imported_and_saves_nothing(admin, sc
         "new_parents": 1,
         "existing_parents": 0,
         "classes": ["Basic 2A"],
+        "new_classes": [],
         "unplaced": 0,
     }
     assert not Student.objects.exists()

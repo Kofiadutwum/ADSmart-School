@@ -19,6 +19,7 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 
 from apps.academics.models import SchoolClass
+from apps.academics.structure import YEAR_GROUPS
 from apps.accounts.identifiers import normalise_identifier
 from apps.accounts.models import User
 from apps.people.models import Guardianship, Parent, Student
@@ -295,6 +296,26 @@ def _parent(number: int, values: dict) -> tuple[list[str], tuple | None]:
     return [], (data["phone"], data, relationship)
 
 
+YEAR_GROUP_KEYS = {squash(group.name): group for group in YEAR_GROUPS.values()}
+
+
+def _new_class(key: str, year, school) -> SchoolClass | None:
+    """An unsaved class for a name like "Basic 3B" or "Crèche", when the school teaches that
+    level; created when the import is saved, so schools needn't type every class first."""
+    for prefix, group in YEAR_GROUP_KEYS.items():
+        if not key.startswith(prefix):
+            continue
+        stream = key[len(prefix) :]
+        if stream and not (len(stream) == 1 and stream.isalpha()):
+            continue
+        if group.band not in school.levels_offered:
+            return None
+        return SchoolClass(
+            school=school, academic_year=year, year_group=group.code, stream=stream.upper()
+        )
+    return None
+
+
 def check_pupils(school, found, skip_existing=False) -> Result:
     year = current_year(school)
     classes = {}
@@ -331,7 +352,10 @@ def check_pupils(school, found, skip_existing=False) -> Result:
                     "Class: set up the current school year first, or leave the class empty."
                 )
             else:
-                school_class = classes.get(squash(values["school_class"]))
+                key = squash(values["school_class"])
+                school_class = classes.get(key) or _new_class(key, year, school)
+                if school_class is not None:
+                    classes[key] = school_class  # a new class is shared by every row naming it
                 if school_class is None:
                     row_problems.append(
                         f"Class: No class called {values['school_class']} in {year.name}."
@@ -377,6 +401,13 @@ def check_pupils(school, found, skip_existing=False) -> Result:
         "new_parents": len(phones - existing.keys()),
         "existing_parents": len(phones & existing.keys()),
         "classes": sorted({plan.school_class.name for plan in plans if plan.school_class}),
+        "new_classes": sorted(
+            {
+                plan.school_class.name
+                for plan in plans
+                if plan.school_class and not plan.school_class.pk
+            }
+        ),
         "unplaced": sum(1 for plan in plans if plan.school_class is None),
     }
     return Result(problems, summary, plans, existing, skipped)
@@ -387,6 +418,13 @@ def save_pupils(school, result: Result, by) -> dict:
     for plan in result.plans:
         pupil = admit_student(school, by=by, **plan.pupil)
         if plan.school_class:
+            if not plan.school_class.pk:  # named in the file but not set up yet
+                planned = plan.school_class
+                plan.school_class, _ = SchoolClass.objects.get_or_create(
+                    academic_year=planned.academic_year,
+                    year_group=planned.year_group,
+                    stream=planned.stream,
+                )
             enrol(pupil, plan.school_class, start_date=pupil.admission_date, by=by)
         for index, (phone, fields, relationship) in enumerate(plan.parents):
             parent = result.existing.get(phone) or made.get(phone)

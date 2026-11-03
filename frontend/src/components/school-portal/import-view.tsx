@@ -11,7 +11,14 @@ import { postForm } from "@/lib/client-api";
 
 type Kind = "pupils" | "staff";
 type Problem = { row: number; message: string };
-type PupilSummary = { pupils: number; new_parents: number; existing_parents: number; classes: string[]; unplaced: number };
+type PupilSummary = {
+  pupils: number;
+  new_parents: number;
+  existing_parents: number;
+  classes: string[];
+  new_classes?: string[];
+  unplaced: number;
+};
 type StaffSummary = { staff: number };
 type Password = { name: string; username: string; one_time_password: string };
 type Outcome = {
@@ -69,6 +76,7 @@ function readyText(kind: Kind, summary: Outcome["summary"]): string {
   ];
   if (pupils.classes.length) parts.push(`placed in ${pupils.classes.join(", ")}`);
   if (pupils.unplaced) parts.push(`${plural(pupils.unplaced, "pupil")} not yet in a class`);
+  if (pupils.new_classes?.length) parts.push(`creating ${plural(pupils.new_classes.length, "new class", "new classes")}`);
   return `Ready to import ${what(kind, summary)}: ${parts.join(", ")}.`;
 }
 
